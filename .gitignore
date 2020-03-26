@@ -1,0 +1,123 @@
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.nupkg
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# vim swap files
+*swp
+*swo
+*~
+
+# Ping data files
+*.ping
+*.pings
+*.population*
+*.percent
+*.cities
+populations
+
+# Discarded code snippets
+build.sh
+*-fast.yaml
+detritus/
+
+# Dotnet Core ignores
+*.swp
+*.pdb
+*.deps.json
+*.*~
+project.lock.json
+.DS_Store
+*.pyc
+nupkg/
+
+# Visual Studio Code
+.vscode
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+msbuild.log
+msbuild.err
+msbuild.wrn
+csharp/OpenMatch/obj
+Chart.lock
+
+# Visual Studio 2015
+.vs/
+
+# Goland
+.idea/
+
+# Nodejs files placed when building Hugo, ok to allow if we actually start using Nodejs.
+package.json
+package-lock.json
+
+site/resources/_gen/
+
+# Node Modules
+node_modules/
+
+# Install YAML files
+install/yaml/
+
+# Temp Directories
+tmp/
+
+# Terraform context
+.terraform
+*.tfstate.backup
+
+# Credential Files
+creds.json
+
+# Binaries
+cmd/backend/backend
+cmd/frontend/frontend
+cmd/query/query
+cmd/swaggerui/swaggerui
+tools/certgen/certgen
+
+# Secrets Directories
+install/helm/triton/secrets/
+
+# Helm tar charts
+install/helm/triton/charts/
