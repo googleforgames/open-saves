@@ -57,3 +57,7 @@ Summer 2019. The latest version of
 # Build all Docker images
 
 TODO
+
+# Contributing to the project
+
+Check out [How to Contribute](contributing.md) before contributing to the project.
