@@ -1,0 +1,7 @@
+steps:
+# TODO: replace these targets with actual names when we add the main application
+- name: gcr.io/cloud-builders/bazel
+  args: ['build', '...']
+# TODO: Enable tests when we have tests
+# - name: gcr.io/cloud-builders/bazel
+#   args: ['test', '...']
