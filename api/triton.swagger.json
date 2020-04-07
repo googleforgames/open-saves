@@ -1,0 +1,142 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "triton.proto",
+    "version": "version not set"
+  },
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/triton/storage:create": {
+      "post": {
+        "operationId": "CreateStorage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tritonStorage"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tritonCreateStorageRequest"
+            }
+          }
+        ],
+        "tags": [
+          "StorageService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "tritonCreateStorageRequest": {
+      "type": "object",
+      "properties": {
+        "options": {
+          "$ref": "#/definitions/tritonStorageOptions"
+        }
+      }
+    },
+    "tritonDeleteValueResponse": {
+      "type": "object"
+    },
+    "tritonGetValueResponse": {
+      "type": "object",
+      "properties": {
+        "key_value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tritonKeyValue"
+          }
+        }
+      }
+    },
+    "tritonKeyValue": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "tritonSetValueResponse": {
+      "type": "object"
+    },
+    "tritonStorage": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID of this storage, assigned by the server when the storage is created."
+        },
+        "name": {
+          "type": "string"
+        },
+        "options": {
+          "$ref": "#/definitions/tritonStorageOptions"
+        }
+      }
+    },
+    "tritonStorageOptions": {
+      "type": "object"
+    }
+  }
+}
