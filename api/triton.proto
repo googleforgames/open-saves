@@ -16,6 +16,7 @@ syntax = "proto3";
 package triton;
 
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
 
 message KeyValue {
   string key = 1;
@@ -23,53 +24,162 @@ message KeyValue {
   int32 size = 3;
 }
 
-message StorageOptions {}
+enum Hint {
+  // Unspecified. This value must not be used.
+  HINT_UNSPECIFIED = 0;
+  DO_NOT_CACHE = 1;
+  IGNORE_CACHE = 2;
+  ALWAYS_USE_BULK_STORE = 3;
+  DO_NOT_USE_BULK_STORE = 4;
+}
 
-message Storage {
-  // ID of this storage, assigned by the server when the storage is created.
+enum Permission {
+  // Unspecified. This value must not be used.
+  PERMISSION_UNSPECIFIED = 0;
+  READ = 1;
+  WRITE = 2;
+  READ_WRITE = 3;
+  DELETE = 4;
+  READ_DELETE = 5;
+  WRITE_DELETE = 6;
+  READ_WRITE_DELETE = 7;
+}
+
+message StoreOptions {}
+
+message Store {
+  // ID of this store, assigned by the server when the store is created.
   int64 id = 1;
   string name = 2;
-  StorageOptions options = 3;
+  StoreOptions options = 3;
+  Permission default_permission = 4;
+  int64 owner = 5;
 }
 
-message CreateStorageRequest { StorageOptions options = 1; }
+message CreateStoreRequest {
+  StoreOptions options = 1;
+}
 
-message GetStorageRequest { int64 id = 1; }
+message GetStoreRequest {
+  int64 id = 1;
+}
 
-message ListStorageRequest {}
+message ListStoresRequest {}
 
-message DeleteStorageRequest { int64 id = 1; }
+message QueryStoreRequest {
+  int64 store_id = 1;
+}
+
+message DeleteStoreRequest {
+  int64 id = 1;
+}
+
+message CreateValueRequest {
+  int64 store_id = 1;
+  string key = 2;
+  string value = 3;
+}
 
 message GetValueRequest {
-  int64 storage_id = 1;
-  repeated string key = 2;
+  int64 store_id = 1;
+  string key = 2;
 }
 
-message GetValueResponse { repeated KeyValue key_value = 1; }
-
-message SetValueRequest {
-  int64 storage_id = 1;
+message UpdateValueRequest {
+  int64 store_id = 1;
   repeated KeyValue key_value = 2;
+  repeated Hint hint = 3;
 }
-
-message SetValueResponse {}
 
 message DeleteValueRequest {
-  int64 storage_id = 1;
-  // TODO: should or should not allow batch delete?
-  repeated string key = 2;
+  int64 store_id = 1;
+  string key = 2;
 }
 
-message DeleteValueResponse {}
+message StoreJsonRequest {
+  int64 store_id = 1;
+  string key = 2;
+  string json = 3;
+}
 
-service StorageService {
-  rpc CreateStorage(CreateStorageRequest) returns (Storage) {
+message FetchJsonRequest {
+  int64 store_id = 1;
+  string key = 2;
+}
+
+message ListStoresResponse {
+  repeated Store stores = 1;
+}
+
+message GetValueResponse {
+  repeated KeyValue key_value = 1;
+}
+
+message StoreJsonResponse {
+  string json = 1;
+}
+
+message FetchJsonResponse {
+  string json = 1;
+}
+
+service Triton {
+  rpc CreateStore(CreateStoreRequest) returns (Store) {
     option (google.api.http) = {
-      post : "/v1/triton/storage:create"
-      body : "*"
+      put: "/v1/stores"
+      body: "*"
     };
   }
-  rpc GetValue(GetValueRequest) returns (GetValueResponse) {}
-  rpc SetValue(SetValueRequest) returns (SetValueResponse) {}
-  rpc DeleteValue(DeleteValueRequest) returns (DeleteValueResponse) {}
+
+  rpc GetStore(GetStoreRequest) returns (Store) {
+    option (google.api.http) = {
+      get: "/v1/stores/{id}"
+    };
+  }
+
+  rpc ListStore(ListStoresRequest) returns (ListStoresResponse) {
+    option (google.api.http) = {
+      get: "/v1/stores"
+    };
+  }
+
+  rpc DeleteStore(DeleteStoreRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/stores/{id}"
+    };
+  }
+
+  rpc CreateValue(CreateValueRequest) returns (KeyValue) {
+    option (google.api.http) = {
+      put: "/v1/stores/{store_id}/values"
+    };
+  }
+
+  rpc GetValue(GetValueRequest) returns (KeyValue) {
+    option (google.api.http) = {
+      get: "/v1/stores/{store_id}/values/{key}"
+    };
+  }
+  rpc UpdateValue(UpdateValueRequest) returns (KeyValue) {
+    option (google.api.http) = {
+      patch: "/v1/stores/{store_id}/values/{key}",
+      body: "*"
+    };
+  }
+  rpc DeleteValue(DeleteValueRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/stores/{store_id}/values/{key}"
+    };
+  }
+  rpc StoreJson(StoreJsonRequest) returns (StoreJsonResponse) {
+    option (google.api.http) = {
+      put: "/v1/stores/{store_id}/json/{key}",
+      body: "*"
+    };
+  }
+  rpc FetchJson(FetchJsonRequest) returns (FetchJsonResponse) {
+    option (google.api.http) = {
+      get: "/v1/stores/{store_id}/json/{key}"
+    };
+  }
 }
