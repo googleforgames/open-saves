@@ -26,7 +26,7 @@ message StructuredData {
   }
 }
 
-message KeyValue {
+message Record {
   string key = 1;
   bytes blob = 2;       // opaque to the server
   int32 blob_size = 3;  // defined by the server
@@ -77,25 +77,25 @@ message DeleteStoreRequest {
   int64 id = 1;
 }
 
-message CreateValueRequest {
+message CreateRecordRequest {
   int64 store_id = 1;
-  KeyValue key_value = 2;
+  Record key_value = 2;
   Hint hint = 3;
 }
 
-message GetValueRequest {
+message GetRecordRequest {
   int64 store_id = 1;
   string key = 2;
 }
 
-message UpdateValueRequest {
+message UpdateRecordRequest {
   int64 store_id = 1;
   string key = 2;
-  KeyValue key_value = 3;
+  Record key_value = 3;
   Hint hint = 4;
 }
 
-message DeleteValueRequest {
+message DeleteRecordRequest {
   int64 store_id = 1;
   string key = 2;
 }
@@ -104,14 +104,10 @@ message ListStoresResponse {
   repeated Store stores = 1;
 }
 
-message GetValueResponse {
-  KeyValue key_value = 1;
-}
-
 service Triton {
   rpc CreateStore(CreateStoreRequest) returns (Store) {
     option (google.api.http) = {
-      put: "/v1/stores"
+      post: "/v1/stores"
       body: "*"
     };
   }
@@ -134,25 +130,25 @@ service Triton {
     };
   }
 
-  rpc CreateValue(CreateValueRequest) returns (KeyValue) {
+  rpc CreateValue(CreateRecordRequest) returns (Record) {
     option (google.api.http) = {
-      put: "/v1/stores/{store_id}/values"
+      post: "/v1/stores/{store_id}/values"
       body: "*"
     };
   }
 
-  rpc GetValue(GetValueRequest) returns (KeyValue) {
+  rpc GetValue(GetRecordRequest) returns (Record) {
     option (google.api.http) = {
       get: "/v1/stores/{store_id}/values/{key}"
     };
   }
-  rpc UpdateValue(UpdateValueRequest) returns (KeyValue) {
+  rpc UpdateValue(UpdateRecordRequest) returns (Record) {
     option (google.api.http) = {
       patch: "/v1/stores/{store_id}/values/{key}",
       body: "*"
     };
   }
-  rpc DeleteValue(DeleteValueRequest) returns (google.protobuf.Empty) {
+  rpc DeleteValue(DeleteRecordRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/stores/{store_id}/values/{key}"
     };

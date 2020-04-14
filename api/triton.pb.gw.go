@@ -192,7 +192,7 @@ func local_request_Triton_DeleteStore_0(ctx context.Context, marshaler runtime.M
 }
 
 func request_Triton_CreateValue_0(ctx context.Context, marshaler runtime.Marshaler, client TritonClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateValueRequest
+	var protoReq CreateRecordRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -227,7 +227,7 @@ func request_Triton_CreateValue_0(ctx context.Context, marshaler runtime.Marshal
 }
 
 func local_request_Triton_CreateValue_0(ctx context.Context, marshaler runtime.Marshaler, server TritonServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateValueRequest
+	var protoReq CreateRecordRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -262,7 +262,7 @@ func local_request_Triton_CreateValue_0(ctx context.Context, marshaler runtime.M
 }
 
 func request_Triton_GetValue_0(ctx context.Context, marshaler runtime.Marshaler, client TritonClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetValueRequest
+	var protoReq GetRecordRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -300,7 +300,7 @@ func request_Triton_GetValue_0(ctx context.Context, marshaler runtime.Marshaler,
 }
 
 func local_request_Triton_GetValue_0(ctx context.Context, marshaler runtime.Marshaler, server TritonServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetValueRequest
+	var protoReq GetRecordRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -338,7 +338,7 @@ func local_request_Triton_GetValue_0(ctx context.Context, marshaler runtime.Mars
 }
 
 func request_Triton_UpdateValue_0(ctx context.Context, marshaler runtime.Marshaler, client TritonClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateValueRequest
+	var protoReq UpdateRecordRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -384,7 +384,7 @@ func request_Triton_UpdateValue_0(ctx context.Context, marshaler runtime.Marshal
 }
 
 func local_request_Triton_UpdateValue_0(ctx context.Context, marshaler runtime.Marshaler, server TritonServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateValueRequest
+	var protoReq UpdateRecordRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -430,7 +430,7 @@ func local_request_Triton_UpdateValue_0(ctx context.Context, marshaler runtime.M
 }
 
 func request_Triton_DeleteValue_0(ctx context.Context, marshaler runtime.Marshaler, client TritonClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteValueRequest
+	var protoReq DeleteRecordRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -468,7 +468,7 @@ func request_Triton_DeleteValue_0(ctx context.Context, marshaler runtime.Marshal
 }
 
 func local_request_Triton_DeleteValue_0(ctx context.Context, marshaler runtime.Marshaler, server TritonServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteValueRequest
+	var protoReq DeleteRecordRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -510,7 +510,7 @@ func local_request_Triton_DeleteValue_0(ctx context.Context, marshaler runtime.M
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 func RegisterTritonHandlerServer(ctx context.Context, mux *runtime.ServeMux, server TritonServer) error {
 
-	mux.Handle("PUT", pattern_Triton_CreateStore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Triton_CreateStore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -590,7 +590,7 @@ func RegisterTritonHandlerServer(ctx context.Context, mux *runtime.ServeMux, ser
 
 	})
 
-	mux.Handle("PUT", pattern_Triton_CreateValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Triton_CreateValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -711,7 +711,7 @@ func RegisterTritonHandler(ctx context.Context, mux *runtime.ServeMux, conn *grp
 // "TritonClient" to call the correct interceptors.
 func RegisterTritonHandlerClient(ctx context.Context, mux *runtime.ServeMux, client TritonClient) error {
 
-	mux.Handle("PUT", pattern_Triton_CreateStore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Triton_CreateStore_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -791,7 +791,7 @@ func RegisterTritonHandlerClient(ctx context.Context, mux *runtime.ServeMux, cli
 
 	})
 
-	mux.Handle("PUT", pattern_Triton_CreateValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Triton_CreateValue_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)

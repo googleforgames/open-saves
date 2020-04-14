@@ -32,7 +32,7 @@
           "Triton"
         ]
       },
-      "put": {
+      "post": {
         "operationId": "CreateStore",
         "responses": {
           "200": {
@@ -124,13 +124,13 @@
       }
     },
     "/v1/stores/{store_id}/values": {
-      "put": {
+      "post": {
         "operationId": "CreateValue",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tritonKeyValue"
+              "$ref": "#/definitions/tritonRecord"
             }
           },
           "default": {
@@ -153,7 +153,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tritonCreateValueRequest"
+              "$ref": "#/definitions/tritonCreateRecordRequest"
             }
           }
         ],
@@ -169,7 +169,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tritonKeyValue"
+              "$ref": "#/definitions/tritonRecord"
             }
           },
           "default": {
@@ -239,7 +239,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/tritonKeyValue"
+              "$ref": "#/definitions/tritonRecord"
             }
           },
           "default": {
@@ -268,7 +268,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tritonUpdateValueRequest"
+              "$ref": "#/definitions/tritonUpdateRecordRequest"
             }
           }
         ],
@@ -312,6 +312,21 @@
         }
       }
     },
+    "tritonCreateRecordRequest": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "key_value": {
+          "$ref": "#/definitions/tritonRecord"
+        },
+        "hint": {
+          "$ref": "#/definitions/tritonHint"
+        }
+      }
+    },
     "tritonCreateStoreRequest": {
       "type": "object",
       "properties": {
@@ -320,21 +335,6 @@
         },
         "name": {
           "type": "string"
-        }
-      }
-    },
-    "tritonCreateValueRequest": {
-      "type": "object",
-      "properties": {
-        "store_id": {
-          "type": "string",
-          "format": "int64"
-        },
-        "key_value": {
-          "$ref": "#/definitions/tritonKeyValue"
-        },
-        "hint": {
-          "$ref": "#/definitions/tritonHint"
         }
       }
     },
@@ -350,7 +350,18 @@
       "default": "HINT_UNSPECIFIED",
       "description": " - HINT_UNSPECIFIED: Unspecified. This value must not be used."
     },
-    "tritonKeyValue": {
+    "tritonListStoresResponse": {
+      "type": "object",
+      "properties": {
+        "stores": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tritonStore"
+          }
+        }
+      }
+    },
+    "tritonRecord": {
       "type": "object",
       "properties": {
         "key": {
@@ -368,17 +379,6 @@
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/tritonStructuredData"
-          }
-        }
-      }
-    },
-    "tritonListStoresResponse": {
-      "type": "object",
-      "properties": {
-        "stores": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/tritonStore"
           }
         }
       }
@@ -419,7 +419,7 @@
         }
       }
     },
-    "tritonUpdateValueRequest": {
+    "tritonUpdateRecordRequest": {
       "type": "object",
       "properties": {
         "store_id": {
@@ -430,7 +430,7 @@
           "type": "string"
         },
         "key_value": {
-          "$ref": "#/definitions/tritonKeyValue"
+          "$ref": "#/definitions/tritonRecord"
         },
         "hint": {
           "$ref": "#/definitions/tritonHint"
