@@ -123,9 +123,9 @@
         ]
       }
     },
-    "/v1/stores/{store_id}/values": {
+    "/v1/stores/{store_id}/records": {
       "post": {
-        "operationId": "CreateValue",
+        "operationId": "CreateRecord",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -162,9 +162,9 @@
         ]
       }
     },
-    "/v1/stores/{store_id}/values/{key}": {
+    "/v1/stores/{store_id}/records/{key}": {
       "get": {
-        "operationId": "GetValue",
+        "operationId": "GetRecord",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -199,7 +199,7 @@
         ]
       },
       "delete": {
-        "operationId": "DeleteValue",
+        "operationId": "DeleteRecord",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -234,7 +234,7 @@
         ]
       },
       "patch": {
-        "operationId": "UpdateValue",
+        "operationId": "UpdateRecord",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -319,7 +319,7 @@
           "type": "string",
           "format": "int64"
         },
-        "key_value": {
+        "record": {
           "$ref": "#/definitions/tritonRecord"
         },
         "hint": {
@@ -429,7 +429,7 @@
         "key": {
           "type": "string"
         },
-        "key_value": {
+        "record": {
           "$ref": "#/definitions/tritonRecord"
         },
         "hint": {
