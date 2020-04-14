@@ -79,7 +79,7 @@ message DeleteStoreRequest {
 
 message CreateRecordRequest {
   int64 store_id = 1;
-  Record key_value = 2;
+  Record record = 2;
   Hint hint = 3;
 }
 
@@ -91,7 +91,7 @@ message GetRecordRequest {
 message UpdateRecordRequest {
   int64 store_id = 1;
   string key = 2;
-  Record key_value = 3;
+  Record record = 3;
   Hint hint = 4;
 }
 
@@ -130,27 +130,27 @@ service Triton {
     };
   }
 
-  rpc CreateValue(CreateRecordRequest) returns (Record) {
+  rpc CreateRecord(CreateRecordRequest) returns (Record) {
     option (google.api.http) = {
-      post: "/v1/stores/{store_id}/values"
+      post: "/v1/stores/{store_id}/records"
       body: "*"
     };
   }
 
-  rpc GetValue(GetRecordRequest) returns (Record) {
+  rpc GetRecord(GetRecordRequest) returns (Record) {
     option (google.api.http) = {
-      get: "/v1/stores/{store_id}/values/{key}"
+      get: "/v1/stores/{store_id}/records/{key}"
     };
   }
-  rpc UpdateValue(UpdateRecordRequest) returns (Record) {
+  rpc UpdateRecord(UpdateRecordRequest) returns (Record) {
     option (google.api.http) = {
-      patch: "/v1/stores/{store_id}/values/{key}",
+      patch: "/v1/stores/{store_id}/records/{key}",
       body: "*"
     };
   }
-  rpc DeleteValue(DeleteRecordRequest) returns (google.protobuf.Empty) {
+  rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      delete: "/v1/stores/{store_id}/values/{key}"
+      delete: "/v1/stores/{store_id}/records/{key}"
     };
   }
 }
