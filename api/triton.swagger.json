@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "triton.proto",
+    "title": "api/triton.proto",
     "version": "version not set"
   },
   "consumes": [
