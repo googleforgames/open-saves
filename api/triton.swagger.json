@@ -1,0 +1,441 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/triton.proto",
+    "version": "version not set"
+  },
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/stores": {
+      "get": {
+        "operationId": "ListStore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tritonListStoresResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "tags": [
+          "Triton"
+        ]
+      },
+      "post": {
+        "operationId": "CreateStore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tritonStore"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tritonCreateStoreRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Triton"
+        ]
+      }
+    },
+    "/v1/stores/{id}": {
+      "get": {
+        "operationId": "GetStore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tritonStore"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Triton"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteStore",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Triton"
+        ]
+      }
+    },
+    "/v1/stores/{store_id}/records": {
+      "post": {
+        "operationId": "CreateRecord",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tritonRecord"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tritonCreateRecordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Triton"
+        ]
+      }
+    },
+    "/v1/stores/{store_id}/records/{key}": {
+      "get": {
+        "operationId": "GetRecord",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tritonRecord"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Triton"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteRecord",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Triton"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateRecord",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tritonRecord"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tritonUpdateRecordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Triton"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "tritonCreateRecordRequest": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "record": {
+          "$ref": "#/definitions/tritonRecord"
+        },
+        "hint": {
+          "$ref": "#/definitions/tritonHint"
+        }
+      }
+    },
+    "tritonCreateStoreRequest": {
+      "type": "object",
+      "properties": {
+        "options": {
+          "$ref": "#/definitions/tritonStoreOptions"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "tritonHint": {
+      "type": "string",
+      "enum": [
+        "HINT_UNSPECIFIED",
+        "DO_NOT_CACHE",
+        "IGNORE_CACHE",
+        "ALWAYS_USE_BULK_STORE",
+        "DO_NOT_USE_BULK_STORE"
+      ],
+      "default": "HINT_UNSPECIFIED",
+      "description": " - HINT_UNSPECIFIED: Unspecified. This value must not be used."
+    },
+    "tritonListStoresResponse": {
+      "type": "object",
+      "properties": {
+        "stores": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tritonStore"
+          }
+        }
+      }
+    },
+    "tritonRecord": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "blob": {
+          "type": "string",
+          "format": "byte"
+        },
+        "blob_size": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "stuctured_data": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/tritonStructuredData"
+          }
+        }
+      }
+    },
+    "tritonStore": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID of this store, assigned by the server when the store is created."
+        },
+        "name": {
+          "type": "string"
+        },
+        "options": {
+          "$ref": "#/definitions/tritonStoreOptions"
+        }
+      }
+    },
+    "tritonStoreOptions": {
+      "type": "object",
+      "title": "Resources for handling generic stores"
+    },
+    "tritonStructuredData": {
+      "type": "object",
+      "properties": {
+        "integer_value": {
+          "type": "string",
+          "format": "int64"
+        },
+        "string_value": {
+          "type": "string"
+        },
+        "boolean_value": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "tritonUpdateRecordRequest": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "key": {
+          "type": "string"
+        },
+        "record": {
+          "$ref": "#/definitions/tritonRecord"
+        },
+        "hint": {
+          "$ref": "#/definitions/tritonHint"
+        }
+      }
+    }
+  }
+}
