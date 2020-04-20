@@ -5,3 +5,5 @@ steps:
 # TODO: Enable tests when we have tests
 # - name: gcr.io/cloud-builders/bazel
 #   args: ['test', '...']
+options:
+  machineType: 'N1_HIGHCPU_8'
