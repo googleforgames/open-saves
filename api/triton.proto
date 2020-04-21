@@ -82,11 +82,19 @@ message StructuredData {
   }
 }
 
+message User {
+  int64 id = 1;
+  int64 store_id = 2;
+}
+
 message Record {
   string key = 1;
   bytes blob = 2;       // opaque to the server
   int32 blob_size = 3;  // defined by the server
   map<string, StructuredData> stuctured_data = 4;
+  int64 user_id = 5;    // Must be the owner user id for user stores
+  repeated string tags = 6;
+    // "player:1", "system", "inventory:xxx"
 }
 
 enum Hint {
@@ -106,6 +114,7 @@ message Store {
   int64 id = 1;
   string name = 2;
   StoreOptions options = 3;
+  int64 owner_user_id = 4;
 }
 
 message CreateStoreRequest {
