@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/uuid"
 	tritonpb "github.com/googleforgames/triton/api"
+	log "github.com/sirupsen/logrus"
 )
 
 type tritonServer struct{}
@@ -38,6 +39,7 @@ func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStor
 		Id:   int64(id.ID()),
 		Name: req.Name,
 	}
+	log.Infof("created store: %+v", store)
 	return store, nil
 }
 
