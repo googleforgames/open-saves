@@ -84,8 +84,8 @@ bazel run //cmd:cmd
 
 You should see an output like the following
 
-```
-bazel run cmd:cmd
+```bash
+$ bazel run cmd:cmd
 INFO: Analyzed target //cmd:cmd (5 packages loaded, 251 targets configured).
 INFO: Found 1 target...
 Target //cmd:cmd up-to-date:
