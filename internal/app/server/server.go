@@ -15,22 +15,30 @@
 package server
 
 import (
-	"fmt"
-	"log"
+	"context"
 	"net"
 
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+
+	tritonpb "github.com/googleforgames/triton/api"
 )
 
-func StartApplication() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 6000))
+// Run starts the triton gRPC service.
+func Run(ctx context.Context, network, address string) error {
+	lis, err := net.Listen(network, address)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return err
 	}
+	defer func() {
+		if err := lis.Close(); err != nil {
+			log.Errorf("Failed to close %s %s: %v", network, address, err)
+		}
+	}()
 
-	grpcServ := grpc.NewServer()
+	s := grpc.NewServer()
+	tritonpb.RegisterTritonServer(s, newTritonServer())
 
-	if err := grpcServ.Serve(lis); err != nil {
-		log.Fatalf("failed to start server: %v", err)
-	}
+	log.Infof("starting server on %s %s", network, address)
+	return s.Serve(lis)
 }

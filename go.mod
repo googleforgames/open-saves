@@ -3,8 +3,15 @@ module github.com/googleforgames/triton
 go 1.14
 
 require (
+	github.com/TV4/logrus-stackdriver-formatter v0.1.0
+	github.com/fsnotify/fsnotify v1.4.9
+	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.4.0
-	google.golang.org/genproto v0.0.0-20200413115906-b5235f65be36
-	google.golang.org/grpc v1.28.1
-	github.com/grpc-ecosystem/grpc-gateway v1.14.3
+	github.com/google/uuid v1.1.1
+	github.com/grpc-ecosystem/grpc-gateway v1.14.4
+	github.com/sirupsen/logrus v1.5.0
+	github.com/spf13/viper v1.6.3
+	google.golang.org/appengine v1.4.0
+	google.golang.org/genproto v0.0.0-20200420144010-e5e8543f8aeb
+	google.golang.org/grpc v1.29.0
 )

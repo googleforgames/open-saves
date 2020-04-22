@@ -14,8 +14,14 @@
 
 package main
 
-import "github.com/googleforgames/triton/internal/app/server"
+import (
+	"context"
+	"fmt"
+
+	"github.com/googleforgames/triton/internal/app/server"
+)
 
 func main() {
-	server.StartApplication()
+	ctx := context.Background()
+	server.Run(ctx, "tcp", fmt.Sprintf(":%d", 6000))
 }
