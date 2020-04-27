@@ -69,7 +69,7 @@ in the workspace root directory to update Bazel BUILD files.
 We use Go Modules to manager external dependencies. In order to reflect changes in the `go.mod` file to Bazel BUILD files, run
 
 ```bash
-bazel run //:gazelle -- update-repos -from_file=go.mod
+bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=repositories.bzl%go_repositories
 ```
 
 in the workspace root directory.
