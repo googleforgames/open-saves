@@ -59,3 +59,18 @@ http_archive(
 load("@com_github_bazelbuild_buildtools//buildifier:deps.bzl", "buildifier_dependencies")
 
 buildifier_dependencies()
+
+http_archive(
+    name = "com_github_grpc_grpc",
+    urls = [
+        "https://github.com/grpc/grpc/archive/v1.28.1.tar.gz",
+    ],
+    strip_prefix = "grpc-1.28.1",
+    sha256 = "4cbce7f708917b6e58b631c24c59fe720acc8fef5f959df9a58cdf9558d0a79b",
+)
+
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
+
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+grpc_extra_deps()
