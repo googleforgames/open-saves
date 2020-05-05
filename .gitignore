@@ -40,7 +40,6 @@
 populations
 
 # Discarded code snippets
-build.sh
 *-fast.yaml
 detritus/
 
@@ -128,3 +127,6 @@ install/helm/triton/charts/
 
 # User-specific .bazelrc
 user.bazelrc
+
+# clang build hint file
+compile_commands.json
