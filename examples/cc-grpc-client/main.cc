@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "api/triton.pb.h"
+#include "triton.pb.h"
 
-int main() {
-    
-}
+int main() {}
