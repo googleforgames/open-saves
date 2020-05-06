@@ -20,10 +20,6 @@ endif
 
 SERVER_BIN = ${BIN_DIR}/server${BIN_SUFFIX}
 
-ifeq ($(OS),Windows_NT)
-	SERVER_BIN = ${BIN_DIR}/server.exe
-endif
-
 .PHONY: all clean test server protos FORCE
 
 all: server
