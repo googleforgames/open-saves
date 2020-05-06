@@ -128,3 +128,7 @@ install/helm/triton/charts/
 
 # User-specific .bazelrc
 user.bazelrc
+
+# Generates protobuf sources
+*.pb.go
+*.pb.gw.go

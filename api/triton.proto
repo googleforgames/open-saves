@@ -15,6 +15,8 @@
 syntax = "proto3";
 package triton;
 
+option go_package = "github.com/googleforgames/triton";
+
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 

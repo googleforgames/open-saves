@@ -1,46 +1,56 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
+load("@com_github_grpc_grpc//bazel:grpc_build_system.bzl", "grpc_proto_library")
 load("@com_github_grpc_ecosystem_grpc_gateway//protoc-gen-swagger:defs.bzl", "protoc_gen_swagger")
+
+package(default_visibility = ["//visibility:public"])
 
 proto_library(
     name = "triton_proto",
     srcs = ["triton.proto"],
-    visibility = ["//visibility:public"],
     deps = [
         "@com_google_protobuf//:empty_proto",
         "@go_googleapis//google/api:annotations_proto",
     ],
 )
 
+cc_proto_library(
+    name = "triton_cc_proto",
+    deps = [":triton_proto"],
+)
+
+cc_grpc_library(
+    name = "triton_cc_grpc",
+    srcs = ["triton_proto"],
+    grpc_only = True,
+    deps = [":triton_cc_proto"],
+)
+
 go_proto_library(
     name = "triton_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "github.com/googleforgames/triton/api",
-    proto = ":triton_proto",
-    visibility = ["//visibility:public"],
-    deps = ["@go_googleapis//google/api:annotations_go_proto"],
+    protos = [":triton_proto"],
+    compilers = [
+        "@io_bazel_rules_go//proto:go_grpc",
+        "@com_github_grpc_ecosystem_grpc_gateway//protoc-gen-grpc-gateway:go_gen_grpc_gateway",
+    ],
+    importpath = "github.com/googleforgames/triton",
+    deps = [
+        "@go_googleapis//google/api:annotations_go_proto",
+        "@com_github_golang_protobuf//ptypes/empty:go_default_library",
+        "@com_github_golang_protobuf//descriptor:go_default_library",
+    ],
 )
 
 go_library(
     name = "go_default_library",
-    srcs = ["triton.pb.gw.go"],
     embed = [":triton_go_proto"],
-    importpath = "github.com/googleforgames/triton/api",
-    visibility = ["//visibility:public"],
-    deps = [
-        "@com_github_golang_protobuf//descriptor:go_default_library_gen",
-        "@com_github_golang_protobuf//proto:go_default_library",
-        "@com_github_grpc_ecosystem_grpc_gateway//runtime:go_default_library",
-        "@com_github_grpc_ecosystem_grpc_gateway//utilities:go_default_library",
-        "@org_golang_google_grpc//:go_default_library",
-        "@org_golang_google_grpc//codes:go_default_library",
-        "@org_golang_google_grpc//grpclog:go_default_library",
-        "@org_golang_google_grpc//status:go_default_library",
-    ],
+    importpath = "github.com/googleforgames/triton",
 )
 
 protoc_gen_swagger(
     name = "triton_api_protoc_gen_swagger",
     proto = ":triton_proto",
+    single_output = True,
 )

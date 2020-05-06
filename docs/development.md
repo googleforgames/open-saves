@@ -44,15 +44,34 @@ but for purpose of this guide we'll be using the upstream/master._
 
 ## Building
 
-To build everything, simply run
+### Server
+
+Before building the go code, install dependent modules with the `go get` command.
 
 ```bash
-bazel build ...
+go get ./...
 ```
 
-from command line. Bazel will download necessary toolchains and libraries and build binaries. Ouput binaries will be placed under the `bazel-bin/` directory. Please reference [Output directory layout](https://docs.bazel.build/versions/master/output_directories.html) of the Bazel document to learn more about the directory structure.
+We provide a simple wrapper Makefile to generate the server code. To build the server, simply run:
 
-To build a single target, run `bazel build //<module>:<target>`.
+```bash
+make
+```
+
+and the final server binary will be produced in the `build` directory. Under the hood, this is equivalent to
+
+```bash
+bazel build //api:triton_go_proto
+cp bazel-bin/api/triton_go_proto_/github.com/googleforgames/triton/triton.pb.go api/
+go build -o build/server cmd/server/main.go
+```
+
+### C++ Client Library
+
+TODO
+
+<!--
+TODO: Update this once we support both go build and Bazel
 
 ### Updating Go build dependencies
 
@@ -73,34 +92,28 @@ bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=repositories.bz
 ```
 
 in the workspace root directory.
+-->
 
 ### Running simple gRPC server/client
 
-To stand up the gRPC server, there's a lightweight wrapper around the server code that lives in `cmd/main.go`. To start this, run
+To stand up the gRPC server, there's a lightweight wrapper around the server code that lives in `cmd/server/main.go`. To start this, run
 
 ```bash
-bazel run //cmd:cmd
+bin/server
 ```
 
 You should see an output like the following
 
 ```bash
-$ bazel run cmd:cmd
-INFO: Analyzed target //cmd:cmd (5 packages loaded, 251 targets configured).
-INFO: Found 1 target...
-Target //cmd:cmd up-to-date:
-  bazel-bin/cmd/darwin_amd64_stripped/cmd
-INFO: Elapsed time: 2.076s, Critical Path: 0.81s
-INFO: 1 process: 1 darwin-sandbox.
-INFO: Build completed successfully, 3 total actions
-INFO: Build completed successfully, 3 total actions
+$ bin/server
 INFO[0000] starting server on tcp :6000
 ```
 
 To test the server is actually running, there is a sample gRPC client usage in `examples/grpc-client/main.go`. While the server is running, run
 
 ```bash
-bazel run //examples/grpc-client:grpc-client
+go build -o build/grpc-client examples/grpc-client/main.go
+build/grpc-client
 ```
 
 ## Deploying to Kubernetes

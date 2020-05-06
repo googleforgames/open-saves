@@ -1,0 +1,3 @@
+build:windows --cxxopts="/std:c++17"
+build:linux --cxxopts="--std=c++17"
+build:macos --cxxopts="--std=c++17"
