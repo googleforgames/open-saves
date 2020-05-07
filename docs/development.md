@@ -9,6 +9,7 @@ To build Triton you'll need the following applications installed.
 
 - [Git](https://git-scm.com/downloads)
 - [Go](https://golang.org/doc/install)
+  - On Windows, you need to make sure that the environment variable GOBIN is left undefined to work around an issue with building the gazelle tools. Otherwise you are going to get an error when trying to build/run `bazel run //:gazelle update` or `bazel build //:buildifier`
 - [Docker](https://docs.docker.com/install/) including the
   [post-install steps](https://docs.docker.com/install/linux/linux-postinstall/).
 - [Bazel](https://docs.bazel.build/versions/master/install.html)
