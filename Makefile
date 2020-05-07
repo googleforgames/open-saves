@@ -20,26 +20,19 @@ endif
 
 SERVER_BIN = ${BIN_DIR}/server${BIN_SUFFIX}
 
-.PHONY: all clean test server protos FORCE
+.PHONY: all clean test server FORCE
 
 all: server
 
 server: ${SERVER_BIN}
 
-${SERVER_BIN}: protos FORCE
+${SERVER_BIN}: FORCE
 	go build -o $@ cmd/server/main.go
 
 clean:
 	rm -rf ${BIN_DIR}
-	rm -f api/triton.pb.go
 
 test:
 	go test
-
-protos: api/triton.pb.go
-
-api/triton.pb.go: api/triton.proto
-	bazel build ///api:triton_go_proto
-	cp bazel-bin/api/triton_go_proto_/github.com/googleforgames/triton/triton.pb.go $@
 
 FORCE:

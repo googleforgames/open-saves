@@ -13,5 +13,4 @@ require (
 	google.golang.org/api v0.22.0
 	google.golang.org/genproto v0.0.0-20200420144010-e5e8543f8aeb
 	google.golang.org/grpc v1.29.0
-	google.golang.org/protobuf v1.21.0
 )
