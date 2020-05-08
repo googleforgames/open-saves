@@ -1,117 +1,122 @@
-set(api_proto triton.proto)
-get_filename_component(api_proto_abs ${api_proto} ABSOLUTE)
-get_filename_component(api_proto_dir ${api_proto_abs} DIRECTORY)
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
 
-<<<<<<< HEAD
-=======
-ExternalProject_Get_Property(googleapis_download SOURCE_DIR)
-set(googleapis_include ${SOURCE_DIR})
+set(_api_proto triton.proto)
+get_filename_component(_api_proto_abs ${_api_proto} ABSOLUTE)
+get_filename_component(_api_proto_dir ${_api_proto_abs} DIRECTORY)
 
-message(${api_proto_dir})
-message(${googleapis_include})
-message(${Protobuf_INCLUDE_DIRS})
+get_target_property(_grpc_source grpc++ SOURCE_DIR)
+set(_googleapis_include ${_grpc_source}/third_party/googleapis)
 
->>>>>>> init-cmake
+get_target_property(_protobuf_include_dirs protobuf::libprotoc INCLUDE_DIRECTORIES)
+
 # Generated sources
-set(api_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.cc")
-set(api_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.h")
-set(api_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.grpc.pb.cc")
-set(api_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/triton.grpc.pb.h")
-<<<<<<< HEAD
-set(api_proto_go_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.go")
+set(_api_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.cc")
+set(_api_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.h")
+set(_api_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.grpc.pb.cc")
+set(_api_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/triton.grpc.pb.h")
 
-add_library(api STATIC ${_out_var_api})
-=======
+set(_api_go_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.go")
+set(_api_go_rest_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.gw.go")
 
-set(api_proto_go_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.go")
+set(_api_swagger_json "${CMAKE_CURRENT_BINARY_DIR}/triton.swagger.json")
 
+# C++ gRPC files
 add_custom_command(
-    OUTPUT "${api_proto_srcs}" "${api_proto_hdrs}" "${api_grpc_srcs}" "${api_grpc_hdrs}"
-    COMMAND $<TARGET_FILE:protoc>
-    ARGS    --grpc_out ${CMAKE_CURRENT_BINARY_DIR}
-        --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
-        -I ${api_proto_dir} -I ${googleapis_include} -I ${Protobuf_INCLUDE_DIRS}
-        --plugin=protoc-gen-grpc=$<TARGET_FILE:grpc_cpp_plugin>
-        ${api_proto}
-    DEPENDS "${api_proto}" googleapis_cpp_api_http_protos
-    VERBATIM
+  OUTPUT "${_api_proto_srcs}" "${_api_proto_hdrs}" "${_api_grpc_srcs}"
+         "${_api_grpc_hdrs}"
+  COMMAND
+    $<TARGET_FILE:protoc> --grpc_out ${CMAKE_CURRENT_BINARY_DIR} --cpp_out
+    ${CMAKE_CURRENT_BINARY_DIR} -I ${_api_proto_dir} -I ${_googleapis_include}
+    "-I$<JOIN:${_protobuf_include_dirs},;-I>"
+    --plugin=protoc-gen-grpc=$<TARGET_FILE:grpc_cpp_plugin> ${_api_proto}
+  MAIN_DEPENDENCY "${_api_proto}"
+  COMMENT "Running C++ protocol buffer compiler on ${_api_proto}"
+  VERBATIM
+  COMMAND_EXPAND_LISTS
 )
 
-add_library(api STATIC ${api_proto_srcs})
->>>>>>> init-cmake
+set(_annotations_pb_cc "${CMAKE_CURRENT_BINARY_DIR}/google/api/annotations.pb.cc")
+set(_annotations_pb_h "${CMAKE_CURRENT_BINARY_DIR}/google/api/annotations.pb.h")
+set(_annotations_proto "${_googleapis_include}/google/api/annotations.proto")
+set(_http_pb_cc "${CMAKE_CURRENT_BINARY_DIR}/google/api/http.pb.cc")
+set(_http_pb_h "${CMAKE_CURRENT_BINARY_DIR}/google/api/http.pb.h")
+set(_http_proto "${_googleapis_include}/google/api/http.proto")
+
+# Compile googleapis/annotations
+add_custom_command(
+  OUTPUT "${_annotations_pb_cc}" "${_annotations_pb_h}"
+  "${_http_pb_cc}" "${_http_pb_h}"
+  COMMAND
+    $<TARGET_FILE:protoc> --cpp_out ${CMAKE_CURRENT_BINARY_DIR}
+    -I ${_googleapis_include}
+    "-I$<JOIN:${_protobuf_include_dirs},;-I>"
+    ${_annotations_proto} ${_http_proto}
+  DEPENDS ${_annotations_proto} ${_http_proto}
+  COMMENT "Running C++ protocol buffer compiler on googleapi dependencies"
+  VERBATIM
+  COMMAND_EXPAND_LISTS
+)
+
+add_library(api STATIC ${_api_proto_srcs} ${_annotations_pb_cc} ${_http_pb_cc})
+include_directories(api ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(api ${_protobuf_include_dirs})
+
 target_link_libraries(api ${PROTOBUF_LIBRARY})
 target_include_directories(api PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(api PUBLIC ${Protobuf_INCLUDE_DIRS})
-target_include_directories(api PUBLIC ${googleapis_BINARY_DIR})
-<<<<<<< HEAD
-protobuf_generate(TARGET api
-    LANGUAGE cpp
-    OUT_VAR _out_var_api
-    IMPORT_DIRS ${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
-    PROTOS ${api_proto}
-)
-=======
->>>>>>> init-cmake
+target_include_directories(api PUBLIC ${_protobuf_include_dirs})
 
-add_library(api_grpc STATIC ${_out_var_api_grpc})
-target_link_libraries(api_grpc ${PROTOBUF_LIBRARY})
-target_link_libraries(api_grpc grpc++)
-target_include_directories(api_grpc PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(api_grpc PUBLIC ${Protobuf_INCLUDE_DIRS})
-target_include_directories(api_grpc PUBLIC ${googleapis_BINARY_DIR})
+add_library(api-grpc STATIC ${_api_grpc_srcs})
+target_link_libraries(api-grpc ${PROTOBUF_LIBRARY})
+target_link_libraries(api-grpc grpc++)
+target_include_directories(api-grpc PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(api-grpc PUBLIC ${googleapis_BINARY_DIR})
 
-<<<<<<< HEAD
-protobuf_generate(TARGET api_grpc
-    LANGUAGE cpp
-    OUT_VAR _out_var_api_grpc
-    PLUGIN protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>
-    IMPORT_DIRS ${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
-    PROTOS ${api_proto}
-)
-
-ExternalProject_Get_Property(googleapis_download SOURCE_DIR)
-Set(googleapis_include ${SOURCE_DIR})
+# Go gRPC and REST files We are just generating source files and not adding
+# libraries
 
 add_custom_command(
-    OUTPUT ${api_proto_go_srcs}
-    COMMAND $<TARGET_FILE:protoc>
-    ARGS --go_out=plugins=grpc:${CMAKE_CURRENT_BINARY_DIR}
-        -I${api_proto_dir}
-        -I${googleapis_include}
-        -I${Protobuf_INCLUDE_DIRS}
-        ${api_proto_abs}
-    DEPENDS ${api_proto_abs}
-    COMMENT "Running go protocol buffer compiler on ${api_proto}"
-    VERBATIM
-)
-
-add_custom_target(
-    api_proto_go DEPENDS ${api_proto_go_srcs}
-)
-=======
-protobuf_generate(
-  TARGET
-  api_grpc
-  LANGUAGE
-  cpp
-  OUT_VAR
-  _out_var_api_grpc
-  PLUGIN
-  protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>
-  IMPORT_DIRS
-  ${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
-  PROTOS
-  ${api_proto})
-
-add_custom_command(
-  OUTPUT "${api_proto_go_srcs}"
+  OUTPUT "${_api_go_srcs}" "${_api_go_rest_srcs}"
   COMMAND
-    $<TARGET_FILE:protoc> ARGS --go_out=plugins=grpc:"${CMAKE_CURRENT_BINARY_DIR}"
-    -I"${api_proto_dir}" -I"${googleapis_include}" -I"${Protobuf_INCLUDE_DIRS}"
-    "${api_proto_abs}"
-  DEPENDS "${api_proto_abs}"
-  COMMENT "Running go protocol buffer compiler on ${api_proto}"
-  VERBATIM)
+    $<TARGET_FILE:protoc>
+    --go_out=plugins=grpc:${CMAKE_CURRENT_BINARY_DIR}
+    -I ${_api_proto_dir} -I ${_googleapis_include}
+    "-I$<JOIN:${_protobuf_include_dirs},;-I>"
+    --grpc-gateway_out=logtostderr=true:${CMAKE_CURRENT_BINARY_DIR}
+    ${_api_proto_abs}
+  MAIN_DEPENDENCY "${_api_proto_abs}"
+  COMMENT "Running go protocol buffer compiler on ${_api_proto}"
+  VERBATIM
+  COMMAND_EXPAND_LISTS
+)
 
-add_custom_target(api_proto_go DEPENDS ${api_proto_go_srcs})
->>>>>>> init-cmake
+add_custom_target(api-proto-go ALL DEPENDS ${_api_go_srcs})
+
+# Swagger JSON files
+
+add_custom_command(
+  OUTPUT "${_api_swagger_json}"
+  COMMAND
+    $<TARGET_FILE:protoc>
+    -I ${_api_proto_dir} -I ${_googleapis_include}
+    "-I$<JOIN:${_protobuf_include_dirs},;-I>"
+    --swagger_out=logtostderr=true:${CMAKE_CURRENT_BINARY_DIR}
+    ${_api_proto_abs}
+  MAIN_DEPENDENCY "${_api_proto_abs}"
+  COMMENT "Generating Swagger JSON files for ${_api_proto}"
+  VERBATIM
+  COMMAND_EXPAND_LISTS
+)
+
+add_custom_target(api-swagger ALL DEPENDS ${_api_swagger_json})
