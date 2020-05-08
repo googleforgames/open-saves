@@ -130,3 +130,6 @@ user.bazelrc
 
 # clang build hint file
 compile_commands.json
+
+# clangd
+.clangd/
