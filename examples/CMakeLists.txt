@@ -12,9 +12,6 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-add_executable(cc-grpc-client EXCLUDE_FROM_ALL cc-grpc-client/main.cc)
-target_link_libraries(cc-grpc-client api)
-
 add_custom_target(
   grpc-client
   go build -o ${CMAKE_CURRENT_BINARY_DIR}/grpc-client
