@@ -1,9 +1,0 @@
-# https://docs.bazel.build/versions/master/be/c-cpp.html#cc_binary
-cc_binary(
-    name = "cc_grpc_client",
-    srcs = ["main.cc"],
-    deps = [
-        "//api:triton_cc_proto",
-        "@com_github_grpc_grpc//:grpc++",
-    ],
-)
