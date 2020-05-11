@@ -27,11 +27,6 @@ set(_api_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.h")
 set(_api_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.grpc.pb.cc")
 set(_api_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/triton.grpc.pb.h")
 
-set(_api_go_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.go")
-set(_api_go_rest_srcs "${CMAKE_CURRENT_BINARY_DIR}/triton.pb.gw.go")
-
-set(_api_swagger_json "${CMAKE_CURRENT_BINARY_DIR}/triton.swagger.json")
-
 # C++ gRPC files
 add_custom_command(
   OUTPUT "${_api_proto_srcs}" "${_api_proto_hdrs}" "${_api_grpc_srcs}"
@@ -82,41 +77,3 @@ target_link_libraries(api-grpc ${PROTOBUF_LIBRARY})
 target_link_libraries(api-grpc grpc++)
 target_include_directories(api-grpc PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(api-grpc PUBLIC ${googleapis_BINARY_DIR})
-
-# Go gRPC and REST files We are just generating source files and not adding
-# libraries
-
-add_custom_command(
-  OUTPUT "${_api_go_srcs}" "${_api_go_rest_srcs}"
-  COMMAND
-    $<TARGET_FILE:protoc>
-    --go_out=plugins=grpc:${CMAKE_CURRENT_BINARY_DIR}
-    -I ${_api_proto_dir} -I ${_googleapis_include}
-    "-I$<JOIN:${_protobuf_include_dirs},;-I>"
-    --grpc-gateway_out=logtostderr=true:${CMAKE_CURRENT_BINARY_DIR}
-    ${_api_proto_abs}
-  MAIN_DEPENDENCY "${_api_proto_abs}"
-  COMMENT "Running go protocol buffer compiler on ${_api_proto}"
-  VERBATIM
-  COMMAND_EXPAND_LISTS
-)
-
-add_custom_target(api-proto-go ALL DEPENDS ${_api_go_srcs})
-
-# Swagger JSON files
-
-add_custom_command(
-  OUTPUT "${_api_swagger_json}"
-  COMMAND
-    $<TARGET_FILE:protoc>
-    -I ${_api_proto_dir} -I ${_googleapis_include}
-    "-I$<JOIN:${_protobuf_include_dirs},;-I>"
-    --swagger_out=logtostderr=true:${CMAKE_CURRENT_BINARY_DIR}
-    ${_api_proto_abs}
-  MAIN_DEPENDENCY "${_api_proto_abs}"
-  COMMENT "Generating Swagger JSON files for ${_api_proto}"
-  VERBATIM
-  COMMAND_EXPAND_LISTS
-)
-
-add_custom_target(api-swagger ALL DEPENDS ${_api_swagger_json})

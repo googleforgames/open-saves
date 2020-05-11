@@ -44,8 +44,9 @@ Chart.lock
 # clang build hint file
 compile_commands.json
 
-# clangd
+# Editor files
 /.clangd
+/.vscode
 
 # Git
 **/.git

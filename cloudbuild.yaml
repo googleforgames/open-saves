@@ -1,10 +1,14 @@
 steps:
 # TODO: replace these targets with actual names when we add the main application
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'build-docker', '.']
+  args: ['build', '-t', 'build-docker', '.', '-f', 'scripts/cloudbuild.Dockerfile']
   id: init-build-docker
 - name: 'build-docker'
   args: ['cmake', '--build', '/build', '--parallel', '8']
+  waitFor: ['init-build-docker']
+- name: 'build-docker'
+  args: ['make', 'all', 'test']
+  waitFor: ['init-build-docker']
 
 # TODO: Enable tests when we have tests
 # - name: gcr.io/cloud-builders/bazel
