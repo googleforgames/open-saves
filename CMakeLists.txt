@@ -19,56 +19,30 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
-set(GOPATH $ENV{GOPATH})
-
+# Threads is required for gRPC
 find_package(Threads REQUIRED)
-
-# Try the config mode first (primarily for vcpkg)
-# find_package(Protobuf CONFIG)
-# if(NOT Protobuf_FOUND)
-#   find_package(Protobuf REQUIRED)
-# endif()
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 
-# add_subdirectory(third_party/protobuf/cmake third_party/protobuf)
-
-# Try using locally installed gRPC. Fetch from github if not found
+# Download the tagged version and use it across the build process
 FetchContent_Declare(
   gRPC
   GIT_REPOSITORY https://github.com/grpc/grpc
   GIT_TAG v1.28.1)
 FetchContent_MakeAvailable(gRPC)
 
-# Always download googleapis and googletest from GitHub
-
+# Can use googletest for C++ tests
 # FetchContent_Declare(
-#   googleapis
-#   GIT_REPOSITORY https://github.com/googleapis/cpp-cmakefiles
-#   GIT_TAG v0.9.0)
-
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest
-  GIT_TAG release-1.10.0)
-
-FetchContent_MakeAvailable(googletest)
+#   googletest
+#   GIT_REPOSITORY https://github.com/google/googletest
+#   GIT_TAG release-1.10.0)
+#
+# FetchContent_MakeAvailable(googletest)
 
 add_subdirectory(api)
-add_subdirectory(examples)
-
-# Main server binary
-
-add_custom_target(
-  server ALL
-    go build -o ${CMAKE_CURRENT_BINARY_DIR}/server
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmd/server/main.go
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "Building go server binary"
-  DEPENDS api-proto-go
-  VERBATIM
-)
+# Add examples once we have some C++ code there
+# add_subdirectory(examples)
 
 # Examples
 

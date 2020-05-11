@@ -79,6 +79,9 @@ msbuild.err
 msbuild.wrn
 csharp/OpenMatch/obj
 Chart.lock
+*.pb.go
+*.pb.gw.go
+*.swagger.json
 
 # Visual Studio 2015
 .vs/
