@@ -8,12 +8,16 @@
 **What type of PR is this?**
 > Uncomment only one ` /kind <>` line, hit enter to put that in a new line, and remove leading whitespace from that line:
 >
-> /kind breaking
-> /kind bug
-> /kind cleanup
-> /kind documentation
-> /kind feature
-> /kind hotfix
+> /kind fix
+> /kind feat
+> /kind build
+> /kind chore
+> /kind ci
+> /kind docs
+> /kind style
+> /kind refactor
+> /kind perf
+> /kind test
 
 **What this PR does / Why we need it**:
 
