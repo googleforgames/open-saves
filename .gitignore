@@ -40,7 +40,6 @@
 populations
 
 # Discarded code snippets
-build.sh
 *-fast.yaml
 detritus/
 
@@ -80,6 +79,9 @@ msbuild.err
 msbuild.wrn
 csharp/OpenMatch/obj
 Chart.lock
+*.pb.go
+*.pb.gw.go
+*.swagger.json
 
 # Visual Studio 2015
 .vs/
@@ -128,3 +130,9 @@ install/helm/triton/charts/
 
 # User-specific .bazelrc
 user.bazelrc
+
+# clang build hint file
+compile_commands.json
+
+# clangd
+.clangd/

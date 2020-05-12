@@ -12,11 +12,20 @@ To build Triton you'll need the following applications installed.
   - On Windows, you need to make sure that the environment variable GOBIN is left undefined to work around an issue with building the gazelle tools. Otherwise you are going to get an error when trying to build/run `bazel run //:gazelle update` or `bazel build //:buildifier`
 - [Docker](https://docs.docker.com/install/) including the
   [post-install steps](https://docs.docker.com/install/linux/linux-postinstall/).
-- [Bazel](https://docs.bazel.build/versions/master/install.html)
-  - You can also use [Bazelisk](https://github.com/bazelbuild/bazelisk) to manage Bazel installations.
-  - Windows: Follow the instructions of [Installing Bazel on Windows](https://docs.bazel.build/versions/master/install-windows.html) and [Using rules_go on Windows](https://github.com/bazelbuild/rules_go/blob/master/windows.rst) (installing msys2 and Visual Studio, setting appropriate envrionment variables, etc).
 - A working C/C++ toolchain
-  - Windows, we use [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) for development
+  - [CMake](https://cmake.org/) is required to build the C++ code
+  - On Windows, we use [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) for development
+- [Protobuf](https://developers.google.com/protocol-buffers/docs/downloads)
+- [Go support for Protocol Buffers](https://github.com/golang/protobuf)
+
+You can install required go modules to compile protos by running:
+```bash
+go get -u \
+  golang.org/x/lint/golint \
+  github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
+  github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
+  github.com/golang/protobuf/protoc-gen-go
+```
 
 Optional Software
 
@@ -45,63 +54,37 @@ but for purpose of this guide we'll be using the upstream/master._
 
 ## Building
 
-To build everything, simply run
+In order to build the main triton server, simply invoke the Makefile in the root project directory by running
 
 ```bash
-bazel build ...
+make
 ```
 
-from command line. Bazel will download necessary toolchains and libraries and build binaries. Ouput binaries will be placed under the `bazel-bin/` directory. Please reference [Output directory layout](https://docs.bazel.build/versions/master/output_directories.html) of the Bazel document to learn more about the directory structure.
-
-To build a single target, run `bazel build //<module>:<target>`.
+from command line. This will compile protos and build binaries. Ouput binaries will be placed under the `build/` directory.
 
 ### Updating Go build dependencies
 
-Go dependencies in Bazel are managed by [Gazelle](https://github.com/bazelbuild/bazel-gazelle). If you have changes in dependencies (i.e. adding a new source file), run
-
-```bash
-bazel run //:gazelle update
-```
-
-in the workspace root directory to update Bazel BUILD files.
-
-### Updating Go modules
-
-We use Go Modules to manager external dependencies. In order to reflect changes in the `go.mod` file to Bazel BUILD files, run
-
-```bash
-bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=repositories.bzl%go_repositories
-```
-
-in the workspace root directory.
+We use [Go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies. If you have changes in dependencies (i.e. adding a new source file), add the package to `go.mod`.
 
 ### Running simple gRPC server/client
 
-To stand up the gRPC server, there's a lightweight wrapper around the server code that lives in `cmd/main.go`. To start this, run
+To stand up the gRPC server, there's a lightweight wrapper around the server code that lives in `cmd/server/main.go`. To start this, run
 
 ```bash
-bazel run //cmd:cmd
+./build/server
 ```
 
 You should see an output like the following
 
 ```bash
-$ bazel run cmd:cmd
-INFO: Analyzed target //cmd:cmd (5 packages loaded, 251 targets configured).
-INFO: Found 1 target...
-Target //cmd:cmd up-to-date:
-  bazel-bin/cmd/darwin_amd64_stripped/cmd
-INFO: Elapsed time: 2.076s, Critical Path: 0.81s
-INFO: 1 process: 1 darwin-sandbox.
-INFO: Build completed successfully, 3 total actions
-INFO: Build completed successfully, 3 total actions
+$ ./build/server
 INFO[0000] starting server on tcp :6000
 ```
 
 To test the server is actually running, there is a sample gRPC client usage in `examples/grpc-client/main.go`. While the server is running, run
 
 ```bash
-bazel run //examples/grpc-client:grpc-client
+go run examples/grpc-client/main.go
 ```
 
 ## Deploying to Kubernetes
