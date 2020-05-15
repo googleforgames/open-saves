@@ -31,7 +31,7 @@ func newTritonServer() tritonpb.TritonServer {
 }
 
 func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStoreRequest) (*tritonpb.Store, error) {
-	id, err := uuid.NewUUID()
+	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
