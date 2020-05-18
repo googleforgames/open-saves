@@ -13,11 +13,66 @@
 // limitations under the License.
 
 syntax = "proto3";
+
 package triton;
-option go_package = "github.com/googleforgames/triton";
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+
+option go_package = "github.com/googleforgames/triton";
+
+service Triton {
+  rpc CreateStore(CreateStoreRequest) returns (Store) {
+    option (google.api.http) = {
+      post: "/v1/stores"
+      body: "*"
+    };
+  }
+
+  rpc GetStore(GetStoreRequest) returns (Store) {
+    option (google.api.http) = {
+      get: "/v1/stores/{id}"
+    };
+  }
+
+  rpc ListStore(ListStoresRequest) returns (ListStoresResponse) {
+    option (google.api.http) = {
+      get: "/v1/stores"
+    };
+  }
+
+  rpc DeleteStore(DeleteStoreRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/stores/{id}"
+    };
+  }
+
+  rpc CreateRecord(CreateRecordRequest) returns (Record) {
+    option (google.api.http) = {
+      post: "/v1/stores/{store_id}/records"
+      body: "*"
+    };
+  }
+
+  rpc GetRecord(GetRecordRequest) returns (Record) {
+    option (google.api.http) = {
+      get: "/v1/stores/{store_id}/records/{key}"
+    };
+  }
+
+  rpc UpdateRecord(UpdateRecordRequest) returns (Record) {
+    option (google.api.http) = {
+      patch: "/v1/stores/{store_id}/records/{key}",
+      body: "*"
+    };
+  }
+
+  rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/stores/{store_id}/records/{key}"
+    };
+  }
+}
 
 message StructuredData {
   oneof value {
@@ -29,8 +84,8 @@ message StructuredData {
 
 message Record {
   string key = 1;
-  bytes blob = 2;      // opaque to the server
-  int32 blob_size = 3; // defined by the server
+  bytes blob = 2;       // opaque to the server
+  int32 blob_size = 3;  // defined by the server
   map<string, StructuredData> stuctured_data = 4;
 }
 
@@ -58,7 +113,9 @@ message CreateStoreRequest {
   string name = 2;
 }
 
-message GetStoreRequest { int64 id = 1; }
+message GetStoreRequest {
+  int64 id = 1;
+}
 
 message ListStoresRequest {}
 
@@ -72,7 +129,9 @@ message QueryStoreRequest {
   }
 }
 
-message DeleteStoreRequest { int64 id = 1; }
+message DeleteStoreRequest {
+  int64 id = 1;
+}
 
 message CreateRecordRequest {
   int64 store_id = 1;
@@ -97,55 +156,6 @@ message DeleteRecordRequest {
   string key = 2;
 }
 
-message ListStoresResponse { repeated Store stores = 1; }
-
-service Triton {
-  rpc CreateStore(CreateStoreRequest) returns (Store) {
-    option (google.api.http) = {
-      post : "/v1/stores"
-      body : "*"
-    };
-  }
-
-  rpc GetStore(GetStoreRequest) returns (Store) {
-    option (google.api.http) = {
-      get : "/v1/stores/{id}"
-    };
-  }
-
-  rpc ListStore(ListStoresRequest) returns (ListStoresResponse) {
-    option (google.api.http) = {
-      get : "/v1/stores"
-    };
-  }
-
-  rpc DeleteStore(DeleteStoreRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      delete : "/v1/stores/{id}"
-    };
-  }
-
-  rpc CreateRecord(CreateRecordRequest) returns (Record) {
-    option (google.api.http) = {
-      post : "/v1/stores/{store_id}/records"
-      body : "*"
-    };
-  }
-
-  rpc GetRecord(GetRecordRequest) returns (Record) {
-    option (google.api.http) = {
-      get : "/v1/stores/{store_id}/records/{key}"
-    };
-  }
-  rpc UpdateRecord(UpdateRecordRequest) returns (Record) {
-    option (google.api.http) = {
-      patch : "/v1/stores/{store_id}/records/{key}",
-      body : "*"
-    };
-  }
-  rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      delete : "/v1/stores/{store_id}/records/{key}"
-    };
-  }
+message ListStoresResponse {
+  repeated Store stores = 1;
 }
