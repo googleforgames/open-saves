@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:20.04
+FROM debian:testing
 
-ENV GO_VERSION=1.14.2
+ENV GO_VERSION=1.14.3
 ENV GOPATH=/go
 ENV SOURCE_DIR=/app
 ENV BUILD_DIR=/build
@@ -22,9 +22,8 @@ ENV DEBIAN_FRONTEND="noninteractive"
 
 RUN apt-get -q update && \
     apt-get -qy upgrade && \
-    apt-get install -qy cmake protobuf-compiler clang-10 \
-        curl git build-essential autoconf libtool pkg-config \
-        libgrpc++-dev
+    apt-get install -qy protobuf-compiler curl git make && \
+    apt-get clean
 
 RUN curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
     tar -C /usr/local -xf go${GO_VERSION}.linux-amd64.tar.gz && \
