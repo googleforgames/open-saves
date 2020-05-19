@@ -50,3 +50,7 @@ compile_commands.json
 
 # Git
 **/.git
+
+# Generated proto codes
+*.pb.go
+*.pb.gw.go

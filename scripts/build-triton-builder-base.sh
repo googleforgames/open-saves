@@ -1,3 +1,4 @@
+#!/bin/sh
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/triton-for-games-dev/triton-builder-base:testing
+set -e
 
-ENV GO_VERSION=1.14.3
-ENV GOPATH=/go
-ENV SOURCE_DIR=/app
-ENV DEBIAN_FRONTEND="noninteractive"
+cd "$( dirname $( dirname "${BASH_SOURCE[0]}" ))"
 
-COPY . ${SOURCE_DIR}
-
-WORKDIR ${SOURCE_DIR}
-
-RUN echo "export PATH=/usr/local/go/bin:/go/bin/:\$PATH" >> /root/.bashrc
-RUN echo "export GOPATH=/go" >> /root/.bashrc
+docker build . -f scripts/triton-builder-base.Dockerfile -t triton-builder-base:latest
+docker tag triton-builder-base:latest gcr.io/triton-for-games-dev/triton-builder-base:testing
