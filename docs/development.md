@@ -12,9 +12,6 @@ To build Triton you'll need the following applications installed.
   - On Windows, you need to make sure that the environment variable GOBIN is left undefined to work around an issue with building the gazelle tools. Otherwise you are going to get an error when trying to build/run `bazel run //:gazelle update` or `bazel build //:buildifier`
 - [Docker](https://docs.docker.com/install/) including the
   [post-install steps](https://docs.docker.com/install/linux/linux-postinstall/).
-- A working C/C++ toolchain
-  - [CMake](https://cmake.org/) is required to build the C++ code
-  - On Windows, we use [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) for development
 - [Protobuf](https://developers.google.com/protocol-buffers/docs/downloads)
 - [Go support for Protocol Buffers](https://github.com/golang/protobuf)
 
