@@ -22,6 +22,10 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
+When opening a pull request, please enter the title with a matching
+[conentional commit](https://www.conventionalcommits.org/en/v1.0.0/) tag.
+For example, a patch to fix a bug should be titles as "fix: server crash with malformed json."
+
 ## Community Guidelines
 
 This project follows [Google's Open Source Community
