@@ -117,11 +117,7 @@ message Record {
   bytes blob = 2;       // opaque to the server
   int32 blob_size = 3;  // defined by the server
   map<string, StructuredData> stuctured_data = 4;
-<<<<<<< HEAD
   string user_id = 5;  // Must be the owner user id for user stores
-=======
-  int64 user_id = 5;  // Must be the owner user id for user stores
->>>>>>> 04e826a... feat: Add RPCs for user management
   repeated string tags = 6;
   // "player:1", "system", "inventory:xxx"
 }
@@ -211,17 +207,9 @@ message ListUserResponse {
 }
 
 message GetUserRequest {
-<<<<<<< HEAD
   string id = 1;
 }
 
 message DeleteUserRequest {
   string id = 1;
-=======
-  int64 id = 1;
-}
-
-message DeleteUserRequest {
-  int64 id = 1;
->>>>>>> 04e826a... feat: Add RPCs for user management
 }
