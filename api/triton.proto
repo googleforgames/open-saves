@@ -72,6 +72,31 @@ service Triton {
       delete: "/v1/stores/{store_id}/records/{key}"
     };
   }
+
+  rpc CreateUser(CreateUserRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/users",
+      body: "*"
+    };
+  }
+
+  rpc GetUser(GetUserRequest) returns (User) {
+    option (google.api.http) = {
+      get: "/v1/users/{id}"
+    };
+  }
+
+  rpc ListUser(ListUserRequest) returns (ListUserResponse) {
+    option (google.api.http) = {
+      get: "/v1/users"
+    };
+  }
+
+  rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/users/{id}"
+    };
+  }
 }
 
 message StructuredData {
@@ -82,11 +107,19 @@ message StructuredData {
   }
 }
 
+message User {
+  string id = 1;  // UUIDv4
+  int64 store_id = 2;
+}
+
 message Record {
   string key = 1;
   bytes blob = 2;       // opaque to the server
   int32 blob_size = 3;  // defined by the server
   map<string, StructuredData> stuctured_data = 4;
+  string user_id = 5;  // Must be the owner user id for user stores
+  repeated string tags = 6;
+  // "player:1", "system", "inventory:xxx"
 }
 
 enum Hint {
@@ -106,6 +139,7 @@ message Store {
   int64 id = 1;
   string name = 2;
   StoreOptions options = 3;
+  string owner_user_id = 4;
 }
 
 message CreateStoreRequest {
@@ -158,4 +192,24 @@ message DeleteRecordRequest {
 
 message ListStoresResponse {
   repeated Store stores = 1;
+}
+
+message CreateUserRequest {
+  string name = 1;
+}
+
+message ListUserRequest {
+  string name = 1;
+}
+
+message ListUserResponse {
+  repeated User users = 1;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message DeleteUserRequest {
+  string id = 1;
 }
