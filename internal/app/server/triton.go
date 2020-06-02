@@ -31,12 +31,9 @@ func newTritonServer() tritonpb.TritonServer {
 }
 
 func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStoreRequest) (*tritonpb.Store, error) {
-	id, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
+	id := uuid.New()
 	store := &tritonpb.Store{
-		Id:   int64(id.ID()),
+		Id:   id.String(),
 		Name: req.Name,
 	}
 	log.Infof("created store: %+v", store)
