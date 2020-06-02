@@ -109,13 +109,13 @@ message StructuredData {
 
 message User {
   string id = 1;  // UUIDv4
-  int64 store_id = 2;
+  string store_id = 2;
 }
 
 message Record {
   string key = 1;
   bytes blob = 2;       // opaque to the server
-  int32 blob_size = 3;  // defined by the server
+  int64 blob_size = 3;  // defined by the server
   map<string, StructuredData> stuctured_data = 4;
   string user_id = 5;  // Must be the owner user id for user stores
   repeated string tags = 6;
@@ -135,8 +135,9 @@ enum Hint {
 message StoreOptions {}
 
 message Store {
-  // ID of this store, assigned by the server when the store is created.
-  int64 id = 1;
+  // ID of this store (UUIDv4), assigned by the server when the store is
+  // created.
+  string id = 1;
   string name = 2;
   StoreOptions options = 3;
   string owner_user_id = 4;
@@ -148,13 +149,13 @@ message CreateStoreRequest {
 }
 
 message GetStoreRequest {
-  int64 id = 1;
+  string id = 1;
 }
 
 message ListStoresRequest {}
 
 message QueryStoreRequest {
-  int64 store_id = 1;
+  string store_id = 1;
   string property = 2;
   oneof condition {
     int64 integer_value = 3;
@@ -164,29 +165,29 @@ message QueryStoreRequest {
 }
 
 message DeleteStoreRequest {
-  int64 id = 1;
+  string id = 1;
 }
 
 message CreateRecordRequest {
-  int64 store_id = 1;
+  string store_id = 1;
   Record record = 2;
   Hint hint = 3;
 }
 
 message GetRecordRequest {
-  int64 store_id = 1;
+  string store_id = 1;
   string key = 2;
 }
 
 message UpdateRecordRequest {
-  int64 store_id = 1;
+  string store_id = 1;
   string key = 2;
   Record record = 3;
   Hint hint = 4;
 }
 
 message DeleteRecordRequest {
-  int64 store_id = 1;
+  string store_id = 1;
   string key = 2;
 }
 
