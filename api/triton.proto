@@ -114,7 +114,7 @@ enum DataType {
 }
 
 // StructuredData represents typed data in Triton.
-// It limits to one type per key to make it
+// This is limited to one type per key.
 message StructuredData {
   DataType data_type = 1;
   oneof value {
