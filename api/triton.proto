@@ -60,6 +60,12 @@ service Triton {
     };
   }
 
+  rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {
+    option (google.api.http) = {
+      get: "/v1/stores/{store_id}/records"
+    };
+  }
+
   rpc UpdateRecord(UpdateRecordRequest) returns (Record) {
     option (google.api.http) = {
       patch: "/v1/stores/{store_id}/records/{key}",
@@ -99,11 +105,22 @@ service Triton {
   }
 }
 
+// Supported structured data types
+enum DataType {
+  DATATYPE_UNDEFINED = 0;
+  INTEGER = 1;
+  STRING = 2;
+  BOOLEAN = 3;
+}
+
+// StructuredData represents typed data in Triton.
+// It limits to one type per key to make it
 message StructuredData {
+  DataType data_type = 1;
   oneof value {
-    int64 integer_value = 1;
-    string string_value = 2;
-    bool boolean_value = 3;
+    int64 integer_value = 2;
+    string string_value = 3;
+    bool boolean_value = 4;
   }
 }
 
@@ -113,7 +130,7 @@ message User {
 }
 
 message Record {
-  string key = 1;
+  string key = 1;       // User defined primary key
   bytes blob = 2;       // opaque to the server
   int64 blob_size = 3;  // defined by the server
   map<string, StructuredData> stuctured_data = 4;
@@ -132,7 +149,9 @@ enum Hint {
 }
 
 // Resources for handling generic stores
-message StoreOptions {}
+message StoreOptions {
+  repeated string tags = 1;
+}
 
 message Store {
   // ID of this store (UUIDv4), assigned by the server when the store is
@@ -152,16 +171,28 @@ message GetStoreRequest {
   string id = 1;
 }
 
-message ListStoresRequest {}
+message ListStoresRequest {
+  string name = 1;
+  repeated string tags = 2;
+  string owner_user_id = 3;
+}
 
-message QueryStoreRequest {
+message QueryRecordsRequest {
   string store_id = 1;
   string property = 2;
+  DataType condition_type = 3;
+  // The following conditions and tags are joined using boolean AND.
   oneof condition {
-    int64 integer_value = 3;
-    bool boolean_value = 4;
-    string string_value = 5;
+    int64 integer_value = 4;
+    bool boolean_value = 5;
+    string string_value = 6;
   }
+  // If you specify multiple tags, they are considered ANDs.
+  repeated string tags = 7;
+}
+
+message QueryRecordsResponse {
+  repeated Record records = 1;
 }
 
 message DeleteStoreRequest {
