@@ -16,18 +16,37 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/uuid"
 	tritonpb "github.com/googleforgames/triton/api"
+	"github.com/googleforgames/triton/internal/app/blob"
 	log "github.com/sirupsen/logrus"
 )
 
-type tritonServer struct{}
+type tritonServer struct {
+	cloud     string
+	blobStore blob.BlobStore
+}
 
 // newTritonServer creates a new instance of the triton server.
-func newTritonServer() tritonpb.TritonServer {
-	return new(tritonServer)
+func newTritonServer(cloud string, bucket string) (tritonpb.TritonServer, error) {
+	switch cloud {
+	case "gcp":
+		log.Infoln("Instantiating Triton server on GCP")
+		gcs, err := blob.NewBlobGCP(bucket)
+		if err != nil {
+			return nil, err
+		}
+		triton := &tritonServer{
+			cloud:     cloud,
+			blobStore: gcs,
+		}
+		return triton, nil
+	default:
+		return nil, fmt.Errorf("cloud provider(%q) is not yet supported", cloud)
+	}
 }
 
 func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStoreRequest) (*tritonpb.Store, error) {

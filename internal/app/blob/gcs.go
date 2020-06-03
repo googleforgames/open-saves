@@ -15,10 +15,10 @@
 package blob
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/gcsblob"
@@ -28,18 +28,19 @@ type BlobGCP struct {
 	bucket *blob.Bucket
 }
 
-func NewBlobGCP(bucketURL string) *BlobGCP {
+func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
 	ctx := context.Background()
 	// blob.OpenBucket creates a *blob.Bucket from url.
-	// This URL will open the bucket "my-bucket" using default credentials.
 	bucket, err := blob.OpenBucket(ctx, bucketURL)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	return &BlobGCP{
+	gcs := &BlobGCP{
 		bucket: bucket,
 	}
+
+	return gcs, nil
 }
 
 func (b *BlobGCP) Write(ctx context.Context, path string, data []byte) error {
@@ -50,12 +51,11 @@ func (b *BlobGCP) Write(ctx context.Context, path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(w, data); err != nil {
+	if _, err := w.Write(data); err != nil {
 		return err
 	}
-	closeErr := w.Close()
-	if closeErr != nil {
-		return closeErr
+	if err := w.Close(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -69,13 +69,14 @@ func (b *BlobGCP) Read(ctx context.Context, path string) ([]byte, error) {
 		return []byte{}, err
 	}
 	defer r.Close()
-	// Readers also have a limited view of the blob's metadata.
-	fmt.Println("Content-Type:", r.ContentType())
-	// Copy from the reader to stdout.
-	if _, err := io.Copy(os.Stdout, r); err != nil {
-		return []byte{}, err
+	buf := new(bytes.Buffer)
+
+	// Copy from the reader to buffer.
+	if _, err := io.Copy(buf, r); err != nil {
+		return nil, err
 	}
-	return []byte{}, nil
+
+	return buf.Bytes(), nil
 }
 
 func (b *BlobGCP) Delete(ctx context.Context, path string) error {

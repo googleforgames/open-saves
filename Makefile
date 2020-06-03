@@ -34,7 +34,7 @@ clean:
 	rm -f ${ALL_TARGETS}
 
 test:
-	go test ./...
+	go test -race -v ./...
 
 protos: ${TRITON_GO_PROTOS}
 

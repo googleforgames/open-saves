@@ -16,12 +16,36 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"log"
 
 	"github.com/googleforgames/triton/internal/app/server"
 )
 
+var (
+	port   = flag.Uint("port", 6000, "The port number to run Triton on")
+	cloud  = flag.String("cloud", "gcp", "The public cloud provider you wish to run Triton on")
+	bucket = flag.String("bucket", "gs://triton-dev-store", "The bucket which will hold Triton blobs")
+)
+
 func main() {
+	flag.Parse()
+	if *cloud == "" {
+		log.Fatal("missing -cloud argument for cloud provider")
+	}
+	if *bucket == "" {
+		log.Fatal("missing -bucket argument for storing blobs")
+	}
+
+	cfg := &server.Config{
+		Address: fmt.Sprintf(":%d", *port),
+		Cloud:   *cloud,
+		Bucket:  *bucket,
+	}
+
 	ctx := context.Background()
-	server.Run(ctx, "tcp", fmt.Sprintf(":%d", 6000))
+	if err := server.Run(ctx, "tcp", cfg); err != nil {
+		log.Fatalf("got error starting server: %v", err)
+	}
 }
