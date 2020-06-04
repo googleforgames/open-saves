@@ -83,3 +83,7 @@ func (s *tritonServer) ListUser(ctx context.Context, req *tritonpb.ListUserReque
 func (s *tritonServer) DeleteUser(ctx context.Context, req *tritonpb.DeleteUserRequest) (*empty.Empty, error) {
 	return nil, nil
 }
+
+func (s *tritonServer) QueryRecords(ctx context.Context, req *tritonpb.QueryRecordsRequest) (*tritonpb.QueryRecordsResponse, error) {
+	return nil, nil
+}
