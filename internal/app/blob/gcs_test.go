@@ -38,27 +38,31 @@ func TestGCS_OpenBucket(t *testing.T) {
 	}
 }
 
-func TestGCS_Write(t *testing.T) {
+func TestGCS_PutFile(t *testing.T) {
 	ctx := context.Background()
 	gcs := getBucket(t)
-	filePath := "write.txt"
-	if err := gcs.Write(ctx, filePath, []byte("hello world")); err != nil {
-		t.Fatalf("Write to GCS with file(%q) error: %v", filePath, err)
+	filePath := "put.txt"
+	if err := gcs.Put(ctx, filePath, []byte("hello world")); err != nil {
+		t.Fatalf("Put file(%q) in GCS got error: %v", filePath, err)
 	}
 }
 
-func TestGCS_Read(t *testing.T) {
+func TestGCS_GetFile(t *testing.T) {
 	ctx := context.Background()
 	gcs := getBucket(t)
-	filePath := "read.txt"
+	filePath := "get.txt"
 
-	got, err := gcs.Read(ctx, filePath)
+	if err := gcs.Put(ctx, filePath, []byte("hello world")); err != nil {
+		t.Fatalf("Put file(%q) in GCS got error: %v", filePath, err)
+	}
+
+	got, err := gcs.Get(ctx, filePath)
 	if err != nil {
-		t.Fatalf("Read from GCS with file(%q) got error: %v", filePath, err)
+		t.Fatalf("Get file(%q) from GCS got error: %v", filePath, err)
 	}
 	want := []byte("hello world")
 	if !bytes.Equal(got, want) {
-		t.Fatalf("Read file(%q) from GCS, got: %b, want: %b", filePath, got, want)
+		t.Fatalf("Get file(%q) from GCS failed\ngot:  %s\nwant: %s", filePath, got, want)
 	}
 }
 
@@ -66,11 +70,16 @@ func TestGCS_Delete(t *testing.T) {
 	ctx := context.Background()
 	gcs := getBucket(t)
 	filePath := "delete.txt"
-	if err := gcs.Write(ctx, filePath, []byte("hello world")); err != nil {
-		t.Fatalf("Write to GCS with file(%q) error: %v", filePath, err)
+	if err := gcs.Put(ctx, filePath, []byte("hello world")); err != nil {
+		t.Fatalf("Put file(%q) in GCS got error: %v", filePath, err)
 	}
 
 	if err := gcs.Delete(ctx, filePath); err != nil {
 		t.Fatalf("Delete file(%q) in GCS got error: %v", filePath, err)
+	}
+
+	// Check to see access to this file fails now that it has been deleted.
+	if _, err := gcs.Get(ctx, filePath); err == nil {
+		t.Fatalf("Get should fail after file has been deleted, got nil")
 	}
 }

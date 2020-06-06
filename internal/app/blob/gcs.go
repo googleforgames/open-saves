@@ -43,7 +43,7 @@ func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
 	return gcs, nil
 }
 
-func (b *BlobGCP) Write(ctx context.Context, path string, data []byte) error {
+func (b *BlobGCP) Put(ctx context.Context, path string, data []byte) error {
 	if b.bucket == nil {
 		return fmt.Errorf("could not find bucket for storage provider")
 	}
@@ -60,7 +60,7 @@ func (b *BlobGCP) Write(ctx context.Context, path string, data []byte) error {
 	return nil
 }
 
-func (b *BlobGCP) Read(ctx context.Context, path string) ([]byte, error) {
+func (b *BlobGCP) Get(ctx context.Context, path string) ([]byte, error) {
 	if b.bucket == nil {
 		return []byte{}, fmt.Errorf("could not find bucket for storage provider")
 	}

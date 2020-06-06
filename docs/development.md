@@ -106,10 +106,10 @@ relatively new feature in Go so make sure the IDE you are using was built around
 Summer 2019. The latest version of
 [Visual Studio Code](https://code.visualstudio.com/download) supports it.
 
-# Build all Docker images
+## Build all Docker images
 
 TODO
 
-# Contributing to the project
+## Contributing to the project
 
 Check out [How to Contribute](contributing.md) before contributing to the project.
