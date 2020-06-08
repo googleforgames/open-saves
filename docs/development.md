@@ -16,6 +16,7 @@ To build Triton you'll need the following applications installed.
 - [Go support for Protocol Buffers](https://github.com/golang/protobuf)
 
 You can install required go modules to compile protos by running:
+
 ```bash
 go get -u \
   golang.org/x/lint/golint \
@@ -63,18 +64,27 @@ from command line. This will compile protos and build binaries. Ouput binaries w
 
 We use [Go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies. If you have changes in dependencies (i.e. adding a new source file), add the package to `go.mod`.
 
+## Running tests
+
+In order to run the test, use
+
+```bash
+make test
+```
+
 ### Running simple gRPC server/client
 
 To stand up the gRPC server, there's a lightweight wrapper around the server code that lives in `cmd/server/main.go`. To start this, run
 
 ```bash
-./build/server
+./build/server -cloud=gcp -bucket="gs://your-bucket"
 ```
 
 You should see an output like the following
 
 ```bash
-$ ./build/server
+$ ./build/server -cloud=gcp -bucket="gs://your-bucket"
+INFO[0000] Instantiating Triton server on GCP
 INFO[0000] starting server on tcp :6000
 ```
 
@@ -96,10 +106,10 @@ relatively new feature in Go so make sure the IDE you are using was built around
 Summer 2019. The latest version of
 [Visual Studio Code](https://code.visualstudio.com/download) supports it.
 
-# Build all Docker images
+## Build all Docker images
 
 TODO
 
-# Contributing to the project
+## Contributing to the project
 
 Check out [How to Contribute](contributing.md) before contributing to the project.

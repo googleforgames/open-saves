@@ -18,10 +18,11 @@ import (
 	"context"
 	"log"
 
-	tritonpb "github.com/googleforgames/triton/api"
 	"google.golang.org/api/option"
 	gtransport "google.golang.org/api/transport/grpc"
 	"google.golang.org/grpc"
+
+	tritonpb "github.com/googleforgames/triton/api"
 )
 
 func defaultClientOptions() []option.ClientOption {
@@ -29,8 +30,6 @@ func defaultClientOptions() []option.ClientOption {
 		option.WithEndpoint("localhost:6000"),
 		option.WithGRPCDialOption(grpc.WithInsecure()),
 		option.WithoutAuthentication(),
-		// 	option.WithGRPCDialOption(grpc.WithDefaultCallOptions(
-		// 		grpc.MaxCallRecvMsgSize(math.MaxInt32))),
 	}
 }
 
