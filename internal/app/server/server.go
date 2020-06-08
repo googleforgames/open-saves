@@ -24,21 +24,32 @@ import (
 	tritonpb "github.com/googleforgames/triton/api"
 )
 
+// Config defines common fields needed to start Triton.
+type Config struct {
+	Address string
+	Cloud   string
+	Bucket  string
+}
+
 // Run starts the triton gRPC service.
-func Run(ctx context.Context, network, address string) error {
-	lis, err := net.Listen(network, address)
+func Run(ctx context.Context, network string, cfg *Config) error {
+	lis, err := net.Listen(network, cfg.Address)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err := lis.Close(); err != nil {
-			log.Errorf("Failed to close %s %s: %v", network, address, err)
+			log.Errorf("Failed to close %s %s: %v", network, cfg.Address, err)
 		}
 	}()
 
 	s := grpc.NewServer()
-	tritonpb.RegisterTritonServer(s, newTritonServer())
+	tritonServer, err := newTritonServer(cfg.Cloud, cfg.Bucket)
+	if err != nil {
+		return err
+	}
+	tritonpb.RegisterTritonServer(s, tritonServer)
 
-	log.Infof("starting server on %s %s", network, address)
+	log.Infof("starting server on %s %s", network, cfg.Address)
 	return s.Serve(lis)
 }
