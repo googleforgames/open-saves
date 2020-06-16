@@ -87,22 +87,6 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 	return nil, nil
 }
 
-func (s *tritonServer) CreateUser(ctx context.Context, req *tritonpb.CreateUserRequest) (*empty.Empty, error) {
-	return nil, nil
-}
-
-func (s *tritonServer) GetUser(ctx context.Context, req *tritonpb.GetUserRequest) (*tritonpb.User, error) {
-	return nil, nil
-}
-
-func (s *tritonServer) ListUser(ctx context.Context, req *tritonpb.ListUserRequest) (*tritonpb.ListUserResponse, error) {
-	return nil, nil
-}
-
-func (s *tritonServer) DeleteUser(ctx context.Context, req *tritonpb.DeleteUserRequest) (*empty.Empty, error) {
-	return nil, nil
-}
-
 func (s *tritonServer) QueryRecords(ctx context.Context, req *tritonpb.QueryRecordsRequest) (*tritonpb.QueryRecordsResponse, error) {
 	return nil, nil
 }
