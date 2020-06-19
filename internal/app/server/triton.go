@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/google/uuid"
 	tritonpb "github.com/googleforgames/triton/api"
 	"github.com/googleforgames/triton/internal/app/blob"
 	log "github.com/sirupsen/logrus"
@@ -50,13 +49,8 @@ func newTritonServer(cloud string, bucket string) (tritonpb.TritonServer, error)
 }
 
 func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStoreRequest) (*tritonpb.Store, error) {
-	id := uuid.New()
-	store := &tritonpb.Store{
-		Id:   id.String(),
-		Name: req.Name,
-	}
-	log.Infof("created store: %+v", store)
-	return store, nil
+	log.Infof("created store: %+v", req.Store)
+	return req.Store, nil
 }
 
 func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRecordRequest) (*tritonpb.Record, error) {
@@ -71,7 +65,7 @@ func (s *tritonServer) GetStore(ctx context.Context, req *tritonpb.GetStoreReque
 	return nil, nil
 }
 
-func (s *tritonServer) ListStore(ctx context.Context, req *tritonpb.ListStoresRequest) (*tritonpb.ListStoresResponse, error) {
+func (s *tritonServer) ListStores(ctx context.Context, req *tritonpb.ListStoresRequest) (*tritonpb.ListStoresResponse, error) {
 	return nil, nil
 }
 
