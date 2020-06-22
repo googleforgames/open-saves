@@ -22,7 +22,7 @@ import "google/protobuf/empty.proto";
 option go_package = "github.com/googleforgames/triton";
 
 // Public interface of the Triton service.
-// TODO: Add streaming endpoints to transfer large blobs.
+// TODO(#69): Add streaming endpoints to transfer large blobs.
 service Triton {
   // CreateStore creates and returns a new store.
   rpc CreateStore(CreateStoreRequest) returns (Store) {
@@ -122,7 +122,7 @@ message Record {
 
   // Arbitrary blob data associated to the record
   // This is opaque to the server, and can contain anything.
-  // TODO: Add a way to handle larger blobs that don't fit in a message
+  // TODO(#69): Add a way to handle larger blobs that don't fit in a message
   bytes blob = 2;
 
   // Byte length of the blob
