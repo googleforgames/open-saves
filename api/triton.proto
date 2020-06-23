@@ -21,7 +21,10 @@ import "google/protobuf/empty.proto";
 
 option go_package = "github.com/googleforgames/triton";
 
+// Public interface of the Triton service.
+// TODO(#69): Add streaming endpoints to transfer large blobs.
 service Triton {
+  // CreateStore creates and returns a new store.
   rpc CreateStore(CreateStoreRequest) returns (Store) {
     option (google.api.http) = {
       post: "/v1/stores"
@@ -29,69 +32,79 @@ service Triton {
     };
   }
 
+  // GetStore fetches store with the specified key.
   rpc GetStore(GetStoreRequest) returns (Store) {
     option (google.api.http) = {
-      get: "/v1/stores/{id}"
+      get: "/v1/stores/{key}"
     };
   }
 
-  rpc ListStore(ListStoresRequest) returns (ListStoresResponse) {
+  // ListStore returns stores matching the provided criteria.
+  rpc ListStores(ListStoresRequest) returns (ListStoresResponse) {
     option (google.api.http) = {
       get: "/v1/stores"
     };
   }
 
+  // DeleteStore deletes a single store with the specified key.
   rpc DeleteStore(DeleteStoreRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      delete: "/v1/stores/{id}"
+      delete: "/v1/stores/{key}"
     };
   }
 
+  // CreateRecord creates a new record. This returns an error if the
+  // specified key already exists.
   rpc CreateRecord(CreateRecordRequest) returns (Record) {
     option (google.api.http) = {
-      post: "/v1/stores/{store_id}/records"
+      post: "/v1/stores/{store_key}/records"
       body: "*"
     };
   }
 
+  // GetRecord returns a record with the specified key.
   rpc GetRecord(GetRecordRequest) returns (Record) {
     option (google.api.http) = {
-      get: "/v1/stores/{store_id}/records/{key}"
+      get: "/v1/stores/{store_key}/records/{key}"
     };
   }
 
+  // QueryRecords performs a query and returns matching records.
   rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {
     option (google.api.http) = {
-      get: "/v1/stores/{store_id}/records"
+      get: "/v1/stores/{store_key}/records"
     };
   }
 
+  // UpdateRecord updates an existing record. This returns an error and
+  // does not create a new record if the key doesn't exist.
   rpc UpdateRecord(UpdateRecordRequest) returns (Record) {
     option (google.api.http) = {
-      patch: "/v1/stores/{store_id}/records/{key}",
+      patch: "/v1/stores/{store_key}/records/{record.key}",
       body: "*"
     };
   }
 
+  // DeleteRecord deletes a single record with the specified key.
   rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      delete: "/v1/stores/{store_id}/records/{key}"
+      delete: "/v1/stores/{store_key}/records/{key}"
     };
   }
 }
 
-// Supported structured data types
-enum DataType {
-  DATATYPE_UNDEFINED = 0;
-  INTEGER = 1;
-  STRING = 2;
-  BOOLEAN = 3;
-}
-
-// StructuredData represents typed data in Triton.
+// Property represents typed data in Triton.
 // This is limited to one type per key.
-message StructuredData {
-  DataType data_type = 1;
+message Property {
+  // Supported structured data types
+  enum Type {
+    DATATYPE_UNDEFINED = 0;
+    INTEGER = 1;
+    STRING = 2;
+    BOOLEAN = 3;
+  }
+
+  Type type = 1;
   oneof value {
     int64 integer_value = 2;
     string string_value = 3;
@@ -99,100 +112,207 @@ message StructuredData {
   }
 }
 
+// Record represents each entity in the Triton database.
 message Record {
-  string key = 1;       // User defined primary key
-  bytes blob = 2;       // opaque to the server
-  int64 blob_size = 3;  // defined by the server
-  map<string, StructuredData> stuctured_data = 4;
-  string external_user_id = 5;  // Must be the owner user id for user stores
+  // key is the user defined primary key.
+  // It is recommended to use uniformally distributed key (e.g. UUID) rather
+  // than monotonically increasing values for performance reasons. See
+  // https://cloud.google.com/datastore/docs/best-practices#keys for details.
+  string key = 1;
+
+  // Arbitrary blob data associated to the record
+  // This is opaque to the server, and can contain anything.
+  // TODO(#69): Add a way to handle larger blobs that don't fit in a message
+  bytes blob = 2;
+
+  // Byte length of the blob
+  int64 blob_size = 3;
+
+  // Typed values that are indexed and searchable.
+  // The number of properties allowed in a record is backend dependent.
+  map<string, Property> properties = 4;
+
+  // owner_id is the owner of the record, represented as an external user ID.
+  // Triton doesn't maintain list of valid users and it is the responsibility of
+  // the client to keep track of user IDs.
+  string owner_id = 5;
+
+  // tags are queryable strings to categorize records
+  // Examples: "player:1", "system", "inventory:xxx"
   repeated string tags = 6;
-  // "player:1", "system", "inventory:xxx"
 }
 
+// Performance optimization hints for the server.
+// The server may silently ignore the hints when not feasible.
 enum Hint {
   // Unspecified. This value must not be used.
   HINT_UNSPECIFIED = 0;
+
+  // Do not cache the record for future requests.
   DO_NOT_CACHE = 1;
+
+  // Skip the cache and always check the metadata server.
   IGNORE_CACHE = 2;
+
+  // Always store the blob in the bulk storage
   ALWAYS_USE_BULK_STORE = 3;
+
+  // Do not use the bulk storage. Always store the blob into the metadata
+  // entity. The server will return an error if the blob is too large. The exact
+  // size limit depends on the backend implementation.
   DO_NOT_USE_BULK_STORE = 4;
 }
 
-// Resources for handling generic stores
-message StoreOptions {
-  repeated string tags = 1;
-}
-
+// Store represents an internal bucket to contain records.
 message Store {
-  // ID of this store (UUIDv4), assigned by the server when the store is
-  // created.
-  string id = 1;
+  // key is the user defined primary key.
+  // It is recommended to use uniformally distributed key (e.g. UUID) rather
+  // than monotonically increasing values for performance reasons. See
+  // https://cloud.google.com/datastore/docs/best-practices#keys for details.
+  string key = 1;
+
+  // name is a user defined name of the store.
+  // It is indexed and queriable with ListStore, but is otherwise opaque to the
+  // server.
   string name = 2;
-  StoreOptions options = 3;
-  string owner_external_user_id = 4;
+
+  // tags are queryable strings to categorize stores
+  // Examples: "player:1", "system", "inventory:xxx"
+  repeated string tags = 3;
+
+  // owner_id is the owner of the store, represented as an external user ID.
+  // Triton doesn't maintain list of valid users and it is the responsibility of
+  // the client to keep track of user IDs.
+  string owner_id = 4;
 }
 
 message CreateStoreRequest {
-  StoreOptions options = 1;
-  string name = 2;
+  // Store to create.
+  Store store = 1;
 }
 
 message GetStoreRequest {
-  string id = 1;
+  // The key of the store to retrieve.
+  string key = 1;
 }
 
+// ListStoresRequest contains conditions to filter stores.
+// Multiple conditions are AND'ed together.
 message ListStoresRequest {
+  // Store name. This is an exact match.
   string name = 1;
+
+  // List of tags
   repeated string tags = 2;
-  string owner_external_user_id = 3;
+
+  // owner_id is the owner of stores, represented as an external user ID.
+  string owner_id = 3;
 }
 
+// QueryRecordsRequest contains conditions to search particular records.
+// Multiple conditions are AND'ed together.
 message QueryRecordsRequest {
-  string store_id = 1;
-  string property = 2;
-  DataType condition_type = 3;
-  // The following conditions and tags are joined using boolean AND.
-  oneof condition {
-    int64 integer_value = 4;
-    bool boolean_value = 5;
-    string string_value = 6;
-  }
-  // If you specify multiple tags, they are considered ANDs.
-  repeated string tags = 7;
-  string external_user_id = 8;
+  // store_key is the primary key of the store.
+  // Optional and the method queries all stores when omitted.
+  string store_key = 1;
+
+  // List of filters
+  repeated QueryFilter filters = 2;
+
+  // List of tags
+  repeated string tags = 3;
+
+  // owner_id is the owner of records, represented as an external user ID.
+  string owner_id = 4;
+}
+
+// FilterOperator has a list of comperators.
+enum FilterOperator {
+  // =
+  EQUAL = 0;
+  // >
+  GREATER = 1;
+  // <
+  LESS = 2;
+  // >=
+  GREATER_OR_EQUAL = 3;
+  // <=
+  LESS_OR_EQUAL = 4;
+}
+
+// QueryFilter is a filtering condition when querying records.
+message QueryFilter {
+  // Propety name of the filter.
+  string property_name = 1;
+
+  // Operator of the filter.
+  FilterOperator operator = 2;
+
+  // Value to compare the property with.
+  Property value = 3;
 }
 
 message QueryRecordsResponse {
+  // List of records that match the criteria.
   repeated Record records = 1;
+
+  // List of store keys that each of the records belongs to.
+  // The order of keys is the same as the records field,
+  // e.g. store_keys[0] is the store for records[0], and so on.
+  repeated string store_keys = 2;
+
+  // Performance hints.
+  // Query caching is not supported at the moment
+  repeated Hint hints = 3;
 }
 
 message DeleteStoreRequest {
-  string id = 1;
+  // The key of the store to delete.
+  string key = 1;
 }
 
 message CreateRecordRequest {
-  string store_id = 1;
+  // The key of the store to create the record into.
+  string store_key = 1;
+
+  // The record to create.
   Record record = 2;
-  Hint hint = 3;
+
+  // Performance hints.
+  repeated Hint hints = 3;
 }
 
 message GetRecordRequest {
-  string store_id = 1;
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to get.
   string key = 2;
+
+  // Performance hints.
+  repeated Hint hints = 3;
 }
 
 message UpdateRecordRequest {
-  string store_id = 1;
-  string key = 2;
-  Record record = 3;
-  Hint hint = 4;
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The content to update the record with.
+  Record record = 2;
+
+  // Performance hints.
+  repeated Hint hints = 3;
 }
 
 message DeleteRecordRequest {
-  string store_id = 1;
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to delete.
   string key = 2;
 }
 
 message ListStoresResponse {
+  // List of stores that match the provided criteria.
   repeated Store stores = 1;
 }

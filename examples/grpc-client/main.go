@@ -18,6 +18,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/google/uuid"
 	"google.golang.org/api/option"
 	gtransport "google.golang.org/api/transport/grpc"
 	"google.golang.org/grpc"
@@ -44,8 +45,13 @@ func main() {
 
 	c := tritonpb.NewTritonClient(connPool)
 
+	store := &tritonpb.Store{
+		Key:     uuid.New().String(),
+		Name:    "test",
+		OwnerId: "test-user",
+	}
 	req := &tritonpb.CreateStoreRequest{
-		Name: "test",
+		Store: store,
 	}
 
 	s, err := c.CreateStore(ctx, req)
