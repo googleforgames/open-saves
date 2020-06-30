@@ -16,7 +16,6 @@ package datastore
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -37,9 +36,15 @@ func newDriver(ctx context.Context, t *testing.T) *Driver {
 	return driver
 }
 
+func newStoreKey() string {
+	return "unittest_store_" + uuid.New().String()
+}
+
+func newRecordKey() string {
+	return "unittest_record_" + uuid.New().String()
+}
+
 func TestDriver_ConnectDisconnect(t *testing.T) {
-	cred := os.Getenv("TRITON_GCP_CREDENTIALS")
-	t.Logf("Using credentials at: %s", cred)
 	ctx := context.Background()
 	// Connect() is tested inside newDriver().
 	driver := newDriver(ctx, t)
@@ -52,7 +57,7 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
 	defer driver.Disconnect(ctx)
-	storeKey := "unittest_store" + uuid.New().String()
+	storeKey := newStoreKey()
 	storeName := "SimpleCreateGetDeleteStore" + uuid.New().String()
 	store := &m.Store{
 		Key:     storeKey,
@@ -90,7 +95,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
 	defer driver.Disconnect(ctx)
-	storeKey := "unittest_store" + uuid.New().String()
+	storeKey := newStoreKey()
 	store := &m.Store{
 		Key:     storeKey,
 		Name:    "SimpleCreateGetDeleteRecord",
@@ -99,7 +104,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	if err := driver.CreateStore(ctx, store); err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
-	recordKey := "unittest_record" + uuid.New().String()
+	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
 	record := &m.Record{
 		Key:      recordKey,
@@ -147,7 +152,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
 	defer driver.Disconnect(ctx)
-	storeKey := "unittest_store" + uuid.New().String()
+	storeKey := newStoreKey()
 	store := &m.Store{
 		Key:     storeKey,
 		Name:    "UpdateRecord",
@@ -156,7 +161,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	if err := driver.CreateStore(ctx, store); err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
-	recordKey := "unittest_record" + uuid.New().String()
+	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
 	record := &m.Record{
 		Key:      recordKey,
@@ -199,11 +204,11 @@ func TestDriver_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
 	defer driver.Disconnect(ctx)
-	storeKey := "unittest_store" + uuid.New().String()
+	storeKey := newStoreKey()
 	if err := driver.DeleteStore(ctx, storeKey); err != nil {
 		t.Fatalf("DeleteStore failed with a non-existent key: %v", err)
 	}
-	recordKey := "unittest_record" + uuid.New().String()
+	recordKey := newRecordKey()
 	if err := driver.DeleteRecord(ctx, storeKey, recordKey); err != nil {
 		t.Fatalf("DeleteRecord failed with a non-existent key: %v", err)
 	}
