@@ -22,7 +22,7 @@ import "google/protobuf/empty.proto";
 option go_package = "github.com/googleforgames/triton";
 
 // Public interface of the Triton service.
-// TODO: Add streaming endpoints to transfer large blobs.
+// TODO(#69): Add streaming endpoints to transfer large blobs.
 service Triton {
   // CreateStore creates and returns a new store.
   rpc CreateStore(CreateStoreRequest) returns (Store) {
@@ -122,15 +122,20 @@ message Record {
 
   // Arbitrary blob data associated to the record
   // This is opaque to the server, and can contain anything.
-  // TODO: Add a way to handle larger blobs that don't fit in a message
+  // TODO(#69): Add a way to handle larger blobs that don't fit in a message
   bytes blob = 2;
-  int64 blob_size = 3;  // Byte length of the blob
+
+  // Byte length of the blob
+  int64 blob_size = 3;
+
+  // Typed values that are indexed and searchable.
+  // The number of properties allowed in a record is backend dependent.
   map<string, Property> properties = 4;
 
   // owner_id is the owner of the record, represented as an external user ID.
   // Triton doesn't maintain list of valid users and it is the responsibility of
   // the client to keep track of user IDs.
-  string owner_id = 5;  // External user ID
+  string owner_id = 5;
 
   // tags are queryable strings to categorize records
   // Examples: "player:1", "system", "inventory:xxx"
@@ -255,6 +260,10 @@ message QueryRecordsResponse {
   // The order of keys is the same as the records field,
   // e.g. store_keys[0] is the store for records[0], and so on.
   repeated string store_keys = 2;
+
+  // Performance hints.
+  // Query caching is not supported at the moment
+  repeated Hint hints = 3;
 }
 
 message DeleteStoreRequest {
