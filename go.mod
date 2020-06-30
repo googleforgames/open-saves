@@ -3,8 +3,9 @@ module github.com/googleforgames/triton
 go 1.14
 
 require (
-	cloud.google.com/go v0.60.0
+	cloud.google.com/go v0.60.0 // indirect
 	cloud.google.com/go/datastore v1.2.0
+	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.1
 	github.com/grpc-ecosystem/grpc-gateway v1.14.4

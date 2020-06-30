@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadata
+package metadb
 
 import (
 	"fmt"
@@ -44,9 +44,9 @@ type Record struct {
 	Tags         []string
 }
 
-// Prefix is necessary to avoid potential conflict between internal and user defined
+// PropertyPrefix is necessary to avoid potential conflict between internal and user defined
 // properties.
-const datastorePropertyPrefix = "CP"
+const PropertyPrefix = "CP"
 
 // These functions need to be implemented here instead of the datastore package because
 // go doesn't permit to define additional receivers in another package.
@@ -59,7 +59,7 @@ func (r *Record) Save() ([]datastore.Property, error) {
 		return nil, err
 	}
 	for k, v := range r.Properties {
-		name := datastorePropertyPrefix + k
+		name := PropertyPrefix + k
 		switch v.Type {
 		case pb.Property_BOOLEAN:
 			dsprop = append(dsprop, datastore.Property{
@@ -107,7 +107,7 @@ func (r *Record) Load(ps []datastore.Property) error {
 			r.Tags = tags
 		default:
 			// Everything else is a property
-			if datastorePropertyPrefix != p.Name[:len(datastorePropertyPrefix)] {
+			if PropertyPrefix != p.Name[:len(PropertyPrefix)] {
 				log.Warnf("Unknown property found, property name = %s", p.Name)
 				continue
 			}
@@ -115,7 +115,7 @@ func (r *Record) Load(ps []datastore.Property) error {
 			if r.Properties == nil {
 				r.Properties = map[string]Property{}
 			}
-			newprop := Property{}
+			var newprop Property
 			t := reflect.TypeOf(p.Value)
 			switch t.Kind() {
 			case reflect.Bool:
@@ -132,7 +132,7 @@ func (r *Record) Load(ps []datastore.Property) error {
 					"Error loading property, unknown type: name=[%s], type=[%s]",
 					p.Name, t.Name())
 			}
-			name := p.Name[len(datastorePropertyPrefix):]
+			name := p.Name[len(PropertyPrefix):]
 			r.Properties[name] = newprop
 		}
 	}

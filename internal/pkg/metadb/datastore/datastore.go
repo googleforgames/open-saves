@@ -18,14 +18,14 @@ import (
 	"context"
 
 	ds "cloud.google.com/go/datastore"
-	"github.com/googleforgames/triton/internal/pkg/metadata"
+	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"google.golang.org/api/option"
 )
 
 const storeKind = "store"
 const recordKind = "record"
 
-// Driver is an implementation of the metadata.Driver interface for Google Cloud Datastore.
+// Driver is an implementation of the metadb.Driver interface for Google Cloud Datastore.
 // Call NewDriver to create a new driver instance.
 type Driver struct {
 	client *ds.Client
@@ -65,7 +65,7 @@ func (d *Driver) newQuery(kind string) *ds.Query {
 	return ds.NewQuery(kind)
 }
 
-// NewDriver creates a new instance of Driver that can be used by metadata.MetaDB.
+// NewDriver creates a new instance of Driver that can be used by metadb.MetaDB.
 // projectID: Google Cloud Platform project ID to use
 func NewDriver(ctx context.Context, projectID string, opts ...option.ClientOption) (*Driver, error) {
 	client, err := ds.NewClient(ctx, projectID, opts...)
@@ -89,7 +89,7 @@ func (d *Driver) Disconnect(ctx context.Context) error {
 }
 
 // CreateStore creates a new store.
-func (d *Driver) CreateStore(ctx context.Context, store *metadata.Store) error {
+func (d *Driver) CreateStore(ctx context.Context, store *m.Store) error {
 	key := d.createStoreKey(store.Key)
 	mut := ds.NewInsert(key, store)
 	return d.mutateSingle(ctx, mut)
@@ -97,9 +97,9 @@ func (d *Driver) CreateStore(ctx context.Context, store *metadata.Store) error {
 
 // GetStore fetches a store based on the key provided.
 // Returns error if the key is not found.
-func (d *Driver) GetStore(ctx context.Context, key string) (*metadata.Store, error) {
+func (d *Driver) GetStore(ctx context.Context, key string) (*m.Store, error) {
 	dskey := d.createStoreKey(key)
-	store := &metadata.Store{}
+	store := new(m.Store)
 	err := d.client.Get(ctx, dskey, store)
 	if err != nil {
 		return nil, err
@@ -109,10 +109,10 @@ func (d *Driver) GetStore(ctx context.Context, key string) (*metadata.Store, err
 }
 
 // FindStoreByName finds and fetch a store based on the name (complete match).
-func (d *Driver) FindStoreByName(ctx context.Context, name string) (*metadata.Store, error) {
+func (d *Driver) FindStoreByName(ctx context.Context, name string) (*m.Store, error) {
 	query := d.newQuery(storeKind).Filter("Name =", name)
 	iter := d.client.Run(ctx, query)
-	store := &metadata.Store{}
+	store := new(m.Store)
 	key, err := iter.Next(store)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (d *Driver) DeleteStore(ctx context.Context, key string) error {
 
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
-func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *metadata.Record) error {
+func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *m.Record) error {
 	rkey := d.createRecordKey(storeKey, record.Key)
 	mut := ds.NewInsert(rkey, record)
 	return d.mutateSingle(ctx, mut)
@@ -138,7 +138,7 @@ func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *meta
 
 // UpdateRecord updates the record in the store specified with storeKey.
 // Returns error if the store doesn't have a record with the key provided.
-func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, record *metadata.Record) error {
+func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, record *m.Record) error {
 	rkey := d.createRecordKey(storeKey, record.Key)
 	mut := ds.NewUpdate(rkey, record)
 	return d.mutateSingle(ctx, mut)
@@ -146,9 +146,9 @@ func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, record *meta
 
 // GetRecord fetches and returns a record with key in store storeKey.
 // Returns error if not found.
-func (d *Driver) GetRecord(ctx context.Context, storeKey, key string) (*metadata.Record, error) {
+func (d *Driver) GetRecord(ctx context.Context, storeKey, key string) (*m.Record, error) {
 	rkey := d.createRecordKey(storeKey, key)
-	record := &metadata.Record{}
+	record := new(m.Record)
 	if err := d.client.Get(ctx, rkey, record); err != nil {
 		return nil, err
 	}

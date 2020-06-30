@@ -21,17 +21,12 @@ import (
 
 	"github.com/google/uuid"
 	triton "github.com/googleforgames/triton/api"
-	"github.com/googleforgames/triton/internal/pkg/metadata"
+	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/api/option"
 )
 
 func newDriver(ctx context.Context, t *testing.T) *Driver {
-	options := []option.ClientOption{}
-	if cred := os.Getenv("TRITON_GCP_CREDENTIALS"); cred != "" {
-		options = append(options, option.WithCredentialsFile(cred))
-	}
-	driver, err := NewDriver(ctx, "triton-for-games-dev", options...)
+	driver, err := NewDriver(ctx, "triton-for-games-dev")
 	if err != nil {
 		t.Fatalf("Initializing Datastore driver: %v", err)
 	}
@@ -59,7 +54,7 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	defer driver.Disconnect(ctx)
 	storeKey := "unittest_store" + uuid.New().String()
 	storeName := "SimpleCreateGetDeleteStore" + uuid.New().String()
-	store := &metadata.Store{
+	store := &m.Store{
 		Key:     storeKey,
 		Name:    storeName,
 		OwnerID: "triton",
@@ -96,7 +91,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	driver := newDriver(ctx, t)
 	defer driver.Disconnect(ctx)
 	storeKey := "unittest_store" + uuid.New().String()
-	store := &metadata.Store{
+	store := &m.Store{
 		Key:     storeKey,
 		Name:    "SimpleCreateGetDeleteRecord",
 		OwnerID: "triton",
@@ -106,13 +101,13 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	}
 	recordKey := "unittest_record" + uuid.New().String()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
-	record := &metadata.Record{
+	record := &m.Record{
 		Key:      recordKey,
 		Blob:     blob,
 		BlobSize: int64(len(blob)),
 		OwnerID:  "Triton",
 		Tags:     []string{"abc", "def"},
-		Properties: map[string]metadata.Property{
+		Properties: map[string]m.Property{
 			"BoolTP":   {Type: triton.Property_BOOLEAN, BooleanValue: false},
 			"IntTP":    {Type: triton.Property_INTEGER, IntegerValue: 42},
 			"StringTP": {Type: triton.Property_STRING, StringValue: "a string value"},
@@ -153,7 +148,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	driver := newDriver(ctx, t)
 	defer driver.Disconnect(ctx)
 	storeKey := "unittest_store" + uuid.New().String()
-	store := &metadata.Store{
+	store := &m.Store{
 		Key:     storeKey,
 		Name:    "UpdateRecord",
 		OwnerID: "triton",
@@ -163,7 +158,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	}
 	recordKey := "unittest_record" + uuid.New().String()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
-	record := &metadata.Record{
+	record := &m.Record{
 		Key:      recordKey,
 		Blob:     blob,
 		BlobSize: int64(len(blob)),

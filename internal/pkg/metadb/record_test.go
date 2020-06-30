@@ -12,24 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadata
+package metadb_test
 
 import (
 	"testing"
 
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
+	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRecord_Save(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
-	record := &Record{
+	record := &m.Record{
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]Property{
+		Properties: map[string]m.Property{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -62,11 +63,11 @@ func TestRecord_Save(t *testing.T) {
 			Value: []interface{}{"a", "b"},
 		},
 		{
-			Name:  datastorePropertyPrefix + "prop1",
+			Name:  m.PropertyPrefix + "prop1",
 			Value: int64(42),
 		},
 		{
-			Name:  datastorePropertyPrefix + "prop2",
+			Name:  m.PropertyPrefix + "prop2",
 			Value: "value",
 		},
 	}
@@ -97,24 +98,24 @@ func TestRecord_Load(t *testing.T) {
 			Value: []interface{}{"a", "b"},
 		},
 		{
-			Name:  datastorePropertyPrefix + "prop1",
+			Name:  m.PropertyPrefix + "prop1",
 			Value: int64(42),
 		},
 		{
-			Name:  datastorePropertyPrefix + "prop2",
+			Name:  m.PropertyPrefix + "prop2",
 			Value: "value",
 		},
 	}
-	record := &Record{}
+	var record m.Record
 	if err := record.Load(properties); err != nil {
 		t.Fatalf("Load should not return an error: %v", err)
 	}
-	expected := &Record{
+	expected := m.Record{
 		Key:          "",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]Property{
+		Properties: map[string]m.Property{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},

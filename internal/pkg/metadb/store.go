@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadata
+package metadb
 
 // Store represents a Triton store in the metadata database.
 // See the Triton API definition for details.
