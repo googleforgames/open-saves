@@ -22,6 +22,8 @@ import (
 	triton "github.com/googleforgames/triton/api"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func newDriver(ctx context.Context, t *testing.T) *Driver {
@@ -145,6 +147,45 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	err = driver.DeleteStore(ctx, storeKey)
 	if err != nil {
 		t.Fatalf("Failed to delete a store (%s): %v", storeKey, err)
+	}
+}
+
+func TestDriver_InsertRecordShouldFailWithNonExistentStore(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	defer driver.Disconnect(ctx)
+	storeKey := newStoreKey()
+	record := &m.Record{
+		Key: newRecordKey(),
+	}
+	err := driver.InsertRecord(ctx, storeKey, record)
+	if err == nil {
+		t.Error("InsertRecord should fail if the store doesn't exist.")
+		driver.DeleteRecord(ctx, storeKey, record.Key)
+	} else {
+		assert.Equalf(t, codes.FailedPrecondition, status.Code(err),
+			"InsertRecord should return FailedPrecondition if the store doesn't exist: %v", err)
+	}
+}
+
+func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	defer driver.Disconnect(ctx)
+	store := &m.Store{Key: newStoreKey()}
+	record := &m.Record{Key: newRecordKey()}
+
+	assert.NoError(t, driver.CreateStore(ctx, store))
+	defer driver.DeleteStore(ctx, store.Key)
+	assert.NoError(t, driver.InsertRecord(ctx, store.Key, record))
+	defer driver.DeleteRecord(ctx, store.Key, record.Key)
+
+	err := driver.DeleteStore(ctx, store.Key)
+	if err == nil {
+		t.Error("DeleteStore should fail if the store is not empty.")
+	} else {
+		assert.Equalf(t, codes.FailedPrecondition, status.Code(err),
+			"DeleteStore should return FailedPrecondition if the store is not empty: %v", err)
 	}
 }
 

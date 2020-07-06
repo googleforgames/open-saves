@@ -19,11 +19,16 @@ import (
 
 	ds "cloud.google.com/go/datastore"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-const storeKind = "store"
-const recordKind = "record"
+const (
+	storeKind  = "store"
+	recordKind = "record"
+)
 
 // Driver is an implementation of the metadb.Driver interface for Google Cloud Datastore.
 // Call NewDriver to create a new driver instance.
@@ -33,13 +38,24 @@ type Driver struct {
 	Namespace string
 }
 
+func (d *Driver) mutateSingleInTransaction(tx *ds.Transaction, mut *ds.Mutation) error {
+	_, err := tx.Mutate(mut)
+	if err != nil {
+		if merr, ok := err.(ds.MultiError); ok {
+			err = merr[0]
+		}
+		return datastoreErrToGRPCStatus(err)
+	}
+	return nil
+}
+
 func (d *Driver) mutateSingle(ctx context.Context, mut *ds.Mutation) error {
 	_, err := d.client.Mutate(ctx, mut)
 	if err != nil {
 		if merr, ok := err.(ds.MultiError); ok {
 			err = merr[0]
 		}
-		return err
+		return datastoreErrToGRPCStatus(err)
 	}
 	return nil
 }
@@ -70,7 +86,7 @@ func (d *Driver) newQuery(kind string) *ds.Query {
 func NewDriver(ctx context.Context, projectID string, opts ...option.ClientOption) (*Driver, error) {
 	client, err := ds.NewClient(ctx, projectID, opts...)
 	if err != nil {
-		return nil, err
+		return nil, datastoreErrToGRPCStatus(err)
 	}
 	return &Driver{client: client}, nil
 }
@@ -85,7 +101,7 @@ func (d *Driver) Connect(ctx context.Context) error {
 // Make sure to call this method to release resources (e.g. using defer).
 // The MetaDB instance will not be available after Disconnect().
 func (d *Driver) Disconnect(ctx context.Context) error {
-	return d.client.Close()
+	return datastoreErrToGRPCStatus(d.client.Close())
 }
 
 // CreateStore creates a new store.
@@ -102,7 +118,7 @@ func (d *Driver) GetStore(ctx context.Context, key string) (*m.Store, error) {
 	store := new(m.Store)
 	err := d.client.Get(ctx, dskey, store)
 	if err != nil {
-		return nil, err
+		return nil, datastoreErrToGRPCStatus(err)
 	}
 	store.Key = key
 	return store, nil
@@ -115,7 +131,8 @@ func (d *Driver) FindStoreByName(ctx context.Context, name string) (*m.Store, er
 	store := new(m.Store)
 	key, err := iter.Next(store)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.NotFound,
+			"Store (name=%s) was not found.", name)
 	}
 	store.Key = key.Name
 	return store, nil
@@ -125,15 +142,45 @@ func (d *Driver) FindStoreByName(ctx context.Context, name string) (*m.Store, er
 // Returns error if the store has any child records.
 func (d *Driver) DeleteStore(ctx context.Context, key string) error {
 	dskey := d.createStoreKey(key)
-	return d.client.Delete(ctx, dskey)
+
+	_, err := d.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		query := ds.NewQuery(recordKind).Transaction(tx).KeysOnly().
+			Ancestor(dskey).Limit(1).Namespace(d.Namespace)
+		iter := d.client.Run(ctx, query)
+		_, err := iter.Next(nil)
+		if err != iterator.Done {
+			return status.Errorf(codes.FailedPrecondition,
+				"DeleteStore was called for a non-empty store (%s)", key)
+		}
+		return tx.Delete(dskey)
+	})
+	if err != nil {
+		return datastoreErrToGRPCStatus(err)
+	}
+	return nil
 }
 
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
 func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *m.Record) error {
 	rkey := d.createRecordKey(storeKey, record.Key)
-	mut := ds.NewInsert(rkey, record)
-	return d.mutateSingle(ctx, mut)
+	_, err := d.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		dskey := d.createStoreKey(storeKey)
+		query := ds.NewQuery(storeKind).Transaction(tx).Namespace(d.Namespace).
+			KeysOnly().Filter("__key__ = ", dskey).Limit(1)
+		iter := d.client.Run(ctx, query)
+		_, err := iter.Next(nil)
+		if err == iterator.Done {
+			return status.Errorf(codes.FailedPrecondition,
+				"InsertRecord was called with a non-existent store (%s)", storeKey)
+		}
+		mut := ds.NewInsert(rkey, record)
+		return d.mutateSingleInTransaction(tx, mut)
+	})
+	if err != nil {
+		return datastoreErrToGRPCStatus(err)
+	}
+	return nil
 }
 
 // UpdateRecord updates the record in the store specified with storeKey.
@@ -150,7 +197,7 @@ func (d *Driver) GetRecord(ctx context.Context, storeKey, key string) (*m.Record
 	rkey := d.createRecordKey(storeKey, key)
 	record := new(m.Record)
 	if err := d.client.Get(ctx, rkey, record); err != nil {
-		return nil, err
+		return nil, datastoreErrToGRPCStatus(err)
 	}
 	record.Key = key
 	return record, nil
@@ -160,5 +207,5 @@ func (d *Driver) GetRecord(ctx context.Context, storeKey, key string) (*m.Record
 // It doesn't return error even if the key is not found in the database.
 func (d *Driver) DeleteRecord(ctx context.Context, storeKey, key string) error {
 	rkey := d.createRecordKey(storeKey, key)
-	return d.client.Delete(ctx, rkey)
+	return datastoreErrToGRPCStatus(d.client.Delete(ctx, rkey))
 }

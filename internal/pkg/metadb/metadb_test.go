@@ -37,9 +37,11 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	mockDriver := mock_metadb.NewMockDriver(ctrl)
 	store := new(m.Store)
 	record := new(m.Record)
-	key := "random key string"
-	key2 := "another key string"
-	name := "random name"
+	const (
+		key  = "random key string"
+		key2 = "another key string"
+		name = "random name"
+	)
 
 	metadb := m.NewMetaDB(mockDriver)
 
