@@ -29,6 +29,9 @@ func datastoreErrToGRPCStatus(err error) (grpcErr error) {
 	case ds.ErrConcurrentTransaction:
 		grpcErr = status.Error(codes.Aborted, err.Error())
 	case ds.ErrInvalidEntityType:
+		// Datastore returns ErrInvalidEntity when Get is called with wrong structs.
+		// All structs passed to the Datastore library are managed by the server code
+		// and this should be treated as an internal error.
 		grpcErr = status.Error(codes.Internal, err.Error())
 	case ds.ErrInvalidKey:
 		grpcErr = status.Error(codes.InvalidArgument, err.Error())

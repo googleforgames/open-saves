@@ -29,6 +29,7 @@ type Config struct {
 	Address string
 	Cloud   string
 	Bucket  string
+	Project string
 }
 
 // Run starts the triton gRPC service.
@@ -44,7 +45,7 @@ func Run(ctx context.Context, network string, cfg *Config) error {
 	}()
 
 	s := grpc.NewServer()
-	tritonServer, err := newTritonServer(cfg.Cloud, cfg.Bucket)
+	tritonServer, err := newTritonServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket)
 	if err != nil {
 		return err
 	}

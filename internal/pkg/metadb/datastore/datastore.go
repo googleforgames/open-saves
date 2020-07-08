@@ -124,7 +124,7 @@ func (d *Driver) GetStore(ctx context.Context, key string) (*m.Store, error) {
 	return store, nil
 }
 
-// FindStoreByName finds and fetch a store based on the name (complete match).
+// FindStoreByName finds and fetches a store based on the name (complete match).
 func (d *Driver) FindStoreByName(ctx context.Context, name string) (*m.Store, error) {
 	query := d.newQuery(storeKind).Filter("Name =", name)
 	iter := d.client.Run(ctx, query)

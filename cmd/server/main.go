@@ -24,9 +24,10 @@ import (
 )
 
 var (
-	port   = flag.Uint("port", 6000, "The port number to run Triton on")
-	cloud  = flag.String("cloud", "gcp", "The public cloud provider you wish to run Triton on")
-	bucket = flag.String("bucket", "gs://triton-dev-store", "The bucket which will hold Triton blobs")
+	port    = flag.Uint("port", 6000, "The port number to run Triton on")
+	cloud   = flag.String("cloud", "gcp", "The public cloud provider you wish to run Triton on")
+	bucket  = flag.String("bucket", "gs://triton-dev-store", "The bucket which will hold Triton blobs")
+	project = flag.String("project", "triton-for-games-dev", "The GCP project ID to use for Datastore")
 )
 
 func main() {
@@ -42,6 +43,7 @@ func main() {
 		Address: fmt.Sprintf(":%d", *port),
 		Cloud:   *cloud,
 		Bucket:  *bucket,
+		Project: *project,
 	}
 
 	ctx := context.Background()
