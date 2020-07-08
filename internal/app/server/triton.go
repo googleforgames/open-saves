@@ -21,16 +21,20 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	tritonpb "github.com/googleforgames/triton/api"
 	"github.com/googleforgames/triton/internal/app/blob"
+	"github.com/googleforgames/triton/internal/pkg/metadb"
+	"github.com/googleforgames/triton/internal/pkg/metadb/datastore"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/status"
 )
 
 type tritonServer struct {
 	cloud     string
 	blobStore blob.BlobStore
+	metaDB    *metadb.MetaDB
 }
 
 // newTritonServer creates a new instance of the triton server.
-func newTritonServer(cloud string, bucket string) (tritonpb.TritonServer, error) {
+func newTritonServer(ctx context.Context, cloud string, project string, bucket string) (tritonpb.TritonServer, error) {
 	switch cloud {
 	case "gcp":
 		log.Infoln("Instantiating Triton server on GCP")
@@ -38,9 +42,19 @@ func newTritonServer(cloud string, bucket string) (tritonpb.TritonServer, error)
 		if err != nil {
 			return nil, err
 		}
+		datastore, err := datastore.NewDriver(ctx, project)
+		if err != nil {
+			return nil, err
+		}
+		metadb := metadb.NewMetaDB(datastore)
+		if err := metadb.Connect(ctx); err != nil {
+			log.Fatalf("Failed to connect to the metadata server: %v", err)
+			return nil, err
+		}
 		triton := &tritonServer{
 			cloud:     cloud,
 			blobStore: gcs,
+			metaDB:    metadb,
 		}
 		return triton, nil
 	default:
@@ -49,6 +63,16 @@ func newTritonServer(cloud string, bucket string) (tritonpb.TritonServer, error)
 }
 
 func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStoreRequest) (*tritonpb.Store, error) {
+	store := metadb.Store{
+		Key:     req.Store.Key,
+		Name:    req.Store.Name,
+		Tags:    req.Store.Tags,
+		OwnerID: req.Store.OwnerId,
+	}
+	if err := s.metaDB.CreateStore(ctx, &store); err != nil {
+		log.Errorf("CreateStore failed for store (%s): %v", store.Key, err)
+		return nil, status.Convert(err).Err()
+	}
 	log.Infof("created store: %+v", req.Store)
 	return req.Store, nil
 }
