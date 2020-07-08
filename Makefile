@@ -21,7 +21,7 @@ TRITON_GO_PROTOS = ${API_DIR}/triton.pb.go ${API_DIR}/triton.pb.gw.go
 TRITON_SWAGGER_JSON = ${API_DIR}/triton.swagger.json
 ALL_TARGETS = ${SERVER_BIN} ${TRITON_GO_PROTOS} ${TRITON_SWAGGER_JSON}
 
-.PHONY: all clean test server protos swagger FORCE
+.PHONY: all clean test server protos swagger mock FORCE
 
 all: server
 
@@ -39,6 +39,11 @@ test:
 protos: ${TRITON_GO_PROTOS}
 
 swagger: ${TRITON_SWAGGER_JSON}
+
+mock: internal/pkg/metadb/mock/mock_metadb.go
+
+internal/pkg/metadb/mock/mock_metadb.go: internal/pkg/metadb/metadb.go
+	mockgen -source "$<" -destination "$@"
 
 ${API_DIR}/triton.pb.go: ${API_DIR}/triton.proto
 	$(PROTOC) -I. \
