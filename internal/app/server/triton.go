@@ -20,7 +20,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	tritonpb "github.com/googleforgames/triton/api"
-	"github.com/googleforgames/triton/internal/app/blob"
+	"github.com/googleforgames/triton/internal/pkg/blob"
 	"github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/googleforgames/triton/internal/pkg/metadb/datastore"
 	log "github.com/sirupsen/logrus"
