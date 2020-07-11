@@ -31,6 +31,7 @@ type tritonServer struct {
 	cloud     string
 	blobStore blob.BlobStore
 	metaDB    *metadb.MetaDB
+	cacheStore *cache.Cache
 }
 
 // newTritonServer creates a new instance of the triton server.
@@ -51,10 +52,12 @@ func newTritonServer(ctx context.Context, cloud string, project string, bucket s
 			log.Fatalf("Failed to connect to the metadata server: %v", err)
 			return nil, err
 		}
+		redis := cache.NewRedis()
 		triton := &tritonServer{
 			cloud:     cloud,
 			blobStore: gcs,
 			metaDB:    metadb,
+			cacheStore: 
 		}
 		return triton, nil
 	default:

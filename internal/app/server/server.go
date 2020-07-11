@@ -29,6 +29,7 @@ type Config struct {
 	Address string
 	Cloud   string
 	Bucket  string
+	Cache   string
 	Project string
 }
 
