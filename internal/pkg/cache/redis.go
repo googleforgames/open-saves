@@ -24,10 +24,10 @@ type Redis struct {
 	redisPool *redis.Pool
 }
 
-func NewRedis() *Redis {
+func NewRedis(address string, opts ...redis.DialOption) *Redis {
 	rp := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", "localhost:6379")
+			return redis.Dial("tcp", address, opts...)
 		},
 		MaxIdle:   500,
 		MaxActive: 10000,

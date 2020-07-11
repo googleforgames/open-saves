@@ -28,6 +28,7 @@ var (
 	cloud   = flag.String("cloud", "gcp", "The public cloud provider you wish to run Triton on")
 	bucket  = flag.String("bucket", "gs://triton-dev-store", "The bucket which will hold Triton blobs")
 	project = flag.String("project", "triton-for-games-dev", "The GCP project ID to use for Datastore")
+	cache   = flag.String("cache", "localhost:6379", "The address of the cache store instance")
 )
 
 func main() {
@@ -38,12 +39,19 @@ func main() {
 	if *bucket == "" {
 		log.Fatal("missing -bucket argument for storing blobs")
 	}
+	if *project == "" {
+		log.Fatal("missing -project argument")
+	}
+	if *cache == "" {
+		log.Fatal("missing --cache argument for cache store")
+	}
 
 	cfg := &server.Config{
 		Address: fmt.Sprintf(":%d", *port),
 		Cloud:   *cloud,
 		Bucket:  *bucket,
 		Project: *project,
+		Cache:   *cache,
 	}
 
 	ctx := context.Background()

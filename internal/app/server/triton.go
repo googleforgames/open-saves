@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	tritonpb "github.com/googleforgames/triton/api"
 	"github.com/googleforgames/triton/internal/pkg/blob"
+	"github.com/googleforgames/triton/internal/pkg/cache"
 	"github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/googleforgames/triton/internal/pkg/metadb/datastore"
 	log "github.com/sirupsen/logrus"
@@ -28,14 +29,14 @@ import (
 )
 
 type tritonServer struct {
-	cloud     string
-	blobStore blob.BlobStore
-	metaDB    *metadb.MetaDB
-	cacheStore *cache.Cache
+	cloud      string
+	blobStore  blob.BlobStore
+	metaDB     *metadb.MetaDB
+	cacheStore cache.Cache
 }
 
 // newTritonServer creates a new instance of the triton server.
-func newTritonServer(ctx context.Context, cloud string, project string, bucket string) (tritonpb.TritonServer, error) {
+func newTritonServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (tritonpb.TritonServer, error) {
 	switch cloud {
 	case "gcp":
 		log.Infoln("Instantiating Triton server on GCP")
@@ -49,15 +50,15 @@ func newTritonServer(ctx context.Context, cloud string, project string, bucket s
 		}
 		metadb := metadb.NewMetaDB(datastore)
 		if err := metadb.Connect(ctx); err != nil {
-			log.Fatalf("Failed to connect to the metadata server: %v", err)
+			log.Fatalf("Failed to connect to the lta server: %v", err)
 			return nil, err
 		}
-		redis := cache.NewRedis()
+		redis := cache.NewRedis(cacheAddr)
 		triton := &tritonServer{
-			cloud:     cloud,
-			blobStore: gcs,
-			metaDB:    metadb,
-			cacheStore: 
+			cloud:      cloud,
+			blobStore:  gcs,
+			metaDB:     metadb,
+			cacheStore: redis,
 		}
 		return triton, nil
 	default:

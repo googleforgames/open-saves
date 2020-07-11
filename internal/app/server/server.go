@@ -46,7 +46,7 @@ func Run(ctx context.Context, network string, cfg *Config) error {
 	}()
 
 	s := grpc.NewServer()
-	tritonServer, err := newTritonServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket)
+	tritonServer, err := newTritonServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
 	if err != nil {
 		return err
 	}
