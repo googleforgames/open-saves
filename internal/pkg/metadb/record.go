@@ -39,9 +39,45 @@ type Record struct {
 	Blob         []byte
 	BlobSize     int64
 	ExternalBlob string
-	Properties   map[string]Property `datastore:"-"`
+	Properties   map[string]*Property `datastore:"-"`
 	OwnerID      string
 	Tags         []string
+}
+
+// ToProto converts the struct to a proto.
+func (p *Property) ToProto() *pb.Property {
+	ret := &pb.Property{
+		Type: p.Type,
+	}
+	switch p.Type {
+	case pb.Property_BOOLEAN:
+		ret.Value = &pb.Property_BooleanValue{BooleanValue: p.BooleanValue}
+	case pb.Property_INTEGER:
+		ret.Value = &pb.Property_IntegerValue{IntegerValue: p.IntegerValue}
+	case pb.Property_STRING:
+		ret.Value = &pb.Property_StringValue{StringValue: p.StringValue}
+	}
+	return ret
+}
+
+// NewPropertyFromProto creates a new Property instance from a proto.
+// Passing nil returns a zero-initialized Property.
+func NewPropertyFromProto(p *pb.Property) *Property {
+	if p == nil {
+		return new(Property)
+	}
+	ret := &Property{
+		Type: p.Type,
+	}
+	switch p.Type {
+	case pb.Property_BOOLEAN:
+		ret.BooleanValue = p.GetBooleanValue()
+	case pb.Property_INTEGER:
+		ret.IntegerValue = p.GetIntegerValue()
+	case pb.Property_STRING:
+		ret.StringValue = p.GetStringValue()
+	}
+	return ret
 }
 
 // PropertyPrefix is necessary to avoid potential conflict between internal and user defined
@@ -113,9 +149,9 @@ func (r *Record) Load(ps []datastore.Property) error {
 			}
 			// Allocate a new map only when there are user-defined properties.
 			if r.Properties == nil {
-				r.Properties = map[string]Property{}
+				r.Properties = make(map[string]*Property)
 			}
-			var newprop Property
+			var newprop = new(Property)
 			t := reflect.TypeOf(p.Value)
 			switch t.Kind() {
 			case reflect.Bool:
@@ -137,4 +173,45 @@ func (r *Record) Load(ps []datastore.Property) error {
 		}
 	}
 	return nil
+}
+
+// ToProto converts the struct to a proto.
+func (r *Record) ToProto() *pb.Record {
+	ret := &pb.Record{
+		Key:      r.Key,
+		Blob:     r.Blob,
+		BlobSize: r.BlobSize,
+		OwnerId:  r.OwnerID,
+		Tags:     r.Tags,
+	}
+	if r.Properties != nil {
+		ret.Properties = make(map[string]*pb.Property)
+		for k, v := range r.Properties {
+			ret.Properties[k] = v.ToProto()
+		}
+	}
+	return ret
+}
+
+// NewRecordFromProto creates a new Record instance from a proto.
+// Passing nil returns a zero-initialized proto.
+func NewRecordFromProto(p *pb.Record) *Record {
+	if p == nil {
+		return new(Record)
+	}
+	ret := &Record{
+		Key:      p.GetKey(),
+		Blob:     p.GetBlob(),
+		BlobSize: p.GetBlobSize(),
+		OwnerID:  p.GetOwnerId(),
+		Tags:     p.GetTags(),
+	}
+	properties := p.GetProperties()
+	if properties != nil {
+		ret.Properties = make(map[string]*Property)
+		for k, v := range properties {
+			ret.Properties[k] = NewPropertyFromProto(v)
+		}
+	}
+	return ret
 }

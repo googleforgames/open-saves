@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	triton "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/triton/api"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
@@ -114,10 +114,10 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 		BlobSize: int64(len(blob)),
 		OwnerID:  "Triton",
 		Tags:     []string{"abc", "def"},
-		Properties: map[string]m.Property{
-			"BoolTP":   {Type: triton.Property_BOOLEAN, BooleanValue: false},
-			"IntTP":    {Type: triton.Property_INTEGER, IntegerValue: 42},
-			"StringTP": {Type: triton.Property_STRING, StringValue: "a string value"},
+		Properties: map[string]*m.Property{
+			"BoolTP":   {Type: pb.Property_BOOLEAN, BooleanValue: false},
+			"IntTP":    {Type: pb.Property_INTEGER, IntegerValue: 42},
+			"StringTP": {Type: pb.Property_STRING, StringValue: "a string value"},
 		},
 	}
 	if err := driver.InsertRecord(ctx, storeKey, record); err != nil {
