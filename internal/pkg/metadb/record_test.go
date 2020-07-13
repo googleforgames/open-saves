@@ -15,6 +15,7 @@
 package metadb_test
 
 import (
+	"sort"
 	"testing"
 
 	"cloud.google.com/go/datastore"
@@ -23,6 +24,59 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestProperty_ToProto(t *testing.T) {
+	booleanProperty := &m.Property{Type: pb.Property_BOOLEAN, BooleanValue: true}
+	booleanExpected := &pb.Property{
+		Type:  pb.Property_BOOLEAN,
+		Value: &pb.Property_BooleanValue{BooleanValue: true},
+	}
+	assert.Equal(t, booleanExpected, booleanProperty.ToProto())
+
+	integerProperty := &m.Property{Type: pb.Property_INTEGER, IntegerValue: 42}
+	integerExpected := &pb.Property{
+		Type:  pb.Property_INTEGER,
+		Value: &pb.Property_IntegerValue{IntegerValue: 42},
+	}
+	assert.Equal(t, integerExpected, integerProperty.ToProto())
+
+	stringProperty := &m.Property{Type: pb.Property_STRING, StringValue: "triton"}
+	stringExpected := &pb.Property{
+		Type:  pb.Property_STRING,
+		Value: &pb.Property_StringValue{StringValue: "triton"},
+	}
+	assert.Equal(t, stringExpected, stringProperty.ToProto())
+}
+
+func TestProperty_NewPropertyFromProtoNil(t *testing.T) {
+	expected := new(m.Property)
+	actual := m.NewPropertyFromProto(nil)
+	assert.NotNil(t, expected, actual)
+	assert.Equal(t, expected, actual)
+}
+
+func TestProperty_NewPropertyFromProto(t *testing.T) {
+	booleanProto := &pb.Property{
+		Type:  pb.Property_BOOLEAN,
+		Value: &pb.Property_BooleanValue{BooleanValue: true},
+	}
+	booleanExpected := &m.Property{Type: pb.Property_BOOLEAN, BooleanValue: true}
+	assert.Equal(t, booleanExpected, m.NewPropertyFromProto(booleanProto))
+
+	integerProto := &pb.Property{
+		Type:  pb.Property_INTEGER,
+		Value: &pb.Property_IntegerValue{IntegerValue: 42},
+	}
+	integerExpected := &m.Property{Type: pb.Property_INTEGER, IntegerValue: 42}
+	assert.Equal(t, integerExpected, m.NewPropertyFromProto(integerProto))
+
+	stringProto := &pb.Property{
+		Type:  pb.Property_STRING,
+		Value: &pb.Property_StringValue{StringValue: "triton"},
+	}
+	stringExpected := &m.Property{Type: pb.Property_STRING, StringValue: "triton"}
+	assert.Equal(t, stringExpected, m.NewPropertyFromProto(stringProto))
+
+}
 func TestRecord_Save(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	record := &m.Record{
@@ -30,7 +84,7 @@ func TestRecord_Save(t *testing.T) {
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]m.Property{
+		Properties: map[string]*m.Property{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -41,6 +95,10 @@ func TestRecord_Save(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
+	// Need to sort before comparing because pointer values are runtime dependent.
+	sort.Slice(properties, func(i, j int) bool {
+		return properties[i].Name < properties[j].Name
+	})
 	expected := []datastore.Property{
 		{
 			Name:  "Blob",
@@ -49,6 +107,14 @@ func TestRecord_Save(t *testing.T) {
 		{
 			Name:  "BlobSize",
 			Value: int64(len(testBlob)),
+		},
+		{
+			Name:  m.PropertyPrefix + "prop1",
+			Value: int64(42),
+		},
+		{
+			Name:  m.PropertyPrefix + "prop2",
+			Value: "value",
 		},
 		{
 			Name:  "ExternalBlob",
@@ -61,14 +127,6 @@ func TestRecord_Save(t *testing.T) {
 		{
 			Name:  "Tags",
 			Value: []interface{}{"a", "b"},
-		},
-		{
-			Name:  m.PropertyPrefix + "prop1",
-			Value: int64(42),
-		},
-		{
-			Name:  m.PropertyPrefix + "prop2",
-			Value: "value",
 		},
 	}
 	assert.Equal(t, expected, properties, "Save didn't return expected values.")
@@ -115,7 +173,7 @@ func TestRecord_Load(t *testing.T) {
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]m.Property{
+		Properties: map[string]*m.Property{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -123,4 +181,80 @@ func TestRecord_Load(t *testing.T) {
 		Tags:    []string{"a", "b"},
 	}
 	assert.Equal(t, expected, record, "Load didn't return the expected value.")
+}
+
+func TestRecord_ToProtoSimple(t *testing.T) {
+	testBlob := []byte{0x24, 0x42, 0x11}
+	record := &m.Record{
+		Key:          "key",
+		Blob:         testBlob,
+		BlobSize:     int64(len(testBlob)),
+		ExternalBlob: "",
+		Properties: map[string]*m.Property{
+			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
+			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
+		},
+		OwnerID: "owner",
+		Tags:    []string{"a", "b"},
+	}
+	expected := &pb.Record{
+		Key:      "key",
+		Blob:     testBlob,
+		BlobSize: int64(len(testBlob)),
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: &pb.Property_IntegerValue{IntegerValue: 42},
+			},
+			"prop2": {
+				Type:  pb.Property_STRING,
+				Value: &pb.Property_StringValue{StringValue: "value"},
+			},
+		},
+		OwnerId: "owner",
+		Tags:    []string{"a", "b"},
+	}
+	assert.Equal(t, expected, record.ToProto())
+}
+
+func TestRecord_NewRecordFromProto(t *testing.T) {
+	testBlob := []byte{0x24, 0x42, 0x11}
+	proto := &pb.Record{
+		Key:      "key",
+		Blob:     testBlob,
+		BlobSize: int64(len(testBlob)),
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: &pb.Property_IntegerValue{IntegerValue: 42},
+			},
+			"prop2": {
+				Type:  pb.Property_STRING,
+				Value: &pb.Property_StringValue{StringValue: "value"},
+			},
+		},
+		OwnerId: "owner",
+		Tags:    []string{"a", "b"},
+	}
+	expected := &m.Record{
+		Key:          "key",
+		Blob:         testBlob,
+		BlobSize:     int64(len(testBlob)),
+		ExternalBlob: "",
+		Properties: map[string]*m.Property{
+			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
+			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
+		},
+		OwnerID: "owner",
+		Tags:    []string{"a", "b"},
+	}
+	actual := m.NewRecordFromProto(proto)
+	assert.Equal(t, expected, actual)
+}
+
+func TestRecord_NewRecordFromProtoNil(t *testing.T) {
+	expected := new(m.Record)
+	actual := m.NewRecordFromProto(nil)
+	assert.NotNil(t, actual)
+	assert.Equal(t, expected, actual)
 }
