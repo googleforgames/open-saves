@@ -50,7 +50,7 @@ func newTritonServer(ctx context.Context, cloud, project, bucket, cacheAddr stri
 		}
 		metadb := metadb.NewMetaDB(datastore)
 		if err := metadb.Connect(ctx); err != nil {
-			log.Fatalf("Failed to connect to the lta server: %v", err)
+			log.Fatalf("Failed to connect to the metadata server: %v", err)
 			return nil, err
 		}
 		redis := cache.NewRedis(cacheAddr)
