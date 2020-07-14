@@ -120,7 +120,6 @@ func (d *Driver) GetStore(ctx context.Context, key string) (*m.Store, error) {
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
-	store.Key = key
 	return store, nil
 }
 
@@ -129,12 +128,11 @@ func (d *Driver) FindStoreByName(ctx context.Context, name string) (*m.Store, er
 	query := d.newQuery(storeKind).Filter("Name =", name)
 	iter := d.client.Run(ctx, query)
 	store := new(m.Store)
-	key, err := iter.Next(store)
+	_, err := iter.Next(store)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound,
 			"Store (name=%s) was not found.", name)
 	}
-	store.Key = key.Name
 	return store, nil
 }
 
@@ -199,7 +197,6 @@ func (d *Driver) GetRecord(ctx context.Context, storeKey, key string) (*m.Record
 	if err := d.client.Get(ctx, rkey, record); err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
-	record.Key = key
 	return record, nil
 }
 
