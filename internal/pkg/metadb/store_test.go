@@ -17,6 +17,7 @@ package metadb_test
 import (
 	"testing"
 
+	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
@@ -58,4 +59,11 @@ func TestStore_NewStoreFromProtoSimple(t *testing.T) {
 		OwnerID: "owner",
 	}
 	assert.Equal(t, expected, m.NewStoreFromProto(proto))
+}
+
+func TestStore_LoadKey(t *testing.T) {
+	store := new(m.Store)
+	key := datastore.NameKey("kind", "testkey", nil)
+	assert.NoError(t, store.LoadKey(key))
+	assert.Equal(t, "testkey", store.Key)
 }
