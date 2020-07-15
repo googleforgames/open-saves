@@ -15,7 +15,6 @@
 package metadb_test
 
 import (
-	"sort"
 	"testing"
 
 	"cloud.google.com/go/datastore"
@@ -95,10 +94,6 @@ func TestRecord_Save(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	// Need to sort before comparing because pointer values are runtime dependent.
-	sort.Slice(properties, func(i, j int) bool {
-		return properties[i].Name < properties[j].Name
-	})
 	expected := []datastore.Property{
 		{
 			Name:  "Blob",
@@ -129,7 +124,7 @@ func TestRecord_Save(t *testing.T) {
 			Value: []interface{}{"a", "b"},
 		},
 	}
-	assert.Equal(t, expected, properties, "Save didn't return expected values.")
+	assert.ElementsMatch(t, expected, properties, "Save didn't return expected values.")
 }
 
 func TestRecord_Load(t *testing.T) {
