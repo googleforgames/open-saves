@@ -14,6 +14,10 @@
 
 package metadb
 
+import (
+	pb "github.com/googleforgames/triton/api"
+)
+
 // Store represents a Triton store in the metadata database.
 // See the Triton API definition for details.
 type Store struct {
@@ -21,4 +25,28 @@ type Store struct {
 	Name    string
 	Tags    []string
 	OwnerID string
+}
+
+// ToProto converts the structure a proto.
+func (s *Store) ToProto() *pb.Store {
+	return &pb.Store{
+		Key:     s.Key,
+		Name:    s.Name,
+		Tags:    s.Tags,
+		OwnerId: s.OwnerID,
+	}
+}
+
+// NewStoreFromProto creates a new Store instance from a proto.
+// Passing nil returns a zero-initialized Store.
+func NewStoreFromProto(p *pb.Store) *Store {
+	if p == nil {
+		return new(Store)
+	}
+	return &Store{
+		Key:     p.Key,
+		Name:    p.Name,
+		Tags:    p.Tags,
+		OwnerID: p.OwnerId,
+	}
 }
