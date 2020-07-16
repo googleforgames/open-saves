@@ -24,6 +24,7 @@ import (
 	"github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/googleforgames/triton/internal/pkg/metadb/datastore"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -70,41 +71,91 @@ func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStor
 		OwnerID: req.Store.OwnerId,
 	}
 	if err := s.metaDB.CreateStore(ctx, &store); err != nil {
-		log.Errorf("CreateStore failed for store (%s): %v", store.Key, err)
+		log.Warnf("CreateStore failed for store (%s): %v", store.Key, err)
 		return nil, status.Convert(err).Err()
 	}
-	log.Infof("created store: %+v", req.Store)
+	log.Infof("Created store: %+v", store)
 	return req.Store, nil
 }
 
 func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRecordRequest) (*tritonpb.Record, error) {
-	return nil, nil
+	record := metadb.NewRecordFromProto(req.Record)
+	err := s.metaDB.InsertRecord(ctx, req.StoreKey, record)
+	if err != nil {
+		log.Warnf("CreateRecord failed for store (%s), record (%s): %v",
+			req.GetStoreKey(), req.Record.GetKey(), err)
+		return nil, status.Convert(err).Err()
+	}
+	log.Infof("Created record: %+v", record)
+	return req.Record, nil
 }
 
 func (s *tritonServer) DeleteRecord(ctx context.Context, req *tritonpb.DeleteRecordRequest) (*empty.Empty, error) {
-	return nil, nil
+	err := s.metaDB.DeleteRecord(ctx, req.GetStoreKey(), req.GetKey())
+	if err != nil {
+		log.Warnf("DeleteRecord failed for store (%s), record (%s): %v",
+			req.GetStoreKey(), req.GetKey(), err)
+		return nil, status.Convert(err).Err()
+	}
+	log.Infof("Deleted record: store (%s), record (%s)",
+		req.GetStoreKey(), req.GetKey())
+	return new(empty.Empty), nil
 }
 
 func (s *tritonServer) GetStore(ctx context.Context, req *tritonpb.GetStoreRequest) (*tritonpb.Store, error) {
-	return nil, nil
+	store, err := s.metaDB.GetStore(ctx, req.GetKey())
+	if err != nil {
+		log.Warnf("GetStore failed for store (%s): %v", req.GetKey(), err)
+		return nil, status.Convert(err).Err()
+	}
+	return store.ToProto(), nil
 }
 
 func (s *tritonServer) ListStores(ctx context.Context, req *tritonpb.ListStoresRequest) (*tritonpb.ListStoresResponse, error) {
-	return nil, nil
+	store, err := s.metaDB.FindStoreByName(ctx, req.Name)
+	if err != nil {
+		log.Warnf("ListStores failed: %v", err)
+		return nil, status.Convert(err).Err()
+	}
+	storeProtos := []*tritonpb.Store{store.ToProto()}
+	res := &tritonpb.ListStoresResponse{
+		Stores: storeProtos,
+	}
+	return res, nil
 }
 
 func (s *tritonServer) DeleteStore(ctx context.Context, req *tritonpb.DeleteStoreRequest) (*empty.Empty, error) {
-	return nil, nil
+	err := s.metaDB.DeleteStore(ctx, req.GetKey())
+	if err != nil {
+		log.Warnf("DeleteStore failed for store (%s): %v", req.GetKey(), err)
+		return nil, status.Convert(err).Err()
+	}
+	log.Infof("Deletes store: %s", req.GetKey())
+	return new(empty.Empty), nil
 }
 
 func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordRequest) (*tritonpb.Record, error) {
-	return nil, nil
+	record, err := s.metaDB.GetRecord(ctx, req.GetStoreKey(), req.GetKey())
+	if err != nil {
+		log.Warnf("GetRecord failed for store (%s), record (%s): %v",
+			req.GetStoreKey(), req.GetKey(), err)
+		return nil, status.Convert(err).Err()
+	}
+	log.Infof("Got record: %+v", record)
+	return record.ToProto(), nil
 }
 
 func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRecordRequest) (*tritonpb.Record, error) {
-	return nil, nil
+	record := metadb.NewRecordFromProto(req.GetRecord())
+	err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record)
+	if err != nil {
+		log.Warnf("UpdateRecord failed for store(%s), record (%s): %v",
+			req.GetStoreKey(), req.GetRecord().GetKey(), err)
+		return nil, status.Convert(err).Err()
+	}
+	return record.ToProto(), nil
 }
 
 func (s *tritonServer) QueryRecords(ctx context.Context, req *tritonpb.QueryRecordsRequest) (*tritonpb.QueryRecordsResponse, error) {
-	return nil, nil
+	return nil, status.Error(codes.Unimplemented, "QueryRecords is not implemented yet.")
 }
