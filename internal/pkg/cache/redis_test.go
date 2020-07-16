@@ -17,27 +17,17 @@ package cache
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRedis_Memorystore(t *testing.T) {
+func TestRedis_All(t *testing.T) {
 	ctx := context.Background()
 
-	// Start with an attempt to connect to the Memorystore instance
-	r := NewRedis("10.142.229.196:6379",
-		redis.DialConnectTimeout(1*time.Second),
-		redis.DialReadTimeout(100*time.Millisecond),
-		redis.DialWriteTimeout(100*time.Millisecond))
-
-	// If a test call fails, reconnect on a localhost instance.
-	_, err := r.ListKeys(ctx)
-	if err != nil {
-		// Fallback to localhost.
-		r = NewRedis("localhost:6379")
-	}
+	// Use a local instance of Redis for tests. This
+	// requires starting a redis server prior to test
+	// invocation.
+	r := NewRedis("localhost:6379")
 
 	keys, err := r.ListKeys(ctx)
 	assert.NoError(t, err)
