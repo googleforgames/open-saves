@@ -32,13 +32,6 @@ const (
 	bufferSize  = 1024 * 1024
 )
 
-func makeTestFunc(ctx context.Context,
-	testFunc func(t *testing.T, ctx context.Context, cloud string), cloud string) func(*testing.T) {
-	return func(t *testing.T) {
-		testFunc(t, ctx, cloud)
-	}
-}
-
 func getTestServer(ctx context.Context, t *testing.T, cloud string) (*grpc.Server, *bufconn.Listener) {
 	impl, err := newTritonServer(ctx, cloud, testProject, testBucket)
 	if err != nil {
