@@ -15,6 +15,7 @@
 package metadb
 
 import (
+	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
 )
 
@@ -27,6 +28,10 @@ type Store struct {
 	OwnerID string
 }
 
+// Assert Store implements both PropertyLoadSave and KeyLoader.
+var _ datastore.PropertyLoadSaver = new(Store)
+var _ datastore.KeyLoader = new(Store)
+
 // ToProto converts the structure a proto.
 func (s *Store) ToProto() *pb.Store {
 	return &pb.Store{
@@ -35,6 +40,29 @@ func (s *Store) ToProto() *pb.Store {
 		Tags:    s.Tags,
 		OwnerId: s.OwnerID,
 	}
+}
+
+// These functions need to be implemented here instead of the datastore package because
+// go doesn't permit to define additional receivers in another package.
+// Save and Load replicates the default behaviors, however, they are required
+// for the KeyLoader interface.
+
+// Save implements the Datastore PropertyLoadSaver interface and converts the properties
+// field in the struct to separate Datastore properties.
+func (s *Store) Save() ([]datastore.Property, error) {
+	return datastore.SaveStruct(s)
+}
+
+// Load implements the Datastore PropertyLoadSaver interface and converts Datstore
+// properties to the Properties field.
+func (s *Store) Load(ps []datastore.Property) error {
+	return datastore.LoadStruct(s, ps)
+}
+
+// LoadKey implements the KeyLoader interface and sets the value to the Key field.
+func (s *Store) LoadKey(k *datastore.Key) error {
+	s.Key = k.Name
+	return nil
 }
 
 // NewStoreFromProto creates a new Store instance from a proto.

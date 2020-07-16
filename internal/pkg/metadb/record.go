@@ -44,6 +44,10 @@ type Record struct {
 	Tags         []string
 }
 
+// Assert Record implements both PropertyLoadSave and KeyLoader.
+var _ datastore.PropertyLoadSaver = new(Record)
+var _ datastore.KeyLoader = new(Record)
+
 // ToProto converts the struct to a proto.
 func (p *Property) ToProto() *pb.Property {
 	ret := &pb.Property{
@@ -172,6 +176,12 @@ func (r *Record) Load(ps []datastore.Property) error {
 			r.Properties[name] = newprop
 		}
 	}
+	return nil
+}
+
+// LoadKey implements the KeyLoader interface and sets the value to the Key field.
+func (r *Record) LoadKey(k *datastore.Key) error {
+	r.Key = k.Name
 	return nil
 }
 

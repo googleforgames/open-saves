@@ -253,3 +253,10 @@ func TestRecord_NewRecordFromProtoNil(t *testing.T) {
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
 }
+
+func TestRecord_LoadKey(t *testing.T) {
+	record := new(m.Record)
+	key := datastore.NameKey("kind", "testkey", nil)
+	assert.NoError(t, record.LoadKey(key))
+	assert.Equal(t, "testkey", record.Key)
+}
