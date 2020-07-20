@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb
+package metadb_test
 
 import (
 	"testing"
@@ -20,12 +20,13 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTimestamps_NewTimestamps(t *testing.T) {
 	beforeNew := time.Now()
-	var ts Timestamps
+	var ts m.Timestamps
 	ts.NewTimestamps()
 	afterNew := time.Now()
 	assert.NotNil(t, ts)
@@ -41,7 +42,7 @@ func TestTimestamps_NewTimestamps(t *testing.T) {
 }
 
 func TestTimestamps_Update(t *testing.T) {
-	var ts Timestamps
+	var ts m.Timestamps
 	ts.NewTimestamps()
 	ocreated := ts.CreatedAt
 	oupdated := ts.UpdatedAt
@@ -59,7 +60,7 @@ func TestTimestamps_Update(t *testing.T) {
 }
 
 func TestTimestamps_Save(t *testing.T) {
-	var ts Timestamps
+	var ts m.Timestamps
 	ts.NewTimestamps()
 	actual, err := ts.Save()
 	assert.NoError(t, err)
@@ -73,7 +74,7 @@ func TestTimestamps_Save(t *testing.T) {
 			Value: ts.UpdatedAt,
 		},
 		{
-			Name:    signaturePropertyName,
+			Name:    "Signature",
 			Value:   ts.Signature.String(),
 			NoIndex: true,
 		},
@@ -95,14 +96,14 @@ func TestTimestamps_Load(t *testing.T) {
 			Value: updatedAt,
 		},
 		{
-			Name:    signaturePropertyName,
+			Name:    "Signature",
 			Value:   uuid.String(),
 			NoIndex: true,
 		},
 	}
-	var actual Timestamps
+	var actual m.Timestamps
 	assert.NoError(t, actual.Load(properties))
-	expected := Timestamps{
+	expected := m.Timestamps{
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 		Signature: uuid,
