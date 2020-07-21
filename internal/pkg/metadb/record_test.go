@@ -23,22 +23,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestProperty_ToProto(t *testing.T) {
-	booleanProperty := &m.Property{Type: pb.Property_BOOLEAN, BooleanValue: true}
+func TestPropertyValue_ToProto(t *testing.T) {
+	booleanProperty := &m.PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
 	booleanExpected := &pb.Property{
 		Type:  pb.Property_BOOLEAN,
 		Value: &pb.Property_BooleanValue{BooleanValue: true},
 	}
 	assert.Equal(t, booleanExpected, booleanProperty.ToProto())
 
-	integerProperty := &m.Property{Type: pb.Property_INTEGER, IntegerValue: 42}
+	integerProperty := &m.PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
 	integerExpected := &pb.Property{
 		Type:  pb.Property_INTEGER,
 		Value: &pb.Property_IntegerValue{IntegerValue: 42},
 	}
 	assert.Equal(t, integerExpected, integerProperty.ToProto())
 
-	stringProperty := &m.Property{Type: pb.Property_STRING, StringValue: "triton"}
+	stringProperty := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "triton"}
 	stringExpected := &pb.Property{
 		Type:  pb.Property_STRING,
 		Value: &pb.Property_StringValue{StringValue: "triton"},
@@ -46,36 +46,86 @@ func TestProperty_ToProto(t *testing.T) {
 	assert.Equal(t, stringExpected, stringProperty.ToProto())
 }
 
-func TestProperty_NewPropertyFromProtoNil(t *testing.T) {
-	expected := new(m.Property)
-	actual := m.NewPropertyFromProto(nil)
+func TestPropertyValue_NewPropertyFromProtoNil(t *testing.T) {
+	expected := new(m.PropertyValue)
+	actual := m.NewPropertyValueFromProto(nil)
 	assert.NotNil(t, expected, actual)
 	assert.Equal(t, expected, actual)
 }
 
-func TestProperty_NewPropertyFromProto(t *testing.T) {
+func TestPropertyValue_NewPropertyFromProto(t *testing.T) {
 	booleanProto := &pb.Property{
 		Type:  pb.Property_BOOLEAN,
 		Value: &pb.Property_BooleanValue{BooleanValue: true},
 	}
-	booleanExpected := &m.Property{Type: pb.Property_BOOLEAN, BooleanValue: true}
-	assert.Equal(t, booleanExpected, m.NewPropertyFromProto(booleanProto))
+	booleanExpected := &m.PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
+	assert.Equal(t, booleanExpected, m.NewPropertyValueFromProto(booleanProto))
 
 	integerProto := &pb.Property{
 		Type:  pb.Property_INTEGER,
 		Value: &pb.Property_IntegerValue{IntegerValue: 42},
 	}
-	integerExpected := &m.Property{Type: pb.Property_INTEGER, IntegerValue: 42}
-	assert.Equal(t, integerExpected, m.NewPropertyFromProto(integerProto))
+	integerExpected := &m.PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
+	assert.Equal(t, integerExpected, m.NewPropertyValueFromProto(integerProto))
 
 	stringProto := &pb.Property{
 		Type:  pb.Property_STRING,
 		Value: &pb.Property_StringValue{StringValue: "triton"},
 	}
-	stringExpected := &m.Property{Type: pb.Property_STRING, StringValue: "triton"}
-	assert.Equal(t, stringExpected, m.NewPropertyFromProto(stringProto))
+	stringExpected := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "triton"}
+	assert.Equal(t, stringExpected, m.NewPropertyValueFromProto(stringProto))
 
 }
+
+func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
+	// Handles nil
+	assert.Equal(t, make(m.PropertyMap), m.NewPropertyMapFromProto(nil))
+
+	proto := map[string]*pb.Property{
+		"boolean": {Type: pb.Property_BOOLEAN,
+			Value: &pb.Property_BooleanValue{BooleanValue: true}},
+		"int": {Type: pb.Property_INTEGER,
+			Value: &pb.Property_IntegerValue{IntegerValue: -50}},
+		"string": {Type: pb.Property_STRING,
+			Value: &pb.Property_StringValue{StringValue: "abc"},
+		},
+	}
+	expected := m.PropertyMap{
+		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
+		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
+		"string":  {Type: pb.Property_STRING, StringValue: "abc"},
+	}
+	actual := m.NewPropertyMapFromProto(proto)
+	if assert.NotNil(t, actual) {
+		assert.Equal(t, expected, actual)
+	}
+}
+
+func TestPropertyMap_ToProto(t *testing.T) {
+	// Handles nil
+	var nilMap m.PropertyMap
+	assert.Nil(t, nilMap.ToProto())
+
+	propertyMap := m.PropertyMap{
+		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
+		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
+		"string":  {Type: pb.Property_STRING, StringValue: "abc"},
+	}
+	expected := map[string]*pb.Property{
+		"boolean": {Type: pb.Property_BOOLEAN,
+			Value: &pb.Property_BooleanValue{BooleanValue: true}},
+		"int": {Type: pb.Property_INTEGER,
+			Value: &pb.Property_IntegerValue{IntegerValue: -50}},
+		"string": {Type: pb.Property_STRING,
+			Value: &pb.Property_StringValue{StringValue: "abc"},
+		},
+	}
+	actual := propertyMap.ToProto()
+	if assert.NotNil(t, actual) {
+		assert.Equal(t, expected, actual)
+	}
+}
+
 func TestRecord_Save(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	record := &m.Record{
@@ -83,7 +133,7 @@ func TestRecord_Save(t *testing.T) {
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]*m.Property{
+		Properties: m.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -96,24 +146,33 @@ func TestRecord_Save(t *testing.T) {
 	}
 	expected := []datastore.Property{
 		{
-			Name:  "Blob",
-			Value: testBlob,
+			Name:    "Blob",
+			Value:   testBlob,
+			NoIndex: true,
 		},
 		{
 			Name:  "BlobSize",
 			Value: int64(len(testBlob)),
 		},
 		{
-			Name:  m.PropertyPrefix + "prop1",
-			Value: int64(42),
+			Name:    "ExternalBlob",
+			Value:   "",
+			NoIndex: true,
 		},
 		{
-			Name:  m.PropertyPrefix + "prop2",
-			Value: "value",
-		},
-		{
-			Name:  "ExternalBlob",
-			Value: "",
+			Name: "Properties",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "prop1",
+						Value: int64(42),
+					},
+					{
+						Name:  "prop2",
+						Value: "value",
+					},
+				},
+			},
 		},
 		{
 			Name:  "OwnerID",
@@ -124,7 +183,7 @@ func TestRecord_Save(t *testing.T) {
 			Value: []interface{}{"a", "b"},
 		},
 	}
-	assert.ElementsMatch(t, expected, properties, "Save didn't return expected values.")
+	assert.Equal(t, expected, properties, "Save didn't return expected values.")
 }
 
 func TestRecord_Load(t *testing.T) {
@@ -151,12 +210,19 @@ func TestRecord_Load(t *testing.T) {
 			Value: []interface{}{"a", "b"},
 		},
 		{
-			Name:  m.PropertyPrefix + "prop1",
-			Value: int64(42),
-		},
-		{
-			Name:  m.PropertyPrefix + "prop2",
-			Value: "value",
+			Name: "Properties",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "prop1",
+						Value: int64(42),
+					},
+					{
+						Name:  "prop2",
+						Value: "value",
+					},
+				},
+			},
 		},
 	}
 	var record m.Record
@@ -168,7 +234,7 @@ func TestRecord_Load(t *testing.T) {
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]*m.Property{
+		Properties: m.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -185,7 +251,7 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]*m.Property{
+		Properties: map[string]*m.PropertyValue{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -236,7 +302,7 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: "",
-		Properties: map[string]*m.Property{
+		Properties: map[string]*m.PropertyValue{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},

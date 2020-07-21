@@ -20,26 +20,31 @@ import (
 
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
-	log "github.com/sirupsen/logrus"
 )
 
-// Property is an internal representation of the user-defined property.
+// PropertyValue is an internal representation of the user-defined property.
 // See the Triton API definition for details.
-type Property struct {
+type PropertyValue struct {
 	Type         pb.Property_Type
 	IntegerValue int64
 	StringValue  string
 	BooleanValue bool
 }
 
+// PropertyMap represents user-defined custom properties.
+type PropertyMap map[string]*PropertyValue
+
+// Assert PropertyMap implements PropertyLoadSave.
+var _ datastore.PropertyLoadSaver = new(PropertyMap)
+
 // Record represents a Triton record in the metadata database.
 // See the Triton API definition for details.
 type Record struct {
 	Key          string `datastore:"-"`
-	Blob         []byte
+	Blob         []byte `datastore:",noindex"`
 	BlobSize     int64
-	ExternalBlob string
-	Properties   map[string]*Property `datastore:"-"`
+	ExternalBlob string `datastore:",noindex"`
+	Properties   PropertyMap
 	OwnerID      string
 	Tags         []string
 }
@@ -48,8 +53,28 @@ type Record struct {
 var _ datastore.PropertyLoadSaver = new(Record)
 var _ datastore.KeyLoader = new(Record)
 
+// NewPropertyValueFromProto creates a new Property instance from a proto.
+// Passing nil returns a zero-initialized Property.
+func NewPropertyValueFromProto(proto *pb.Property) *PropertyValue {
+	if proto == nil {
+		return new(PropertyValue)
+	}
+	ret := &PropertyValue{
+		Type: proto.Type,
+	}
+	switch proto.Type {
+	case pb.Property_BOOLEAN:
+		ret.BooleanValue = proto.GetBooleanValue()
+	case pb.Property_INTEGER:
+		ret.IntegerValue = proto.GetIntegerValue()
+	case pb.Property_STRING:
+		ret.StringValue = proto.GetStringValue()
+	}
+	return ret
+}
+
 // ToProto converts the struct to a proto.
-func (p *Property) ToProto() *pb.Property {
+func (p *PropertyValue) ToProto() *pb.Property {
 	ret := &pb.Property{
 		Type: p.Type,
 	}
@@ -64,119 +89,136 @@ func (p *Property) ToProto() *pb.Property {
 	return ret
 }
 
-// NewPropertyFromProto creates a new Property instance from a proto.
-// Passing nil returns a zero-initialized Property.
-func NewPropertyFromProto(p *pb.Property) *Property {
-	if p == nil {
-		return new(Property)
+// NewPropertyMapFromProto creates a new Property instance from a proto.
+// Passing nil returns an empty map.
+func NewPropertyMapFromProto(proto map[string]*pb.Property) PropertyMap {
+	if proto == nil {
+		return make(PropertyMap)
 	}
-	ret := &Property{
-		Type: p.Type,
-	}
-	switch p.Type {
-	case pb.Property_BOOLEAN:
-		ret.BooleanValue = p.GetBooleanValue()
-	case pb.Property_INTEGER:
-		ret.IntegerValue = p.GetIntegerValue()
-	case pb.Property_STRING:
-		ret.StringValue = p.GetStringValue()
+	ret := make(PropertyMap)
+	for k, v := range proto {
+		ret[k] = NewPropertyValueFromProto(v)
 	}
 	return ret
 }
 
-// PropertyPrefix is necessary to avoid potential conflict between internal and user defined
-// properties.
-const PropertyPrefix = "CP"
-
-// These functions need to be implemented here instead of the datastore package because
-// go doesn't permit to define additional receivers in another package.
-
-// Save implements the Datastore PropertyLoadSaver interface and converts the properties
-// field in the struct to separate Datastore properties.
-func (r *Record) Save() ([]datastore.Property, error) {
-	dsprop, err := datastore.SaveStruct(r)
-	if err != nil {
-		return nil, err
+// ToProto converts the struct to a proto.
+func (m *PropertyMap) ToProto() map[string]*pb.Property {
+	// This may seem wrong, but m is a pointer to a map, which is also a
+	// nullable reference type.
+	if *m == nil {
+		return nil
 	}
-	for k, v := range r.Properties {
-		name := PropertyPrefix + k
-		switch v.Type {
+	ret := make(map[string]*pb.Property)
+	for k, v := range *m {
+		ret[k] = v.ToProto()
+	}
+	return ret
+}
+
+// These functions are Datastore specific but need to be implemented here
+// instead of the datastore package because Go doesn't permit to define
+// additional receivers in another package.
+
+// Save implements the Datastore PropertyLoadSaver interface and converts
+// PropertyMap to a slice of datastore Properties.
+func (m *PropertyMap) Save() ([]datastore.Property, error) {
+	var ps []datastore.Property
+	for name, value := range *m {
+		switch value.Type {
 		case pb.Property_BOOLEAN:
-			dsprop = append(dsprop, datastore.Property{
+			ps = append(ps, datastore.Property{
 				Name:  name,
-				Value: v.BooleanValue,
+				Value: value.BooleanValue,
 			})
 		case pb.Property_INTEGER:
-			dsprop = append(dsprop, datastore.Property{
+			ps = append(ps, datastore.Property{
 				Name:  name,
-				Value: v.IntegerValue,
+				Value: value.IntegerValue,
 			})
 		case pb.Property_STRING:
-			dsprop = append(dsprop, datastore.Property{
+			ps = append(ps, datastore.Property{
 				Name:  name,
-				Value: v.StringValue,
+				Value: value.StringValue,
 			})
 		default:
 			return nil,
 				fmt.Errorf(
 					"Error storeing property, unkown type: name=[%s], type=[%s]",
-					k, v.Type.String())
+					name, value.Type.String())
 		}
 	}
-	return dsprop, nil
+	return ps, nil
 }
 
-// Load implements the Datastore PropertyLoadSaver interface and converts Datstore
-// properties to the Properties field.
-func (r *Record) Load(ps []datastore.Property) error {
-	for _, p := range ps {
-		switch p.Name {
-		case "Blob":
-			r.Blob = p.Value.([]byte)
-		case "BlobSize":
-			r.BlobSize = p.Value.(int64)
-		case "ExternalBlob":
-			r.ExternalBlob = p.Value.(string)
-		case "OwnerID":
-			r.OwnerID = p.Value.(string)
-		case "Tags":
-			tags := []string{}
-			for _, tag := range p.Value.([]interface{}) {
-				tags = append(tags, tag.(string))
-			}
-			r.Tags = tags
+// Load implements the Datastore PropertyLoadSaver interface and converts
+// individual properties to PropertyMap.
+func (m *PropertyMap) Load(ps []datastore.Property) error {
+	if ps == nil || len(ps) == 0 {
+		// No custom properties
+		return nil
+	}
+	if *m == nil {
+		// I don't think this should happen because the Datastore Go client
+		// always zero-initializes the target before calling Load.
+		return fmt.Errorf("PropertyMap.Load was called on nil")
+	}
+
+	for _, v := range ps {
+		var newValue = new(PropertyValue)
+		t := reflect.TypeOf(v.Value)
+		switch t.Kind() {
+		case reflect.Bool:
+			newValue.Type = pb.Property_BOOLEAN
+			newValue.BooleanValue = v.Value.(bool)
+		case reflect.Int64:
+			newValue.Type = pb.Property_INTEGER
+			newValue.IntegerValue = v.Value.(int64)
+		case reflect.String:
+			newValue.Type = pb.Property_STRING
+			newValue.StringValue = v.Value.(string)
 		default:
-			// Everything else is a property
-			if PropertyPrefix != p.Name[:len(PropertyPrefix)] {
-				log.Warnf("Unknown property found, property name = %s", p.Name)
-				continue
-			}
-			// Allocate a new map only when there are user-defined properties.
-			if r.Properties == nil {
-				r.Properties = make(map[string]*Property)
-			}
-			var newprop = new(Property)
-			t := reflect.TypeOf(p.Value)
-			switch t.Kind() {
-			case reflect.Bool:
-				newprop.Type = pb.Property_BOOLEAN
-				newprop.BooleanValue = p.Value.(bool)
-			case reflect.Int64:
-				newprop.Type = pb.Property_INTEGER
-				newprop.IntegerValue = p.Value.(int64)
-			case reflect.String:
-				newprop.Type = pb.Property_STRING
-				newprop.StringValue = p.Value.(string)
-			default:
-				return fmt.Errorf(
-					"Error loading property, unknown type: name=[%s], type=[%s]",
-					p.Name, t.Name())
-			}
-			name := p.Name[len(PropertyPrefix):]
-			r.Properties[name] = newprop
+			return fmt.Errorf(
+				"Error loading property, unknown type: name=[%s], type=[%s]",
+				v.Name, t.Name())
 		}
+		(*m)[v.Name] = newValue
 	}
 	return nil
+}
+
+// NewRecordFromProto creates a new Record instance from a proto.
+// Passing nil returns a zero-initialized proto.
+func NewRecordFromProto(p *pb.Record) *Record {
+	if p == nil {
+		return new(Record)
+	}
+	return &Record{
+		Key:        p.GetKey(),
+		Blob:       p.GetBlob(),
+		BlobSize:   p.GetBlobSize(),
+		OwnerID:    p.GetOwnerId(),
+		Tags:       p.GetTags(),
+		Properties: NewPropertyMapFromProto(p.GetProperties()),
+	}
+}
+
+// Save and Load for Record replicate the default behaviors, however, they are
+// explicitly required to implement the KeyLoader interface.
+
+// Save implements the Datastore PropertyLoadSaver interface and converts struct fields
+// to Datastore properties.
+func (r *Record) Save() ([]datastore.Property, error) {
+	return datastore.SaveStruct(r)
+}
+
+// Load implements the Datastore PropertyLoadSaver interface and converts Datastore
+// properties to corresponding struct fields.
+func (r *Record) Load(ps []datastore.Property) error {
+	// Initialize Properties because the default value is a nil map and there
+	// is no way to change it inside PropertyMap.Load().
+	r.Properties = make(PropertyMap)
+	return datastore.LoadStruct(r, ps)
 }
 
 // LoadKey implements the KeyLoader interface and sets the value to the Key field.
@@ -188,40 +230,12 @@ func (r *Record) LoadKey(k *datastore.Key) error {
 // ToProto converts the struct to a proto.
 func (r *Record) ToProto() *pb.Record {
 	ret := &pb.Record{
-		Key:      r.Key,
-		Blob:     r.Blob,
-		BlobSize: r.BlobSize,
-		OwnerId:  r.OwnerID,
-		Tags:     r.Tags,
-	}
-	if r.Properties != nil {
-		ret.Properties = make(map[string]*pb.Property)
-		for k, v := range r.Properties {
-			ret.Properties[k] = v.ToProto()
-		}
-	}
-	return ret
-}
-
-// NewRecordFromProto creates a new Record instance from a proto.
-// Passing nil returns a zero-initialized proto.
-func NewRecordFromProto(p *pb.Record) *Record {
-	if p == nil {
-		return new(Record)
-	}
-	ret := &Record{
-		Key:      p.GetKey(),
-		Blob:     p.GetBlob(),
-		BlobSize: p.GetBlobSize(),
-		OwnerID:  p.GetOwnerId(),
-		Tags:     p.GetTags(),
-	}
-	properties := p.GetProperties()
-	if properties != nil {
-		ret.Properties = make(map[string]*Property)
-		for k, v := range properties {
-			ret.Properties[k] = NewPropertyFromProto(v)
-		}
+		Key:        r.Key,
+		Blob:       r.Blob,
+		BlobSize:   r.BlobSize,
+		OwnerId:    r.OwnerID,
+		Tags:       r.Tags,
+		Properties: r.Properties.ToProto(),
 	}
 	return ret
 }
