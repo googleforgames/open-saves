@@ -43,7 +43,7 @@ func main() {
 		log.Fatal("missing -project argument")
 	}
 	if *cache == "" {
-		log.Fatal("missing --cache argument for cache store")
+		log.Fatal("missing -cache argument for cache store")
 	}
 
 	cfg := &server.Config{
