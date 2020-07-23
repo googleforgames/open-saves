@@ -3,7 +3,7 @@ steps:
   args: ['build', '-t', 'build-docker', '.', '-f', 'scripts/cloudbuild.Dockerfile']
   id: init-build-docker
 - name: 'build-docker'
-  args: ['make', 'all', 'test']
+  args: ['bash', 'scripts/run-triton-test.sh']
   waitFor: ['init-build-docker']
 
 options:
