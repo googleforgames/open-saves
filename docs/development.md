@@ -83,7 +83,7 @@ To stand up the gRPC server, there's a lightweight wrapper around the server cod
 You should see an output like the following
 
 ```bash
-$ ./build/server -cloud=gcp -bucket="gs://your-bucket"
+$ ./build/server -cloud=gcp -bucket="gs://your-bucket" -cache="localhost:6379"
 INFO[0000] Instantiating Triton server on GCP
 INFO[0000] starting server on tcp :6000
 ```
@@ -92,6 +92,27 @@ To test the server is actually running, there is a sample gRPC client usage in `
 
 ```bash
 go run examples/grpc-client/main.go
+```
+
+### Starting cache store
+
+If using Redis for your cache store, you will need to pass in a path to Redis
+instance when starting the cache store. As an example, if in a development
+environment, you can run the following command.
+
+```bash
+./build/server -cloud=gcp -bucket="gs://your-bucket"
+```
+
+If using [Memorystore](https://cloud.google.com/memorystore) for Redis, you will
+get a private IP. In this case, to test locally, you would need to use port
+forwarding from a Compute Engine instance. The following commands illustrates
+how to create a new Compute Engine instance and forward port 6379 for the Redis
+host at `10.0.0.3` to `localhost:6379`.
+
+```bash
+gcloud compute instances create redis-forwarder --machine-type=f1-micro
+gcloud compute ssh redis-forwarder -- -N -L 6379:10.0.0.3:6379
 ```
 
 ## Deploying to Kubernetes
