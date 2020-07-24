@@ -177,7 +177,7 @@ $ gcloud builds submit .
 in the top directory, and make sure the tests still pass.
 
 After verifying, you can revert the change in cloudbuild.Dockerfile, merge the
-changesto the master branch on GitHub, and tag and push the new image as latest
+changes to the master branch on GitHub, and tag and push the new image as latest
 by running
 
 ```
