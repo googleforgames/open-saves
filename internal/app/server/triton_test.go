@@ -27,13 +27,14 @@ import (
 )
 
 const (
-	testProject = "triton-for-games-dev"
-	testBucket  = "gs://triton-integration"
-	bufferSize  = 1024 * 1024
+	testProject   = "triton-for-games-dev"
+	testBucket    = "gs://triton-integration"
+	bufferSize    = 1024 * 1024
+	testCacheAddr = "localhost:6379"
 )
 
 func getTestServer(ctx context.Context, t *testing.T, cloud string) (*grpc.Server, *bufconn.Listener) {
-	impl, err := newTritonServer(ctx, cloud, testProject, testBucket)
+	impl, err := newTritonServer(ctx, cloud, testProject, testBucket, testCacheAddr)
 	if err != nil {
 		t.Fatalf("Failed to create a new Triton server instance: %v", err)
 	}
