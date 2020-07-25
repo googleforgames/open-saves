@@ -74,21 +74,24 @@ make test
 
 ### Running simple gRPC server/client
 
-To stand up the gRPC server, there's a lightweight wrapper around the server code that lives in `cmd/server/main.go`. To start this, run
+To stand up the gRPC server, there's a lightweight wrapper around the server code
+that lives in `cmd/server/main.go`. To start this, run
 
 ```bash
-./build/server -cloud=gcp -bucket="gs://your-bucket"
+./build/server -cloud=gcp -project="<your GCP project>" \
+  -bucket="gs://<your-bucket>" -cache="<redis-server-address>:6379"
 ```
 
 You should see an output like the following
 
 ```bash
-$ ./build/server -cloud=gcp -bucket="gs://your-bucket" -cache="localhost:6379"
+$ ./build/server -cloud=gcp -project="your-project" -bucket="gs://your-bucket" -cache="localhost:6379"
 INFO[0000] Instantiating Triton server on GCP
 INFO[0000] starting server on tcp :6000
 ```
 
-To test the server is actually running, there is a sample gRPC client usage in `examples/grpc-client/main.go`. While the server is running, run
+To test the server is actually running, there is a sample gRPC client usage in
+`examples/grpc-client/main.go`. While the server is running, run
 
 ```bash
 go run examples/grpc-client/main.go
@@ -115,9 +118,72 @@ gcloud compute instances create redis-forwarder --machine-type=f1-micro
 gcloud compute ssh redis-forwarder -- -N -L 6379:10.0.0.3:6379
 ```
 
+## Setting up Google Cloud
+
+You need to set up [Cloud Firestore in Datastore mode](https://cloud.google.com/datastore/docs)
+(Datastore) and [Cloud Storage](https://cloud.google.com/storage) to run the
+current version of Triton.
+
+### Cloud Firestore in Datastore mode
+
+Cloud Firestore in Datastore mode (Datastore) is primarily used to manage
+metadata of Triton. Smaller blob data (usually up to a few kilobytes) could
+also be stored in Datastore.
+
+Please follow the [quick start guide](https://cloud.google.com/datastore/docs/quickstart)
+to set up a database in Datastore mode. You may choose whichever region you
+like, however, it can only be specified one and cannot be undone. Google Cloud
+Platform currently allows only one Datastore database per project, so you
+would need to create a new project to change the database location.
+
+### Cloud Storage
+
+Cloud Storage is used to store large blobs that don't fit in Datastore.
+
+A sample Terraform configuration file is found at deploy/terraform/gcp/blobstore.tf.
+You'll need to change the bucket names as necessary as Cloud Storage bucket names are
+global resources. Alternatively, you may choose to create buckets with the Cloud Console.
+Refer to the [Cloud Storage Documentation](https://cloud.google.com/storage/docs/creating-buckets)
+to learn more about creating buckets.
+
 ## Deploying to Kubernetes
 
 TODO
+
+## Updating the Cloud Build builder image
+
+Note: You need permissions to the GCP project to make changes.
+
+We use Cloud Build to run build tests for the GitHub repository. It is occasionally
+necessary to update the base image to upgrade to a new Go version, add a new build
+dependency, etc.
+
+The base image is built using scripts/triton-builder-base.Dockerfile. You can build
+a new image locally by running scripts/build-triton-builder-base.sh.
+
+After building the image, you can push it to Cloud Container Repository by running
+
+```bash
+$ docker push gcr.io/triton-for-games-dev/triton-builder-base:testing
+```
+
+Then, change the image tag in scripts/cloudbuild.Dockerfile from latest to
+testing, run
+
+```bash
+$ gcloud builds submit .
+```
+
+in the top directory, and make sure the tests still pass.
+
+After verifying, you can revert the change in cloudbuild.Dockerfile, merge the
+changes to the master branch on GitHub, and tag and push the new image as latest
+by running
+
+```
+$ docker tag triton-builder-base:latest gcr.io/triton-for-games-dev/triton-builder-base:latest
+$ docker push gcr.io/triton-for-games-dev/triton-builder-base:latest
+```
 
 ## IDE Support
 
