@@ -56,6 +56,7 @@ func main() {
 		Cache:   *cache,
 	}
 
+	// Cloud Run environment populates the PORT env var, so check for it here.
 	if p := os.Getenv("PORT"); p != "" {
 		p, err := strconv.ParseUint(p, 10, 64)
 		if err != nil {
