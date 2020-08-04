@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 
 	"github.com/google/uuid"
@@ -26,18 +27,29 @@ import (
 	tritonpb "github.com/googleforgames/triton/api"
 )
 
+var (
+	address  = flag.String("address", "localhost:6000", "Address of Triton server")
+	insecure = flag.Bool("insecure", false, "Dial grpc server insecurely")
+)
+
 func defaultClientOptions() []option.ClientOption {
 	return []option.ClientOption{
 		option.WithEndpoint("localhost:6000"),
-		option.WithGRPCDialOption(grpc.WithInsecure()),
-		option.WithoutAuthentication(),
 	}
 }
 
 func main() {
+	flag.Parse()
 	ctx := context.Background()
 
 	opts := defaultClientOptions()
+	if *insecure {
+		opts = append(opts, option.WithGRPCDialOption(grpc.WithInsecure()), option.WithoutAuthentication())
+	}
+	if *address != "" {
+		opts = append(opts, option.WithEndpoint(*address))
+	}
+
 	connPool, err := gtransport.DialPool(ctx, opts...)
 	if err != nil {
 		log.Fatalf("got err dialing conn pool: %v", err)
