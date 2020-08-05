@@ -79,7 +79,7 @@ func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStor
 		return nil, status.Convert(err).Err()
 	}
 	log.Infof("Created store: %+v", store)
-	return req.Store, nil
+	return store.ToProto(), nil
 }
 
 func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRecordRequest) (*tritonpb.Record, error) {
@@ -91,7 +91,7 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 		return nil, status.Convert(err).Err()
 	}
 	log.Infof("Created record: %+v", record)
-	return req.Record, nil
+	return record.ToProto(), nil
 }
 
 func (s *tritonServer) DeleteRecord(ctx context.Context, req *tritonpb.DeleteRecordRequest) (*empty.Empty, error) {

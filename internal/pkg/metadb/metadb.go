@@ -58,6 +58,7 @@ func (m *MetaDB) Disconnect(ctx context.Context) error {
 
 // CreateStore creates a new store.
 func (m *MetaDB) CreateStore(ctx context.Context, store *Store) error {
+	store.Timestamps.NewTimestamps()
 	return m.driver.CreateStore(ctx, store)
 }
 
@@ -81,12 +82,14 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
 func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *Record) error {
+	record.Timestamps.NewTimestamps()
 	return m.driver.InsertRecord(ctx, storeKey, record)
 }
 
 // UpdateRecord updates the record in the store specified with storeKey.
 // Returns error if the store doesn't have a record with the key provided.
 func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, record *Record) error {
+	record.Timestamps.UpdateTimestamps()
 	return m.driver.UpdateRecord(ctx, storeKey, record)
 }
 

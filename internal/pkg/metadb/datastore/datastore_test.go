@@ -46,6 +46,22 @@ func newRecordKey() string {
 	return "unittest_record_" + uuid.New().String()
 }
 
+func assertEqualStore(t *testing.T, expected, actual *m.Store) {
+	assert.Equal(t, expected.Key, actual.Key)
+	assert.Equal(t, expected.Name, actual.Name)
+	assert.Equal(t, expected.OwnerID, actual.OwnerID)
+	assert.ElementsMatch(t, expected.Tags, actual.Tags)
+}
+
+func assertEqualRecord(t *testing.T, expected, actual *m.Record) {
+	assert.Equal(t, expected.Key, actual.Key)
+	assert.Equal(t, expected.Blob, actual.Blob)
+	assert.Equal(t, expected.BlobSize, actual.BlobSize)
+	assert.Equal(t, expected.Properties, actual.Properties)
+	assert.ElementsMatch(t, expected.Tags, actual.Tags)
+	assert.Equal(t, expected.OwnerID, actual.OwnerID)
+}
+
 func TestDriver_ConnectDisconnect(t *testing.T) {
 	ctx := context.Background()
 	// Connect() is tested inside newDriver().
@@ -75,13 +91,13 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get store (%s): %v", storeKey, err)
 	}
-	assert.Equal(t, store, store2, "GetStore should return the exact same store.")
+	assertEqualStore(t, store, store2)
 
 	store3, err := driver.FindStoreByName(ctx, storeName)
 	if err != nil {
 		t.Fatalf("Could not fetch store by name (%s): %v", storeName, err)
 	}
-	assert.Equal(t, store, store3, "FindStoreByName should return the exact same store.")
+	assertEqualStore(t, store, store3)
 
 	err = driver.DeleteStore(ctx, storeKey)
 	if err != nil {
@@ -128,7 +144,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assert.Equal(t, record, record2, "GetRecord should return the exact same record.")
+	assertEqualRecord(t, record, record2)
 
 	err = driver.InsertRecord(ctx, storeKey, record)
 	if err == nil {
@@ -230,7 +246,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assert.Equal(t, record, record2, "GetRecord should fetch the updated record.")
+	assertEqualRecord(t, record, record2)
 
 	err = driver.DeleteRecord(ctx, storeKey, recordKey)
 	if err != nil {

@@ -18,12 +18,14 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/triton/api"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -31,6 +33,10 @@ const (
 	testBucket    = "gs://triton-integration"
 	bufferSize    = 1024 * 1024
 	testCacheAddr = "localhost:6379"
+	// The threshold of comparing times.
+	// Since the server and client run on the same host for these tests,
+	// 5 seconds should be enough.
+	timestampDelta = 5 * time.Second
 )
 
 func getTestServer(ctx context.Context, t *testing.T, cloud string) (*grpc.Server, *bufconn.Listener) {
@@ -61,6 +67,12 @@ func assertEqualStore(t *testing.T, expected, actual *pb.Store) {
 		assert.Equal(t, expected.Name, actual.Name)
 		assert.Equal(t, expected.Tags, actual.Tags)
 		assert.Equal(t, expected.OwnerId, actual.OwnerId)
+		assert.NotNil(t, actual.GetCreatedAt())
+		assert.WithinDuration(t, actual.GetCreatedAt().AsTime(),
+			actual.GetCreatedAt().AsTime(), timestampDelta)
+		assert.NotNil(t, actual.GetUpdatedAt())
+		assert.WithinDuration(t, actual.GetUpdatedAt().AsTime(),
+			actual.GetUpdatedAt().AsTime(), timestampDelta)
 	}
 }
 
@@ -83,6 +95,12 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 				assert.Equal(t, v.Value, av.Value)
 			}
 		}
+		assert.NotNil(t, actual.GetCreatedAt())
+		assert.WithinDuration(t, actual.GetUpdatedAt().AsTime(),
+			actual.GetUpdatedAt().AsTime(), timestampDelta)
+		assert.NotNil(t, actual.GetUpdatedAt())
+		assert.WithinDuration(t, actual.GetUpdatedAt().AsTime(),
+			actual.GetUpdatedAt().AsTime(), timestampDelta)
 	}
 }
 
@@ -131,11 +149,15 @@ func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.TritonCli
 			OwnerId: "owner",
 		},
 	}
+	expected := storeReq.Store
 	storeRes, err := client.CreateStore(ctx, storeReq)
 	if err != nil {
 		t.Fatalf("CreateStore failed: %v", err)
 	}
-	assertEqualStore(t, storeReq.GetStore(), storeRes)
+	expected.CreatedAt = timestamppb.Now()
+	expected.UpdatedAt = expected.CreatedAt
+	assertEqualStore(t, expected, storeRes)
+	assert.Equal(t, storeRes.GetCreatedAt(), storeRes.GetUpdatedAt())
 
 	getReq := &pb.GetStoreRequest{
 		Key: storeKey,
@@ -144,7 +166,11 @@ func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.TritonCli
 	if err != nil {
 		t.Errorf("GetStore failed: %v", err)
 	}
-	assertEqualStore(t, storeReq.GetStore(), store2)
+	assertEqualStore(t, expected, store2)
+	// Additional time checks as assertEqualStore doesn't check
+	// exact timestamps.
+	assert.Equal(t, storeRes.GetCreatedAt(), store2.GetCreatedAt())
+	assert.Equal(t, storeRes.GetUpdatedAt(), store2.GetUpdatedAt())
 
 	deleteReq := &pb.DeleteStoreRequest{
 		Key: storeKey,
@@ -188,18 +214,24 @@ func createGetDeleteRecord(ctx context.Context, t *testing.T, client pb.TritonCl
 			},
 		},
 	}
+	expected := createReq.Record
 	record, err := client.CreateRecord(ctx, createReq)
 	if err != nil {
 		t.Fatalf("CreateRecord failed: %v", err)
 	}
-	assertEqualRecord(t, createReq.Record, record)
+	expected.CreatedAt = timestamppb.Now()
+	expected.UpdatedAt = expected.CreatedAt
+	assertEqualRecord(t, expected, record)
+	assert.Equal(t, record.GetCreatedAt(), record.GetUpdatedAt())
 
 	getReq := &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}
 	record2, err := client.GetRecord(ctx, getReq)
 	if err != nil {
 		t.Errorf("GetRecord failed: %v", err)
 	}
-	assertEqualRecord(t, createReq.Record, record2)
+	assertEqualRecord(t, expected, record2)
+	assert.Equal(t, record.GetCreatedAt(), record2.GetCreatedAt())
+	assert.Equal(t, record.GetUpdatedAt(), record2.GetUpdatedAt())
 
 	deleteReq := &pb.DeleteRecordRequest{
 		StoreKey: storeKey,
@@ -255,6 +287,7 @@ func updateRecordSimple(ctx context.Context, t *testing.T, client pb.TritonClien
 			BlobSize: int64(len(testBlob)),
 		},
 	}
+	beforeUpdate := time.Now()
 	record, err := client.UpdateRecord(ctx, updateReq)
 	if err != nil {
 		t.Fatalf("UpdateRecord failed: %v", err)
@@ -265,6 +298,8 @@ func updateRecordSimple(ctx context.Context, t *testing.T, client pb.TritonClien
 		BlobSize: int64(len(testBlob)),
 	}
 	assertEqualRecord(t, expected, record)
+	assert.NotEqual(t, record.GetCreatedAt().AsTime(), record.GetUpdatedAt().AsTime())
+	assert.True(t, beforeUpdate.Before(record.GetUpdatedAt().AsTime()))
 }
 
 func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.TritonClient) {

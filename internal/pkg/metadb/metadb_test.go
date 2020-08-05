@@ -17,6 +17,7 @@ package metadb_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
@@ -51,8 +52,11 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	mockDriver.EXPECT().Disconnect(ctx)
 	assert.NoError(t, metadb.Disconnect(ctx))
 
+	beforeCreate := time.Now()
 	mockDriver.EXPECT().CreateStore(ctx, store)
 	assert.NoError(t, metadb.CreateStore(ctx, store))
+	assert.True(t, beforeCreate.Before(store.Timestamps.CreatedAt))
+	assert.True(t, beforeCreate.Before(store.Timestamps.UpdatedAt))
 
 	mockDriver.EXPECT().GetStore(ctx, key).Return(store, nil)
 	actualstore, err := metadb.GetStore(ctx, key)
@@ -67,11 +71,17 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	mockDriver.EXPECT().DeleteStore(ctx, key)
 	assert.NoError(t, metadb.DeleteStore(ctx, key))
 
+	beforeInsert := time.Now()
 	mockDriver.EXPECT().InsertRecord(ctx, key, record)
 	assert.NoError(t, metadb.InsertRecord(ctx, key, record))
+	assert.True(t, beforeInsert.Before(record.Timestamps.CreatedAt))
+	assert.True(t, beforeInsert.Before(record.Timestamps.UpdatedAt))
 
+	createdAt := record.Timestamps.CreatedAt
 	mockDriver.EXPECT().UpdateRecord(ctx, key, record)
 	assert.NoError(t, metadb.UpdateRecord(ctx, key, record))
+	assert.True(t, createdAt.Equal(record.Timestamps.CreatedAt))
+	assert.True(t, createdAt.Before(record.Timestamps.UpdatedAt))
 
 	mockDriver.EXPECT().GetRecord(ctx, key, key2).Return(record, nil)
 	actualrecord, err := metadb.GetRecord(ctx, key, key2)

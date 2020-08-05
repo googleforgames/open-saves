@@ -16,11 +16,14 @@ package metadb_test
 
 import (
 	"testing"
+	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/uuid"
 	pb "github.com/googleforgames/triton/api"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestStore_NewStoreFromProtoNil(t *testing.T) {
@@ -30,35 +33,53 @@ func TestStore_NewStoreFromProtoNil(t *testing.T) {
 }
 
 func TestStore_ToProtoSimple(t *testing.T) {
+	createdAt := time.Date(2020, 7, 14, 13, 16, 5, 0, time.UTC)
+	updatedAt := time.Date(2020, 12, 28, 12, 15, 3, 0, time.UTC)
 	store := &m.Store{
 		Key:     "test",
 		Name:    "a test store",
 		Tags:    []string{"tag1"},
 		OwnerID: "owner",
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			Signature: uuid.MustParse("A634B035-E496-4B4E-8B18-05FD2112BEF2"),
+		},
 	}
 	expected := &pb.Store{
-		Key:     "test",
-		Name:    "a test store",
-		Tags:    []string{"tag1"},
-		OwnerId: "owner",
+		Key:       "test",
+		Name:      "a test store",
+		Tags:      []string{"tag1"},
+		OwnerId:   "owner",
+		CreatedAt: timestamppb.New(createdAt),
+		UpdatedAt: timestamppb.New(updatedAt),
 	}
 	assert.Equal(t, expected, store.ToProto())
 }
 
 func TestStore_NewStoreFromProtoSimple(t *testing.T) {
+	createdAt := time.Date(2020, 7, 14, 13, 16, 5, 0, time.UTC)
+	updatedAt := time.Date(2020, 12, 28, 12, 15, 3, 0, time.UTC)
 	proto := &pb.Store{
-		Key:     "test",
-		Name:    "a test store",
-		Tags:    []string{"tag1"},
-		OwnerId: "owner",
+		Key:       "test",
+		Name:      "a test store",
+		Tags:      []string{"tag1"},
+		OwnerId:   "owner",
+		CreatedAt: timestamppb.New(createdAt),
+		UpdatedAt: timestamppb.New(updatedAt),
 	}
 	expected := &m.Store{
 		Key:     "test",
 		Name:    "a test store",
 		Tags:    []string{"tag1"},
 		OwnerID: "owner",
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+		},
 	}
-	assert.Equal(t, expected, m.NewStoreFromProto(proto))
+	actual := m.NewStoreFromProto(proto)
+	assert.Equal(t, expected, actual)
 }
 
 func TestStore_LoadKey(t *testing.T) {
