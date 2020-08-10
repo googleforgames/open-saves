@@ -19,6 +19,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 
 	"github.com/googleforgames/triton/internal/app/server"
 )
@@ -52,6 +54,15 @@ func main() {
 		Bucket:  *bucket,
 		Project: *project,
 		Cache:   *cache,
+	}
+
+	// Cloud Run environment populates the PORT env var, so check for it here.
+	if p := os.Getenv("PORT"); p != "" {
+		p, err := strconv.ParseUint(p, 10, 64)
+		if err != nil {
+			log.Fatal("failed to parse PORT env variable, make sure it is of type uint")
+		}
+		cfg.Address = fmt.Sprintf(":%d", p)
 	}
 
 	ctx := context.Background()
