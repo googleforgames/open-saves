@@ -146,10 +146,6 @@ global resources. Alternatively, you may choose to create buckets with the Cloud
 Refer to the [Cloud Storage Documentation](https://cloud.google.com/storage/docs/creating-buckets)
 to learn more about creating buckets.
 
-## Deploying to Kubernetes
-
-TODO
-
 ## Updating the Cloud Build builder image
 
 Note: You need permissions to the GCP project to make changes.
@@ -183,6 +179,48 @@ by running
 ```
 $ docker tag triton-builder-base:latest gcr.io/triton-for-games-dev/triton-builder-base:latest
 $ docker push gcr.io/triton-for-games-dev/triton-builder-base:latest
+```
+
+## Deploying to Cloud Run
+
+The Dockerfile used is located in the root directory of this project.
+You will need to build the image and push it to a container registry. Google Container
+Registry (GCR) will be used for this example. Please replace `$TAG` with a
+registry that you have permissions to write to.
+
+```bash
+export TAG=gcr.io/triton-for-games-dev/triton-server:testing
+docker build -t $TAG .
+docker push $TAG
+```
+
+Next, you will need to enable Cloud Run in your Google Cloud Project, and grant the
+Cloud Run service agent proper permissions to several services, including Memorystore,
+Datastore, and Storage. For more information, see
+[Service Accounts on Cloud Run](https://cloud.google.com/run/docs/configuring/service-accounts).
+
+```bash
+export GCP_REGION=us-central1
+gcloud run deploy --platform=managed \
+                  --region=$GCP_REGION \
+                  --image=$TAG \
+```
+
+Finally, to test this you can run the following commands.
+
+```bash
+ENDPOINT=$(\
+gcloud run services list \
+  --project=$GCP_PROJECT \
+  --region=$GCP_REGION \
+  --platform=managed \
+  --format="value(status.address.url)" \
+  --filter="metadata.name=triton-server")
+
+ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
+
+$ go run examples/grpc-client/main.go -address=$ENDPOINT:443
+2020/08/03 18:56:06 successfully created store: key:"2199d8d8-9988-445f-bf12-2ecf092b6109" name:"test" owner_id:"test-user"
 ```
 
 ## IDE Support
