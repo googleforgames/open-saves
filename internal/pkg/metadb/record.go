@@ -53,6 +53,22 @@ type Record struct {
 var _ datastore.PropertyLoadSaver = new(Record)
 var _ datastore.KeyLoader = new(Record)
 
+// ToProto converts the struct to a proto.
+func (p *PropertyValue) ToProto() *pb.Property {
+	ret := &pb.Property{
+		Type: p.Type,
+	}
+	switch p.Type {
+	case pb.Property_BOOLEAN:
+		ret.Value = &pb.Property_BooleanValue{BooleanValue: p.BooleanValue}
+	case pb.Property_INTEGER:
+		ret.Value = &pb.Property_IntegerValue{IntegerValue: p.IntegerValue}
+	case pb.Property_STRING:
+		ret.Value = &pb.Property_StringValue{StringValue: p.StringValue}
+	}
+	return ret
+}
+
 // NewPropertyValueFromProto creates a new Property instance from a proto.
 // Passing nil returns a zero-initialized Property.
 func NewPropertyValueFromProto(proto *pb.Property) *PropertyValue {
@@ -73,20 +89,61 @@ func NewPropertyValueFromProto(proto *pb.Property) *PropertyValue {
 	return ret
 }
 
+// These functions are Datastore specific but need to be implemented here
+// instead of the datastore package because Go doesn't permit to define
+// additional receivers in another package.
+
+// Save and Load for Record replicate the default behaviors, however, they are
+// explicitly required to implement the KeyLoader interface.
+
+// Save implements the Datastore PropertyLoadSaver interface and converts struct fields
+// to Datastore properties.
+func (r *Record) Save() ([]datastore.Property, error) {
+	return datastore.SaveStruct(r)
+}
+
+// Load implements the Datastore PropertyLoadSaver interface and converts Datastore
+// properties to corresponding struct fields.
+func (r *Record) Load(ps []datastore.Property) error {
+	// Initialize Properties because the default value is a nil map and there
+	// is no way to change it inside PropertyMap.Load().
+	r.Properties = make(PropertyMap)
+	return datastore.LoadStruct(r, ps)
+}
+
+// LoadKey implements the KeyLoader interface and sets the value to the Key field.
+func (r *Record) LoadKey(k *datastore.Key) error {
+	r.Key = k.Name
+	return nil
+}
+
 // ToProto converts the struct to a proto.
-func (p *PropertyValue) ToProto() *pb.Property {
-	ret := &pb.Property{
-		Type: p.Type,
-	}
-	switch p.Type {
-	case pb.Property_BOOLEAN:
-		ret.Value = &pb.Property_BooleanValue{BooleanValue: p.BooleanValue}
-	case pb.Property_INTEGER:
-		ret.Value = &pb.Property_IntegerValue{IntegerValue: p.IntegerValue}
-	case pb.Property_STRING:
-		ret.Value = &pb.Property_StringValue{StringValue: p.StringValue}
+func (r *Record) ToProto() *pb.Record {
+	ret := &pb.Record{
+		Key:        r.Key,
+		Blob:       r.Blob,
+		BlobSize:   r.BlobSize,
+		OwnerId:    r.OwnerID,
+		Tags:       r.Tags,
+		Properties: r.Properties.ToProto(),
 	}
 	return ret
+}
+
+// NewRecordFromProto creates a new Record instance from a proto.
+// Passing nil returns a zero-initialized proto.
+func NewRecordFromProto(p *pb.Record) *Record {
+	if p == nil {
+		return new(Record)
+	}
+	return &Record{
+		Key:        p.GetKey(),
+		Blob:       p.GetBlob(),
+		BlobSize:   p.GetBlobSize(),
+		OwnerID:    p.GetOwnerId(),
+		Tags:       p.GetTags(),
+		Properties: NewPropertyMapFromProto(p.GetProperties()),
+	}
 }
 
 // NewPropertyMapFromProto creates a new Property instance from a proto.
@@ -115,10 +172,6 @@ func (m *PropertyMap) ToProto() map[string]*pb.Property {
 	}
 	return ret
 }
-
-// These functions are Datastore specific but need to be implemented here
-// instead of the datastore package because Go doesn't permit to define
-// additional receivers in another package.
 
 // Save implements the Datastore PropertyLoadSaver interface and converts
 // PropertyMap to a slice of datastore Properties.
@@ -185,57 +238,4 @@ func (m *PropertyMap) Load(ps []datastore.Property) error {
 		(*m)[v.Name] = newValue
 	}
 	return nil
-}
-
-// NewRecordFromProto creates a new Record instance from a proto.
-// Passing nil returns a zero-initialized proto.
-func NewRecordFromProto(p *pb.Record) *Record {
-	if p == nil {
-		return new(Record)
-	}
-	return &Record{
-		Key:        p.GetKey(),
-		Blob:       p.GetBlob(),
-		BlobSize:   p.GetBlobSize(),
-		OwnerID:    p.GetOwnerId(),
-		Tags:       p.GetTags(),
-		Properties: NewPropertyMapFromProto(p.GetProperties()),
-	}
-}
-
-// Save and Load for Record replicate the default behaviors, however, they are
-// explicitly required to implement the KeyLoader interface.
-
-// Save implements the Datastore PropertyLoadSaver interface and converts struct fields
-// to Datastore properties.
-func (r *Record) Save() ([]datastore.Property, error) {
-	return datastore.SaveStruct(r)
-}
-
-// Load implements the Datastore PropertyLoadSaver interface and converts Datastore
-// properties to corresponding struct fields.
-func (r *Record) Load(ps []datastore.Property) error {
-	// Initialize Properties because the default value is a nil map and there
-	// is no way to change it inside PropertyMap.Load().
-	r.Properties = make(PropertyMap)
-	return datastore.LoadStruct(r, ps)
-}
-
-// LoadKey implements the KeyLoader interface and sets the value to the Key field.
-func (r *Record) LoadKey(k *datastore.Key) error {
-	r.Key = k.Name
-	return nil
-}
-
-// ToProto converts the struct to a proto.
-func (r *Record) ToProto() *pb.Record {
-	ret := &pb.Record{
-		Key:        r.Key,
-		Blob:       r.Blob,
-		BlobSize:   r.BlobSize,
-		OwnerId:    r.OwnerID,
-		Tags:       r.Tags,
-		Properties: r.Properties.ToProto(),
-	}
-	return ret
 }
