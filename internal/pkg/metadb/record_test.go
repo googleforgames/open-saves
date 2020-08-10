@@ -144,46 +144,51 @@ func TestRecord_Save(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	expected := []datastore.Property{
-		{
-			Name:    "Blob",
-			Value:   testBlob,
-			NoIndex: true,
-		},
-		{
-			Name:  "BlobSize",
-			Value: int64(len(testBlob)),
-		},
-		{
-			Name:    "ExternalBlob",
-			Value:   "",
-			NoIndex: true,
-		},
-		{
-			Name: "Properties",
-			Value: &datastore.Entity{
-				Properties: []datastore.Property{
-					{
-						Name:  "prop1",
-						Value: int64(42),
-					},
-					{
-						Name:  "prop2",
-						Value: "value",
-					},
-				},
+	if assert.Len(t, properties, 6, "Save didn't return the expected number of elements.") {
+		assert.Equal(t, properties[:3], []datastore.Property{
+			{
+				Name:    "Blob",
+				Value:   testBlob,
+				NoIndex: true,
 			},
-		},
-		{
-			Name:  "OwnerID",
-			Value: "owner",
-		},
-		{
-			Name:  "Tags",
-			Value: []interface{}{"a", "b"},
-		},
+			{
+				Name:  "BlobSize",
+				Value: int64(len(testBlob)),
+			},
+			{
+				Name:    "ExternalBlob",
+				Value:   "",
+				NoIndex: true,
+			},
+		})
+		assert.Equal(t, properties[3].Name, "Properties")
+		assert.False(t, properties[3].NoIndex)
+		if assert.IsType(t, properties[3].Value, &datastore.Entity{}) {
+			e := properties[3].Value.(*datastore.Entity)
+
+			assert.Nil(t, e.Key)
+			assert.ElementsMatch(t, e.Properties, []datastore.Property{
+				{
+					Name:  "prop1",
+					Value: int64(42),
+				},
+				{
+					Name:  "prop2",
+					Value: "value",
+				},
+			})
+		}
+		assert.Equal(t, properties[4:], []datastore.Property{
+			{
+				Name:  "OwnerID",
+				Value: "owner",
+			},
+			{
+				Name:  "Tags",
+				Value: []interface{}{"a", "b"},
+			},
+		})
 	}
-	assert.Equal(t, expected, properties, "Save didn't return expected values.")
 }
 
 func TestRecord_Load(t *testing.T) {

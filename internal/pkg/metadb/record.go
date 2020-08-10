@@ -163,7 +163,7 @@ func NewPropertyMapFromProto(proto map[string]*pb.Property) PropertyMap {
 func (m *PropertyMap) ToProto() map[string]*pb.Property {
 	// This may seem wrong, but m is a pointer to a map, which is also a
 	// nullable reference type.
-	if *m == nil {
+	if m == nil || *m == nil {
 		return nil
 	}
 	ret := make(map[string]*pb.Property)
@@ -177,6 +177,9 @@ func (m *PropertyMap) ToProto() map[string]*pb.Property {
 // PropertyMap to a slice of datastore Properties.
 func (m *PropertyMap) Save() ([]datastore.Property, error) {
 	var ps []datastore.Property
+	if m == nil {
+		return ps, nil
+	}
 	for name, value := range *m {
 		switch value.Type {
 		case pb.Property_BOOLEAN:
@@ -211,7 +214,7 @@ func (m *PropertyMap) Load(ps []datastore.Property) error {
 		// No custom properties
 		return nil
 	}
-	if *m == nil {
+	if m == nil || *m == nil {
 		// I don't think this should happen because the Datastore Go client
 		// always zero-initializes the target before calling Load.
 		return fmt.Errorf("PropertyMap.Load was called on nil")
