@@ -16,6 +16,7 @@ package datastore
 
 import (
 	"context"
+	"time"
 
 	ds "cloud.google.com/go/datastore"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
@@ -26,8 +27,9 @@ import (
 )
 
 const (
-	storeKind  = "store"
-	recordKind = "record"
+	storeKind          = "store"
+	recordKind         = "record"
+	timestampPrecision = 1 * time.Microsecond
 )
 
 // Driver is an implementation of the metadb.Driver interface for Google Cloud Datastore.
@@ -205,4 +207,11 @@ func (d *Driver) GetRecord(ctx context.Context, storeKey, key string) (*m.Record
 func (d *Driver) DeleteRecord(ctx context.Context, storeKey, key string) error {
 	rkey := d.createRecordKey(storeKey, key)
 	return datastoreErrToGRPCStatus(d.client.Delete(ctx, rkey))
+}
+
+// TimestampPrecision returns the precision of timestamps stored in
+// Cloud Datastore. Currently it's 1 microsecond.
+// https://cloud.google.com/datastore/docs/concepts/entities#date_and_time
+func (d *Driver) TimestampPrecision() time.Duration {
+	return timestampPrecision
 }

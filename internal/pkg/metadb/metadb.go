@@ -14,7 +14,10 @@
 
 package metadb
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Driver interface defines common operations for the metadata server.
 // MetaDB uses this interface to perform actual operations on the backend service.
@@ -31,6 +34,8 @@ type Driver interface {
 	UpdateRecord(ctx context.Context, storeKey string, record *Record) error
 	GetRecord(ctx context.Context, storeKey, key string) (*Record, error)
 	DeleteRecord(ctx context.Context, storeKey, key string) error
+
+	TimestampPrecision() time.Duration
 }
 
 // MetaDB is a metadata database manager of Triton.
@@ -58,7 +63,7 @@ func (m *MetaDB) Disconnect(ctx context.Context) error {
 
 // CreateStore creates a new store.
 func (m *MetaDB) CreateStore(ctx context.Context, store *Store) error {
-	store.Timestamps.NewTimestamps()
+	store.Timestamps.NewTimestamps(m.driver.TimestampPrecision())
 	return m.driver.CreateStore(ctx, store)
 }
 
@@ -82,14 +87,14 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
 func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *Record) error {
-	record.Timestamps.NewTimestamps()
+	record.Timestamps.NewTimestamps(m.driver.TimestampPrecision())
 	return m.driver.InsertRecord(ctx, storeKey, record)
 }
 
 // UpdateRecord updates the record in the store specified with storeKey.
 // Returns error if the store doesn't have a record with the key provided.
 func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, record *Record) error {
-	record.Timestamps.UpdateTimestamps()
+	record.Timestamps.UpdateTimestamps(m.driver.TimestampPrecision())
 	return m.driver.UpdateRecord(ctx, storeKey, record)
 }
 

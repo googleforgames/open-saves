@@ -35,8 +35,8 @@ const (
 	testCacheAddr = "localhost:6379"
 	// The threshold of comparing times.
 	// Since the server and client run on the same host for these tests,
-	// 5 seconds should be enough.
-	timestampDelta = 5 * time.Second
+	// 1 second should be enough.
+	timestampDelta = 1 * time.Second
 )
 
 func getTestServer(ctx context.Context, t *testing.T, cloud string) (*grpc.Server, *bufconn.Listener) {
@@ -68,10 +68,10 @@ func assertEqualStore(t *testing.T, expected, actual *pb.Store) {
 		assert.Equal(t, expected.Tags, actual.Tags)
 		assert.Equal(t, expected.OwnerId, actual.OwnerId)
 		assert.NotNil(t, actual.GetCreatedAt())
-		assert.WithinDuration(t, actual.GetCreatedAt().AsTime(),
+		assert.WithinDuration(t, expected.GetCreatedAt().AsTime(),
 			actual.GetCreatedAt().AsTime(), timestampDelta)
 		assert.NotNil(t, actual.GetUpdatedAt())
-		assert.WithinDuration(t, actual.GetUpdatedAt().AsTime(),
+		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
 			actual.GetUpdatedAt().AsTime(), timestampDelta)
 	}
 }
@@ -96,10 +96,10 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 			}
 		}
 		assert.NotNil(t, actual.GetCreatedAt())
-		assert.WithinDuration(t, actual.GetUpdatedAt().AsTime(),
+		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
 			actual.GetUpdatedAt().AsTime(), timestampDelta)
 		assert.NotNil(t, actual.GetUpdatedAt())
-		assert.WithinDuration(t, actual.GetUpdatedAt().AsTime(),
+		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
 			actual.GetUpdatedAt().AsTime(), timestampDelta)
 	}
 }

@@ -271,3 +271,10 @@ func TestDriver_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
 		t.Fatalf("DeleteRecord failed with a non-existent key: %v", err)
 	}
 }
+
+func TestDriver_TimestampPrecision(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	defer driver.Disconnect(ctx)
+	assert.Equal(t, timestampPrecision, driver.TimestampPrecision())
+}

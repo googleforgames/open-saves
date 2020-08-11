@@ -45,6 +45,7 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	)
 
 	metadb := m.NewMetaDB(mockDriver)
+	mockDriver.EXPECT().TimestampPrecision().AnyTimes().Return(time.Microsecond)
 
 	mockDriver.EXPECT().Connect(ctx)
 	assert.NoError(t, metadb.Connect(ctx))
