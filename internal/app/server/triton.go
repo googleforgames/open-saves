@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	tritonpb "github.com/googleforgames/triton/api"
 	"github.com/googleforgames/triton/internal/pkg/blob"
 	"github.com/googleforgames/triton/internal/pkg/cache"
@@ -27,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	empty "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type tritonServer struct {
