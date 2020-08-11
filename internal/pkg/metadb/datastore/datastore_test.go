@@ -114,7 +114,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 		BlobSize: int64(len(blob)),
 		OwnerID:  "Triton",
 		Tags:     []string{"abc", "def"},
-		Properties: map[string]*m.Property{
+		Properties: m.PropertyMap{
 			"BoolTP":   {Type: pb.Property_BOOLEAN, BooleanValue: false},
 			"IntTP":    {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"StringTP": {Type: pb.Property_STRING, StringValue: "a string value"},
@@ -173,7 +173,7 @@ func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 	driver := newDriver(ctx, t)
 	defer driver.Disconnect(ctx)
 	store := &m.Store{Key: newStoreKey()}
-	record := &m.Record{Key: newRecordKey()}
+	record := &m.Record{Key: newRecordKey(), Properties: make(m.PropertyMap)}
 
 	assert.NoError(t, driver.CreateStore(ctx, store))
 	defer driver.DeleteStore(ctx, store.Key)
@@ -205,11 +205,12 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
 	record := &m.Record{
-		Key:      recordKey,
-		Blob:     blob,
-		BlobSize: int64(len(blob)),
-		OwnerID:  "Triton",
-		Tags:     []string{"abc", "def"},
+		Key:        recordKey,
+		Blob:       blob,
+		BlobSize:   int64(len(blob)),
+		Properties: make(m.PropertyMap),
+		OwnerID:    "Triton",
+		Tags:       []string{"abc", "def"},
 	}
 
 	if err := driver.UpdateRecord(ctx, storeKey, record); err == nil {
