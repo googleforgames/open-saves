@@ -18,6 +18,7 @@ package triton;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/googleforgames/triton";
 
@@ -140,6 +141,15 @@ message Record {
   // tags are queryable strings to categorize records
   // Examples: "player:1", "system", "inventory:xxx"
   repeated string tags = 6;
+
+  // created_at is the point in time in UTC when the Record is created
+  // on the triton server. It is managed and set by the server.
+  google.protobuf.Timestamp created_at = 7;
+
+  // updated_at is the point in time in UTC when the Record is updated
+  // on the triton server. It is managed by the server and updated every time
+  // the Record is updated.
+  google.protobuf.Timestamp updated_at = 8;
 }
 
 // Performance optimization hints for the server.
@@ -184,6 +194,15 @@ message Store {
   // Triton doesn't maintain list of valid users and it is the responsibility of
   // the client to keep track of user IDs.
   string owner_id = 4;
+
+  // created_at is the point in time in UTC when the Store is created
+  // on the triton server. It is managed and set by the server.
+  google.protobuf.Timestamp created_at = 5;
+
+  // updated_at is the point in time in UTC when the Store is updated
+  // on the triton server. It is managed by the server and updated every time
+  // the Store is updated.
+  google.protobuf.Timestamp updated_at = 6;
 }
 
 message CreateStoreRequest {
