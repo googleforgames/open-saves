@@ -23,7 +23,6 @@ import (
 	pb "github.com/googleforgames/triton/api"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestPropertyValue_ToProto(t *testing.T) {
@@ -342,18 +341,14 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 				Value: &pb.Property_StringValue{StringValue: "value"},
 			},
 		},
-		OwnerId:   "owner",
-		Tags:      []string{"a", "b"},
-		CreatedAt: timestamppb.New(createdAt),
-		UpdatedAt: timestamppb.New(updatedAt),
+		OwnerId: "owner",
+		Tags:    []string{"a", "b"},
 	}
 	assert.Equal(t, expected, record.ToProto())
 }
 
 func TestRecord_NewRecordFromProto(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
-	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
-	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	proto := &pb.Record{
 		Key:      "key",
 		Blob:     testBlob,
@@ -368,10 +363,8 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 				Value: &pb.Property_StringValue{StringValue: "value"},
 			},
 		},
-		OwnerId:   "owner",
-		Tags:      []string{"a", "b"},
-		CreatedAt: timestamppb.New(createdAt),
-		UpdatedAt: timestamppb.New(updatedAt),
+		OwnerId: "owner",
+		Tags:    []string{"a", "b"},
 	}
 	expected := &m.Record{
 		Key:          "key",
@@ -384,10 +377,6 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		},
 		OwnerID: "owner",
 		Tags:    []string{"a", "b"},
-		Timestamps: m.Timestamps{
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
-		},
 	}
 	actual := m.NewRecordFromProto(proto)
 	assert.Equal(t, expected, actual)

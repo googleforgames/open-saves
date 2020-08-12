@@ -20,7 +20,6 @@ import (
 
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PropertyValue is an internal representation of the user-defined property.
@@ -131,8 +130,6 @@ func (r *Record) ToProto() *pb.Record {
 		OwnerId:    r.OwnerID,
 		Tags:       r.Tags,
 		Properties: r.Properties.ToProto(),
-		CreatedAt:  timestamppb.New(r.Timestamps.CreatedAt),
-		UpdatedAt:  timestamppb.New(r.Timestamps.UpdatedAt),
 	}
 	return ret
 }
@@ -150,10 +147,6 @@ func NewRecordFromProto(p *pb.Record) *Record {
 		OwnerID:    p.GetOwnerId(),
 		Tags:       p.GetTags(),
 		Properties: NewPropertyMapFromProto(p.GetProperties()),
-		Timestamps: Timestamps{
-			CreatedAt: p.GetCreatedAt().AsTime(),
-			UpdatedAt: p.GetUpdatedAt().AsTime(),
-		},
 	}
 }
 

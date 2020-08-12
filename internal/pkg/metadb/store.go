@@ -17,7 +17,6 @@ package metadb
 import (
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Store represents a Triton store in the metadata database.
@@ -40,12 +39,10 @@ var _ datastore.KeyLoader = new(Store)
 // ToProto converts the structure a proto.
 func (s *Store) ToProto() *pb.Store {
 	return &pb.Store{
-		Key:       s.Key,
-		Name:      s.Name,
-		Tags:      s.Tags,
-		OwnerId:   s.OwnerID,
-		CreatedAt: timestamppb.New(s.Timestamps.CreatedAt),
-		UpdatedAt: timestamppb.New(s.Timestamps.UpdatedAt),
+		Key:     s.Key,
+		Name:    s.Name,
+		Tags:    s.Tags,
+		OwnerId: s.OwnerID,
 	}
 }
 
@@ -79,13 +76,10 @@ func NewStoreFromProto(p *pb.Store) *Store {
 		return new(Store)
 	}
 	return &Store{
-		Key:     p.Key,
-		Name:    p.Name,
-		Tags:    p.Tags,
-		OwnerID: p.OwnerId,
-		Timestamps: Timestamps{
-			CreatedAt: p.GetCreatedAt().AsTime(),
-			UpdatedAt: p.GetUpdatedAt().AsTime(),
-		},
+		Key:        p.Key,
+		Name:       p.Name,
+		Tags:       p.Tags,
+		OwnerID:    p.OwnerId,
+		Timestamps: Timestamps{},
 	}
 }
