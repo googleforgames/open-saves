@@ -91,6 +91,14 @@ service Triton {
       delete: "/v1/stores/{store_key}/records/{key}"
     };
   }
+
+  // Ping returns the same string provided by the client.
+  // The string is optional and the server returns an empty string if omitted.
+  rpc Ping(PingRequest) returns (PingResponse) {
+    option (google.api.http) = {
+      get: "/v1/ping"
+    };
+  }
 }
 
 // Property represents typed data in Triton.
@@ -315,4 +323,14 @@ message DeleteRecordRequest {
 message ListStoresResponse {
   // List of stores that match the provided criteria.
   repeated Store stores = 1;
+}
+
+message PingRequest {
+  // An optional string to send with the ping message.
+  string ping = 1;
+}
+
+message PingResponse {
+  // An optional string that is copied from PingRequest.
+  string pong = 1;
 }

@@ -163,3 +163,9 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 func (s *tritonServer) QueryRecords(ctx context.Context, req *tritonpb.QueryRecordsRequest) (*tritonpb.QueryRecordsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "QueryRecords is not implemented yet.")
 }
+
+func (s *tritonServer) Ping(ctx context.Context, req *tritonpb.PingRequest) (*tritonpb.PingResponse, error) {
+	return &tritonpb.PingResponse{
+		Pong: req.GetPing(),
+	}, nil
+}
