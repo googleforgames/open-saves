@@ -17,6 +17,7 @@ package metadb
 import (
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Store represents a Triton store in the metadata database.
@@ -26,6 +27,10 @@ type Store struct {
 	Name    string
 	Tags    []string
 	OwnerID string
+
+	// Timestamps keeps track of creation and modification times and stores a randomly
+	// generated UUID to maintain consistency.
+	Timestamps Timestamps
 }
 
 // Assert Store implements both PropertyLoadSave and KeyLoader.
@@ -35,10 +40,12 @@ var _ datastore.KeyLoader = new(Store)
 // ToProto converts the structure a proto.
 func (s *Store) ToProto() *pb.Store {
 	return &pb.Store{
-		Key:     s.Key,
-		Name:    s.Name,
-		Tags:    s.Tags,
-		OwnerId: s.OwnerID,
+		Key:       s.Key,
+		Name:      s.Name,
+		Tags:      s.Tags,
+		OwnerId:   s.OwnerID,
+		CreatedAt: timestamppb.New(s.Timestamps.CreatedAt),
+		UpdatedAt: timestamppb.New(s.Timestamps.UpdatedAt),
 	}
 }
 
@@ -76,5 +83,9 @@ func NewStoreFromProto(p *pb.Store) *Store {
 		Name:    p.Name,
 		Tags:    p.Tags,
 		OwnerID: p.OwnerId,
+		Timestamps: Timestamps{
+			CreatedAt: p.GetCreatedAt().AsTime(),
+			UpdatedAt: p.GetUpdatedAt().AsTime(),
+		},
 	}
 }

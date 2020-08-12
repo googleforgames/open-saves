@@ -17,6 +17,7 @@ package metadb_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
@@ -31,6 +32,14 @@ func TestMetaDB_NewMetaDB(t *testing.T) {
 	assert.NotNil(t, metadb, "NewMetaDB() should return a non-nil instance.")
 }
 
+// Checks if actual is equal to or after expected, within d.
+func timeEqualOrAfter(expected, actual time.Time, d time.Duration) bool {
+	if expected.Equal(actual) {
+		return true
+	}
+	return expected.Before(actual) && actual.Sub(expected) < d
+}
+
 func TestMetaDB_DriverCalls(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
@@ -38,12 +47,14 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	store := new(m.Store)
 	record := new(m.Record)
 	const (
-		key  = "random key string"
-		key2 = "another key string"
-		name = "random name"
+		key           = "random key string"
+		key2          = "another key string"
+		name          = "random name"
+		timeThreshold = 1 * time.Second
 	)
 
 	metadb := m.NewMetaDB(mockDriver)
+	mockDriver.EXPECT().TimestampPrecision().AnyTimes().Return(time.Microsecond)
 
 	mockDriver.EXPECT().Connect(ctx)
 	assert.NoError(t, metadb.Connect(ctx))
@@ -51,8 +62,11 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	mockDriver.EXPECT().Disconnect(ctx)
 	assert.NoError(t, metadb.Disconnect(ctx))
 
+	beforeCreate := time.Now()
 	mockDriver.EXPECT().CreateStore(ctx, store)
 	assert.NoError(t, metadb.CreateStore(ctx, store))
+	assert.True(t, timeEqualOrAfter(beforeCreate, store.Timestamps.CreatedAt, timeThreshold))
+	assert.True(t, timeEqualOrAfter(beforeCreate, store.Timestamps.UpdatedAt, timeThreshold))
 
 	mockDriver.EXPECT().GetStore(ctx, key).Return(store, nil)
 	actualstore, err := metadb.GetStore(ctx, key)
@@ -67,11 +81,17 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	mockDriver.EXPECT().DeleteStore(ctx, key)
 	assert.NoError(t, metadb.DeleteStore(ctx, key))
 
+	beforeInsert := time.Now()
 	mockDriver.EXPECT().InsertRecord(ctx, key, record)
 	assert.NoError(t, metadb.InsertRecord(ctx, key, record))
+	assert.True(t, timeEqualOrAfter(beforeInsert, record.Timestamps.CreatedAt, timeThreshold))
+	assert.True(t, timeEqualOrAfter(beforeInsert, record.Timestamps.UpdatedAt, timeThreshold))
 
+	createdAt := record.Timestamps.CreatedAt
 	mockDriver.EXPECT().UpdateRecord(ctx, key, record)
 	assert.NoError(t, metadb.UpdateRecord(ctx, key, record))
+	assert.True(t, createdAt.Equal(record.Timestamps.CreatedAt))
+	assert.True(t, timeEqualOrAfter(createdAt, record.Timestamps.UpdatedAt, timeThreshold))
 
 	mockDriver.EXPECT().GetRecord(ctx, key, key2).Return(record, nil)
 	actualrecord, err := metadb.GetRecord(ctx, key, key2)

@@ -20,6 +20,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/triton/api"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PropertyValue is an internal representation of the user-defined property.
@@ -47,6 +48,10 @@ type Record struct {
 	Properties   PropertyMap
 	OwnerID      string
 	Tags         []string
+
+	// Timestamps keeps track of creation and modification times and stores a randomly
+	// generated UUID to maintain consistency.
+	Timestamps Timestamps
 }
 
 // Assert Record implements both PropertyLoadSave and KeyLoader.
@@ -126,6 +131,8 @@ func (r *Record) ToProto() *pb.Record {
 		OwnerId:    r.OwnerID,
 		Tags:       r.Tags,
 		Properties: r.Properties.ToProto(),
+		CreatedAt:  timestamppb.New(r.Timestamps.CreatedAt),
+		UpdatedAt:  timestamppb.New(r.Timestamps.UpdatedAt),
 	}
 	return ret
 }
@@ -143,6 +150,10 @@ func NewRecordFromProto(p *pb.Record) *Record {
 		OwnerID:    p.GetOwnerId(),
 		Tags:       p.GetTags(),
 		Properties: NewPropertyMapFromProto(p.GetProperties()),
+		Timestamps: Timestamps{
+			CreatedAt: p.GetCreatedAt().AsTime(),
+			UpdatedAt: p.GetUpdatedAt().AsTime(),
+		},
 	}
 }
 
