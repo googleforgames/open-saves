@@ -46,16 +46,19 @@ type Timestamps struct {
 var _ datastore.PropertyLoadSaver = new(Timestamps)
 
 // NewTimestamps sets CreatedAt and UpdatedAt to time.Now() and Signature to uuid.New().
-func (t *Timestamps) NewTimestamps() {
-	now := time.Now()
+func (t *Timestamps) NewTimestamps(d time.Duration) {
+	// This needs to be the lowest precision of all backend that MetaDB currently
+	// supports. Currently it's 1 microsecond.
+	// Datastore: 1 microsecond: https://cloud.google.com/datastore/docs/concepts/entities#date_and_time
+	now := time.Now().UTC().Truncate(d)
 	t.CreatedAt = now
 	t.UpdatedAt = now
 	t.Signature = uuid.New()
 }
 
 // UpdateTimestamps updates the UpdatedAt and Signature fields with time.Now() and uuid.New().
-func (t *Timestamps) UpdateTimestamps() {
-	t.UpdatedAt = time.Now()
+func (t *Timestamps) UpdateTimestamps(d time.Duration) {
+	t.UpdatedAt = time.Now().UTC().Truncate(d)
 	t.Signature = uuid.New()
 }
 
