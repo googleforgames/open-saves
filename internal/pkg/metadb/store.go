@@ -26,6 +26,10 @@ type Store struct {
 	Name    string
 	Tags    []string
 	OwnerID string
+
+	// Timestamps keeps track of creation and modification times and stores a randomly
+	// generated UUID to maintain consistency.
+	Timestamps Timestamps
 }
 
 // Assert Store implements both PropertyLoadSave and KeyLoader.
@@ -72,9 +76,10 @@ func NewStoreFromProto(p *pb.Store) *Store {
 		return new(Store)
 	}
 	return &Store{
-		Key:     p.Key,
-		Name:    p.Name,
-		Tags:    p.Tags,
-		OwnerID: p.OwnerId,
+		Key:        p.Key,
+		Name:       p.Name,
+		Tags:       p.Tags,
+		OwnerID:    p.OwnerId,
+		Timestamps: Timestamps{},
 	}
 }

@@ -47,6 +47,10 @@ type Record struct {
 	Properties   PropertyMap
 	OwnerID      string
 	Tags         []string
+
+	// Timestamps keeps track of creation and modification times and stores a randomly
+	// generated UUID to maintain consistency.
+	Timestamps Timestamps
 }
 
 // Assert Record implements both PropertyLoadSave and KeyLoader.
