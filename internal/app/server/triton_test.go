@@ -268,7 +268,7 @@ func updateRecordSimple(ctx context.Context, t *testing.T, client pb.TritonClien
 			OwnerId: "owner",
 		},
 	}
-	_, err = client.CreateRecord(ctx, createReq)
+	created, err := client.CreateRecord(ctx, createReq)
 	if err != nil {
 		t.Fatalf("CreateRecord failed: %v", err)
 	}
@@ -293,9 +293,11 @@ func updateRecordSimple(ctx context.Context, t *testing.T, client pb.TritonClien
 		t.Fatalf("UpdateRecord failed: %v", err)
 	}
 	expected := &pb.Record{
-		Key:      recordKey,
-		Blob:     testBlob,
-		BlobSize: int64(len(testBlob)),
+		Key:       recordKey,
+		Blob:      testBlob,
+		BlobSize:  int64(len(testBlob)),
+		CreatedAt: created.GetCreatedAt(),
+		UpdatedAt: timestamppb.Now(),
 	}
 	assertEqualRecord(t, expected, record)
 	assert.NotEqual(t, record.GetCreatedAt().AsTime(), record.GetUpdatedAt().AsTime())
@@ -327,9 +329,12 @@ func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.Tri
 	listRes, err := client.ListStores(ctx, listReq)
 	assert.NoError(t, err)
 	if assert.NotNil(t, listRes.GetStores()) && assert.Len(t, listRes.GetStores(), 1) {
+		now := timestamppb.Now()
 		expected := &pb.Store{
-			Key:  storeKey,
-			Name: storeName,
+			Key:       storeKey,
+			Name:      storeName,
+			CreatedAt: now,
+			UpdatedAt: now,
 		}
 		assertEqualStore(t, expected, listRes.GetStores()[0])
 	}

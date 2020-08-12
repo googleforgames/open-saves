@@ -155,7 +155,7 @@ func TestRecord_Save(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	if assert.Len(t, properties, 6, "Save didn't return the expected number of elements.") {
+	if assert.Len(t, properties, 7, "Save didn't return the expected number of elements.") {
 		assert.Equal(t, properties[:3], []datastore.Property{
 			{
 				Name:    "Blob",
