@@ -17,6 +17,7 @@ package datastore
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/triton/api"
@@ -46,6 +47,28 @@ func newRecordKey() string {
 	return "unittest_record_" + uuid.New().String()
 }
 
+func assertEqualStore(t *testing.T, expected, actual *m.Store, msgAndArgs ...interface{}) {
+	assert.Equal(t, expected.Key, actual.Key, msgAndArgs...)
+	assert.Equal(t, expected.Name, actual.Name, msgAndArgs...)
+	assert.Equal(t, expected.OwnerID, actual.OwnerID, msgAndArgs...)
+	assert.ElementsMatch(t, expected.Tags, actual.Tags, msgAndArgs...)
+	assert.True(t, expected.Timestamps.CreatedAt.Equal(actual.Timestamps.CreatedAt), msgAndArgs...)
+	assert.True(t, expected.Timestamps.UpdatedAt.Equal(actual.Timestamps.UpdatedAt), msgAndArgs...)
+	assert.Equal(t, expected.Timestamps.Signature, actual.Timestamps.Signature, msgAndArgs...)
+}
+
+func assertEqualRecord(t *testing.T, expected, actual *m.Record, msgAndArgs ...interface{}) {
+	assert.Equal(t, expected.Key, actual.Key, msgAndArgs...)
+	assert.Equal(t, expected.Blob, actual.Blob, msgAndArgs...)
+	assert.Equal(t, expected.BlobSize, actual.BlobSize, msgAndArgs...)
+	assert.Equal(t, expected.Properties, actual.Properties, msgAndArgs...)
+	assert.ElementsMatch(t, expected.Tags, actual.Tags, msgAndArgs...)
+	assert.Equal(t, expected.OwnerID, actual.OwnerID, msgAndArgs...)
+	assert.True(t, expected.Timestamps.CreatedAt.Equal(actual.Timestamps.CreatedAt), msgAndArgs...)
+	assert.True(t, expected.Timestamps.UpdatedAt.Equal(actual.Timestamps.UpdatedAt), msgAndArgs...)
+	assert.Equal(t, expected.Timestamps.Signature, actual.Timestamps.Signature, msgAndArgs...)
+}
+
 func TestDriver_ConnectDisconnect(t *testing.T) {
 	ctx := context.Background()
 	// Connect() is tested inside newDriver().
@@ -61,11 +84,17 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	defer driver.Disconnect(ctx)
 	storeKey := newStoreKey()
 	storeName := "SimpleCreateGetDeleteStore" + uuid.New().String()
+	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
 	store := &m.Store{
 		Key:     storeKey,
 		Name:    storeName,
 		OwnerID: "triton",
 		Tags:    []string{"abc", "def"},
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+			Signature: uuid.MustParse("db94be80-e036-4ca8-a9c0-2259b8a67acc"),
+		},
 	}
 	if err := driver.CreateStore(ctx, store); err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
@@ -75,13 +104,13 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get store (%s): %v", storeKey, err)
 	}
-	assert.Equal(t, store, store2, "GetStore should return the exact same store.")
+	assertEqualStore(t, store, store2, "GetStore should return the exact same store.")
 
 	store3, err := driver.FindStoreByName(ctx, storeName)
 	if err != nil {
 		t.Fatalf("Could not fetch store by name (%s): %v", storeName, err)
 	}
-	assert.Equal(t, store, store3, "FindStoreByName should return the exact same store.")
+	assertEqualStore(t, store, store3, "FindStoreByName should return the exact same store.")
 
 	err = driver.DeleteStore(ctx, storeKey)
 	if err != nil {
@@ -108,6 +137,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	}
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
+	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
 	record := &m.Record{
 		Key:      recordKey,
 		Blob:     blob,
@@ -119,6 +149,11 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 			"IntTP":    {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"StringTP": {Type: pb.Property_STRING, StringValue: "a string value"},
 		},
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+			Signature: uuid.MustParse("89223949-0414-438e-8f5e-3fd9e2d11c1e"),
+		},
 	}
 	if err := driver.InsertRecord(ctx, storeKey, record); err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
@@ -128,7 +163,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assert.Equal(t, record, record2, "GetRecord should return the exact same record.")
+	assertEqualRecord(t, record, record2, "GetRecord should return the exact same record.")
 
 	err = driver.InsertRecord(ctx, storeKey, record)
 	if err == nil {
@@ -204,6 +239,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	}
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
+	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
 	record := &m.Record{
 		Key:        recordKey,
 		Blob:       blob,
@@ -211,6 +247,11 @@ func TestDriver_UpdateRecord(t *testing.T) {
 		Properties: make(m.PropertyMap),
 		OwnerID:    "Triton",
 		Tags:       []string{"abc", "def"},
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+			Signature: uuid.MustParse("e4a677f6-8f1c-4765-be45-11b6400cc43b"),
+		},
 	}
 
 	if err := driver.UpdateRecord(ctx, storeKey, record); err == nil {
@@ -222,6 +263,8 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	}
 	record.Tags = append(record.Tags, "ghi")
 	record.OwnerID = "NewOwner"
+	record.Timestamps.UpdatedAt = time.Date(1988, 5, 17, 5, 6, 8, int(4321*time.Microsecond), time.UTC)
+	record.Timestamps.Signature = uuid.MustParse("3c1dc762-8f22-4d85-b729-b90393f45ca6")
 	if err := driver.UpdateRecord(ctx, storeKey, record); err != nil {
 		t.Fatalf("Failed to update a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
@@ -230,7 +273,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assert.Equal(t, record, record2, "GetRecord should fetch the updated record.")
+	assertEqualRecord(t, record, record2, "GetRecord should fetch the updated record.")
 
 	err = driver.DeleteRecord(ctx, storeKey, recordKey)
 	if err != nil {
@@ -254,4 +297,11 @@ func TestDriver_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
 	if err := driver.DeleteRecord(ctx, storeKey, recordKey); err != nil {
 		t.Fatalf("DeleteRecord failed with a non-existent key: %v", err)
 	}
+}
+
+func TestDriver_TimestampPrecision(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	defer driver.Disconnect(ctx)
+	assert.Equal(t, timestampPrecision, driver.TimestampPrecision())
 }

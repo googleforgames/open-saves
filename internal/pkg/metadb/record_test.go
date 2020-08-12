@@ -16,8 +16,10 @@ package metadb_test
 
 import (
 	"testing"
+	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/uuid"
 	pb "github.com/googleforgames/triton/api"
 	m "github.com/googleforgames/triton/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
@@ -128,6 +130,9 @@ func TestPropertyMap_ToProto(t *testing.T) {
 
 func TestRecord_Save(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
+	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
+	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	signature := uuid.MustParse("34E1A605-C0FD-4A3D-A9ED-9BA42CAFAF6E")
 	record := &m.Record{
 		Key:          "key",
 		Blob:         testBlob,
@@ -139,12 +144,17 @@ func TestRecord_Save(t *testing.T) {
 		},
 		OwnerID: "owner",
 		Tags:    []string{"a", "b"},
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			Signature: signature,
+		},
 	}
 	properties, err := record.Save()
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	if assert.Len(t, properties, 6, "Save didn't return the expected number of elements.") {
+	if assert.Len(t, properties, 7, "Save didn't return the expected number of elements.") {
 		assert.Equal(t, properties[:3], []datastore.Property{
 			{
 				Name:    "Blob",
@@ -187,12 +197,35 @@ func TestRecord_Save(t *testing.T) {
 				Name:  "Tags",
 				Value: []interface{}{"a", "b"},
 			},
+			{
+				Name: "Timestamps",
+				Value: &datastore.Entity{
+					Properties: []datastore.Property{
+						{
+							Name:  "CreatedAt",
+							Value: createdAt,
+						},
+						{
+							Name:  "UpdatedAt",
+							Value: updatedAt,
+						},
+						{
+							Name:    "Signature",
+							Value:   signature.String(),
+							NoIndex: true,
+						},
+					},
+				},
+			},
 		})
 	}
 }
 
 func TestRecord_Load(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
+	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
+	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	signature := uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6")
 	properties := []datastore.Property{
 		{
 			Name:  "Blob",
@@ -229,6 +262,25 @@ func TestRecord_Load(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name: "Timestamps",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "CreatedAt",
+						Value: createdAt,
+					},
+					{
+						Name:  "UpdatedAt",
+						Value: updatedAt,
+					},
+					{
+						Name:  "Signature",
+						Value: signature.String(),
+					},
+				},
+			},
+		},
 	}
 	var record m.Record
 	if err := record.Load(properties); err != nil {
@@ -245,12 +297,19 @@ func TestRecord_Load(t *testing.T) {
 		},
 		OwnerID: "owner",
 		Tags:    []string{"a", "b"},
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			Signature: signature,
+		},
 	}
-	assert.Equal(t, expected, record, "Load didn't return the expected value.")
+	assert.Equal(t, expected, record)
 }
 
 func TestRecord_ToProtoSimple(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
+	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
+	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	record := &m.Record{
 		Key:          "key",
 		Blob:         testBlob,
@@ -262,6 +321,11 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 		},
 		OwnerID: "owner",
 		Tags:    []string{"a", "b"},
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			Signature: uuid.MustParse("70E894AE-1020-42E8-9710-3E2D408BC356"),
+		},
 	}
 	expected := &pb.Record{
 		Key:      "key",

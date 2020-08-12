@@ -9,6 +9,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	metadb "github.com/googleforgames/triton/internal/pkg/metadb"
 	reflect "reflect"
+	time "time"
 )
 
 // MockDriver is a mock of Driver interface
@@ -175,4 +176,18 @@ func (m *MockDriver) DeleteRecord(ctx context.Context, storeKey, key string) err
 func (mr *MockDriverMockRecorder) DeleteRecord(ctx, storeKey, key interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecord", reflect.TypeOf((*MockDriver)(nil).DeleteRecord), ctx, storeKey, key)
+}
+
+// TimestampPrecision mocks base method
+func (m *MockDriver) TimestampPrecision() time.Duration {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TimestampPrecision")
+	ret0, _ := ret[0].(time.Duration)
+	return ret0
+}
+
+// TimestampPrecision indicates an expected call of TimestampPrecision
+func (mr *MockDriverMockRecorder) TimestampPrecision() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimestampPrecision", reflect.TypeOf((*MockDriver)(nil).TimestampPrecision))
 }
