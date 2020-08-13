@@ -339,3 +339,22 @@ func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.Tri
 		assertEqualStore(t, expected, listRes.GetStores()[0])
 	}
 }
+
+func TestTriton_Ping(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getTestServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+
+	pong, err := client.Ping(ctx, new(pb.PingRequest))
+	if err != nil {
+		t.Fatalf("Ping failed with an empty string: %v", err)
+	}
+	assert.Empty(t, pong.GetPong())
+
+	const testString = "The quick brown fox jumps over the lazy dog. 色は匂へど。"
+	pong, err = client.Ping(ctx, &pb.PingRequest{Ping: testString})
+	if err != nil {
+		t.Fatalf("Ping failed with a non-empty string: %v", err)
+	}
+	assert.Equal(t, testString, pong.GetPong())
+}
