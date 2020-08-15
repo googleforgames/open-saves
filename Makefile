@@ -17,9 +17,8 @@ API_DIR = api
 PROTOC = protoc
 
 SERVER_BIN = ${BIN_DIR}/server
-TRITON_GO_PROTOS = ${API_DIR}/triton.pb.go ${API_DIR}/triton.pb.gw.go
-TRITON_SWAGGER_JSON = ${API_DIR}/triton.swagger.json
-ALL_TARGETS = ${SERVER_BIN} ${TRITON_GO_PROTOS} ${TRITON_SWAGGER_JSON}
+TRITON_GO_PROTOS = ${API_DIR}/triton.pb.go
+ALL_TARGETS = ${SERVER_BIN} ${TRITON_GO_PROTOS}
 
 .PHONY: all clean test server protos swagger mock FORCE
 
@@ -38,8 +37,6 @@ test:
 
 protos: ${TRITON_GO_PROTOS}
 
-swagger: ${TRITON_SWAGGER_JSON}
-
 mock: internal/pkg/metadb/mock/mock_metadb.go
 
 internal/pkg/metadb/mock/mock_metadb.go: internal/pkg/metadb/metadb.go
@@ -51,17 +48,5 @@ ${API_DIR}/triton.pb.go: ${API_DIR}/triton.proto
  		--go_out=plugins=grpc:. \
 		--go_opt=paths=source_relative \
   		$<
-
-${API_DIR}/triton.pb.gw.go: ${API_DIR}/triton.proto
-	$(PROTOC) -I. \
-  		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-		--grpc-gateway_out=logtostderr=true,paths=source_relative:. \
-  		$<
-
-${API_DIR}/triton.swagger.json: ${API_DIR}/triton.proto
-	$(PROTOC) -I. \
-  		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-  		--swagger_out=logtostderr=true:. \
-		$<
 
 FORCE:

@@ -16,7 +16,6 @@ syntax = "proto3";
 
 package triton;
 
-import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -26,80 +25,37 @@ option go_package = "github.com/googleforgames/triton";
 // TODO(#69): Add streaming endpoints to transfer large blobs.
 service Triton {
   // CreateStore creates and returns a new store.
-  rpc CreateStore(CreateStoreRequest) returns (Store) {
-    option (google.api.http) = {
-      post: "/v1/stores"
-      body: "*"
-    };
-  }
+  rpc CreateStore(CreateStoreRequest) returns (Store) {}
 
   // GetStore fetches store with the specified key.
-  rpc GetStore(GetStoreRequest) returns (Store) {
-    option (google.api.http) = {
-      get: "/v1/stores/{key}"
-    };
-  }
+  rpc GetStore(GetStoreRequest) returns (Store) {}
 
   // ListStore returns stores matching the provided criteria.
-  rpc ListStores(ListStoresRequest) returns (ListStoresResponse) {
-    option (google.api.http) = {
-      get: "/v1/stores"
-    };
-  }
+  rpc ListStores(ListStoresRequest) returns (ListStoresResponse) {}
 
   // DeleteStore deletes a single store with the specified key.
-  rpc DeleteStore(DeleteStoreRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/v1/stores/{key}"
-    };
-  }
+  rpc DeleteStore(DeleteStoreRequest) returns (google.protobuf.Empty) {}
 
   // CreateRecord creates a new record. This returns an error if the
   // specified key already exists.
-  rpc CreateRecord(CreateRecordRequest) returns (Record) {
-    option (google.api.http) = {
-      post: "/v1/stores/{store_key}/records"
-      body: "*"
-    };
-  }
+  rpc CreateRecord(CreateRecordRequest) returns (Record) {}
 
   // GetRecord returns a record with the specified key.
-  rpc GetRecord(GetRecordRequest) returns (Record) {
-    option (google.api.http) = {
-      get: "/v1/stores/{store_key}/records/{key}"
-    };
-  }
+  rpc GetRecord(GetRecordRequest) returns (Record) {}
 
   // QueryRecords performs a query and returns matching records.
-  rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {
-    option (google.api.http) = {
-      get: "/v1/stores/{store_key}/records"
-    };
-  }
+  rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {}
 
   // UpdateRecord updates an existing record. This returns an error and
   // does not create a new record if the key doesn't exist.
-  rpc UpdateRecord(UpdateRecordRequest) returns (Record) {
-    option (google.api.http) = {
-      patch: "/v1/stores/{store_key}/records/{record.key}",
-      body: "*"
-    };
-  }
+  rpc UpdateRecord(UpdateRecordRequest) returns (Record) {}
 
   // DeleteRecord deletes a single record with the specified key.
-  rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/v1/stores/{store_key}/records/{key}"
-    };
-  }
+  rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {}
 
   // Ping returns the same string provided by the client.
   // The string is optional and the server returns an empty string if omitted.
-  rpc Ping(PingRequest) returns (PingResponse) {
-    option (google.api.http) = {
-      get: "/v1/ping"
-    };
-  }
+  rpc Ping(PingRequest) returns (PingResponse) {}
 }
 
 // Property represents typed data in Triton.
