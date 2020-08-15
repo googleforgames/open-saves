@@ -36,6 +36,7 @@ func newDriver(ctx context.Context, t *testing.T) *Driver {
 	if err := driver.Connect(ctx); err != nil {
 		t.Fatalf("Failed to connect to Datastore: %v", err)
 	}
+	t.Cleanup(func() { driver.Disconnect(ctx) })
 	return driver
 }
 
@@ -81,7 +82,6 @@ func TestDriver_ConnectDisconnect(t *testing.T) {
 func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
-	defer driver.Disconnect(ctx)
 	storeKey := newStoreKey()
 	storeName := "SimpleCreateGetDeleteStore" + uuid.New().String()
 	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
@@ -125,7 +125,6 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
-	defer driver.Disconnect(ctx)
 	storeKey := newStoreKey()
 	store := &m.Store{
 		Key:     storeKey,
@@ -188,7 +187,6 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 func TestDriver_InsertRecordShouldFailWithNonExistentStore(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
-	defer driver.Disconnect(ctx)
 	storeKey := newStoreKey()
 	record := &m.Record{
 		Key: newRecordKey(),
@@ -206,14 +204,17 @@ func TestDriver_InsertRecordShouldFailWithNonExistentStore(t *testing.T) {
 func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
-	defer driver.Disconnect(ctx)
 	store := &m.Store{Key: newStoreKey()}
 	record := &m.Record{Key: newRecordKey(), Properties: make(m.PropertyMap)}
 
 	assert.NoError(t, driver.CreateStore(ctx, store))
-	defer driver.DeleteStore(ctx, store.Key)
+	t.Cleanup(func() {
+		assert.NoError(t, driver.DeleteStore(ctx, store.Key))
+	})
 	assert.NoError(t, driver.InsertRecord(ctx, store.Key, record))
-	defer driver.DeleteRecord(ctx, store.Key, record.Key)
+	t.Cleanup(func() {
+		assert.NoError(t, driver.DeleteRecord(ctx, store.Key, record.Key))
+	})
 
 	err := driver.DeleteStore(ctx, store.Key)
 	if err == nil {
@@ -227,7 +228,6 @@ func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 func TestDriver_UpdateRecord(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
-	defer driver.Disconnect(ctx)
 	storeKey := newStoreKey()
 	store := &m.Store{
 		Key:     storeKey,
@@ -288,7 +288,6 @@ func TestDriver_UpdateRecord(t *testing.T) {
 func TestDriver_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
-	defer driver.Disconnect(ctx)
 	storeKey := newStoreKey()
 	if err := driver.DeleteStore(ctx, storeKey); err != nil {
 		t.Fatalf("DeleteStore failed with a non-existent key: %v", err)
@@ -302,6 +301,5 @@ func TestDriver_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
 func TestDriver_TimestampPrecision(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
-	defer driver.Disconnect(ctx)
 	assert.Equal(t, timestampPrecision, driver.TimestampPrecision())
 }
