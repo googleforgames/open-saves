@@ -15,7 +15,11 @@
 package metadb
 
 import (
+	"errors"
+	"time"
+
 	"cloud.google.com/go/datastore"
+	"github.com/google/uuid"
 )
 
 // BlobStatus represents the current blob status.
@@ -27,12 +31,12 @@ import (
 //                        / fail            \  success
 //                       v                   v
 //                [BlobStatusError]       [BlobStatusReady]
-//                       |                   |
-//      Upload new blob  |                   | Record deleted or new blob uploaded
-//            or         |                   v
-//     delete the record |               [BlobStatusPendingDeletion]
+//                       |       x            |
+//      Upload new blob  |        \ fail      | Record deleted or new blob uploaded
+//            or         |         \          v
+//     delete the record |          -----[BlobStatusPendingDeletion]
 //                       v                  /
-//  [Delete the blob entity] <-------------/   New blob is ready
+//  [Delete the blob entity] <-------------/   Garbage collection
 //
 type BlobStatus int16
 
@@ -56,7 +60,7 @@ const (
 // Blob is a metadata document to keep track of blobs stored in an external blob store.
 type Blob struct {
 	// Key is the primary key for the blob entry
-	Key string `datastore:"-"`
+	Key uuid.UUID `datastore:"-"`
 	// Size is the byte size of the blob
 	Size int64
 	// ObjectName represents the object name stored in the blob store.
@@ -92,6 +96,62 @@ func (b *Blob) Load(ps []datastore.Property) error {
 
 // LoadKey implements the KeyLoader interface and sets the value to the Key field.
 func (b *Blob) LoadKey(k *datastore.Key) error {
-	b.Key = k.Name
+	key, err := uuid.Parse(k.Name)
+	b.Key = key
+	return err
+}
+
+// Initialize sets up the Blob as follows:
+//	- Set a new UUID to Key
+//	- Initialize Size and ObjectName as specified
+//	- Set Status to BlobStatusInitializing
+//	- Set current time to Timestamps (both created and updated at)
+//
+// Initialize should be called once on a zero-initialized (empty) Blob whose
+// Status is set to BlobStatusUnknown, otherwise it returns an error.
+func (b *Blob) Initialize(size int64, objectName string) error {
+	if b.Status != BlobStatusUnknown {
+		return errors.New("cannot re-initialize a blob entry")
+	}
+	b.Key = uuid.New()
+	b.Size = size
+	b.ObjectName = objectName
+	b.Status = BlobStatusInitializing
+	// Nanosecond is fine as it will not be returned to clients.
+	b.Timestamps.NewTimestamps(time.Nanosecond)
+	return nil
+}
+
+// Ready changes Status to BlobStatusReady and updates Timestamps.
+// It returns an error if the current Status is not BlobStatusInitializing.
+func (b *Blob) Ready() error {
+	if b.Status != BlobStatusInitializing {
+		return errors.New("Ready was called when Status is not Initializing")
+	}
+	b.Status = BlobStatusReady
+	b.Timestamps.UpdateTimestamps(time.Nanosecond)
+	return nil
+}
+
+// Retire marks the Blob as BlobStatusPendingDeletion and updates Timestamps.
+// Returns an error if the current Status is not BlobStatusReady.
+func (b *Blob) Retire() error {
+	if b.Status != BlobStatusReady {
+		return errors.New("Retire was called when Status is not either Initializing or Ready")
+	}
+	b.Status = BlobStatusPendingDeletion
+	b.Timestamps.UpdateTimestamps(time.Nanosecond)
+	return nil
+}
+
+// Fail marks the Blob as BlobStatusError and updates Timestamps.
+// Returns an error if the current Status is not either BlobStatusInitializing
+// or BlobStatusPendingDeletion.
+func (b *Blob) Fail() error {
+	if b.Status != BlobStatusInitializing && b.Status != BlobStatusPendingDeletion {
+		return errors.New("Fail was called when Status is not either Error or Initializing or PendingDeletion")
+	}
+	b.Status = BlobStatusError
+	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
 }

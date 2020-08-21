@@ -25,14 +25,14 @@ import (
 
 func TestBlob_LoadKey(t *testing.T) {
 	blob := new(metadb.Blob)
-	key := datastore.NameKey("kind", "testkey", nil)
-	assert.NoError(t, blob.LoadKey(key))
-	assert.Equal(t, "testkey", blob.Key)
+	key := uuid.MustParse("d13c289c-8845-485f-b582-c87342d5dade")
+	assert.NoError(t, blob.LoadKey(datastore.NameKey("kind", key.String(), nil)))
+	assert.Equal(t, key, blob.Key)
 }
 
 func TestBlob_Save(t *testing.T) {
 	blob := metadb.Blob{
-		Key:        uuid.New().String(),
+		Key:        uuid.New(),
 		Size:       123,
 		ObjectName: "object name",
 		Status:     metadb.BlobStatusInitializing,
@@ -85,4 +85,66 @@ func TestBlob_Load(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, expected, actual)
 	}
+}
+
+func newInitBlob(t *testing.T) *metadb.Blob {
+	blob := new(metadb.Blob)
+	const (
+		size = int64(4)
+		name = "abc"
+	)
+
+	// Initialize
+	assert.NoError(t, blob.Initialize(size, name))
+	assert.NotEqual(t, uuid.Nil, blob.Key)
+	assert.Equal(t, size, blob.Size)
+	assert.Equal(t, name, blob.ObjectName)
+	assert.Equal(t, metadb.BlobStatusInitializing, blob.Status)
+	assert.NotEmpty(t, blob.Timestamps.CreatedAt)
+	assert.NotEmpty(t, blob.Timestamps.UpdatedAt)
+	assert.NotEmpty(t, blob.Timestamps.Signature)
+	return blob
+}
+
+func TestBlob_LifeCycle(t *testing.T) {
+	blob := newInitBlob(t)
+
+	// Invalid transitions
+	assert.Error(t, blob.Initialize(0, ""))
+	assert.Error(t, blob.Retire())
+
+	// Ready
+	assert.NoError(t, blob.Ready())
+	assert.Equal(t, metadb.BlobStatusReady, blob.Status)
+
+	// Invalid transitions
+	assert.Error(t, blob.Initialize(0, ""))
+	assert.Error(t, blob.Ready())
+
+	// Retire
+	assert.NoError(t, blob.Retire())
+	assert.Equal(t, metadb.BlobStatusPendingDeletion, blob.Status)
+
+	// Invalid transitions
+	assert.Error(t, blob.Retire())
+	assert.Error(t, blob.Ready())
+	assert.Error(t, blob.Initialize(0, ""))
+}
+
+func TestBlob_Fail(t *testing.T) {
+	blob := new(metadb.Blob)
+
+	// Fail should fail for BlobStatusUnknown
+	assert.Error(t, blob.Fail())
+
+	blob = newInitBlob(t)
+	assert.NoError(t, blob.Fail())
+	blob.Status = metadb.BlobStatusPendingDeletion
+	assert.NoError(t, blob.Fail())
+
+	blob.Status = metadb.BlobStatusReady
+	assert.Error(t, blob.Fail())
+
+	blob.Status = metadb.BlobStatusError
+	assert.Error(t, blob.Fail())
 }
