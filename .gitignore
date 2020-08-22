@@ -136,3 +136,7 @@ compile_commands.json
 
 # clangd
 .clangd/
+
+# Generated mock files
+
+mock_*
