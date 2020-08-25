@@ -18,7 +18,7 @@ PROTOC = protoc
 
 SERVER_BIN = ${BIN_DIR}/server
 TRITON_GO_PROTOS = ${API_DIR}/triton.pb.go
-ALL_TARGETS = ${SERVER_BIN} ${TRITON_GO_PROTOS}
+ALL_TARGETS = ${SERVER_BIN} ${TRITON_GO_PROTOS} internal/pkg/metadb/mock/mock_metadb.go
 
 .PHONY: all clean test server protos swagger mock FORCE
 
@@ -26,13 +26,13 @@ all: server
 
 server: ${SERVER_BIN}
 
-${SERVER_BIN}: cmd/server/main.go protos FORCE
+${SERVER_BIN}: cmd/server/main.go protos mock FORCE
 	go build -o $@ $<
 
 clean:
 	rm -f ${ALL_TARGETS}
 
-test:
+test: server
 	go test -race -v ./...
 
 protos: ${TRITON_GO_PROTOS}
