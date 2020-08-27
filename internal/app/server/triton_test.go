@@ -137,6 +137,8 @@ func testTritonBackend(ctx context.Context, t *testing.T, cloud string) {
 	t.Run("UpdateRecordSimple", func(t *testing.T) { updateRecordSimple(ctx, t, client) })
 	t.Run("ListStoresNamePerfectMatch",
 		func(t *testing.T) { listStoresNamePerfectMatch(ctx, t, client) })
+	t.Run("UpdateCacheRecords", func(t *testing.T) { updateCacheRecords(ctx, t, client) })
+	t.Run("ClearCacheRecords", func(t *testing.T) { clearCacheRecords(ctx, t, client) })
 }
 
 func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.TritonClient) {
@@ -338,6 +340,94 @@ func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.Tri
 		}
 		assertEqualStore(t, expected, listRes.GetStores()[0])
 	}
+}
+
+func updateCacheRecords(ctx context.Context, t *testing.T, client pb.TritonClient) {
+	storeKey := uuid.New().String()
+	storeName := "test store " + uuid.New().String()
+	storeReq := &pb.CreateStoreRequest{
+		Store: &pb.Store{
+			Key:  storeKey,
+			Name: storeName,
+		},
+	}
+	_, err := client.CreateStore(ctx, storeReq)
+	if err != nil {
+		t.Fatalf("CreateStore failed: %v", err)
+	}
+	t.Cleanup(func() {
+		req := &pb.DeleteStoreRequest{Key: storeKey}
+		_, err := client.DeleteStore(ctx, req)
+		assert.NoError(t, err)
+	})
+}
+
+func clearCacheRecords(ctx context.Context, t *testing.T, client pb.TritonClient) {
+	storeKey := uuid.New().String()
+	storeReq := &pb.CreateStoreRequest{
+		Store: &pb.Store{
+			Key: storeKey,
+		},
+	}
+	_, err := client.CreateStore(ctx, storeReq)
+	if err != nil {
+		t.Fatalf("CreateStore failed: %v", err)
+	}
+	t.Cleanup(func() {
+		req := &pb.DeleteStoreRequest{Key: storeKey}
+		_, err := client.DeleteStore(ctx, req)
+		assert.NoError(t, err)
+	})
+
+	recordKey := uuid.New().String()
+	createReq := &pb.CreateRecordRequest{
+		StoreKey: storeKey,
+		Record: &pb.Record{
+			Key:     recordKey,
+			OwnerId: "owner",
+		},
+	}
+	created, err := client.CreateRecord(ctx, createReq)
+	if err != nil {
+		t.Fatalf("CreateRecord failed: %v", err)
+	}
+	t.Cleanup(func() {
+		deleteReq := &pb.DeleteRecordRequest{StoreKey: storeKey, Key: recordKey}
+		_, err := client.DeleteRecord(ctx, deleteReq)
+		assert.NoError(t, err)
+	})
+
+	testBlob := []byte{0x42, 0x24, 0x00}
+	updateReq := &pb.UpdateRecordRequest{
+		StoreKey: storeKey,
+		Record: &pb.Record{
+			Key:      recordKey,
+			Blob:     testBlob,
+			BlobSize: int64(len(testBlob)),
+		},
+	}
+	beforeUpdate := time.Now()
+	record, err := client.UpdateRecord(ctx, updateReq)
+	if err != nil {
+		t.Fatalf("UpdateRecord failed: %v", err)
+	}
+	expected := &pb.Record{
+		Key:       recordKey,
+		Blob:      testBlob,
+		BlobSize:  int64(len(testBlob)),
+		CreatedAt: created.GetCreatedAt(),
+		UpdatedAt: timestamppb.Now(),
+	}
+	assertEqualRecord(t, expected, record)
+	assert.NotEqual(t, record.GetCreatedAt().AsTime(), record.GetUpdatedAt().AsTime())
+	assert.True(t, beforeUpdate.Before(record.GetUpdatedAt().AsTime()))
+
+	delReq := &pb.DeleteRecordRequest{
+		StoreKey: storeKey,
+		Key:      recordKey,
+	}
+	_, err = client.DeleteRecord(ctx, delReq)
+	assert.NoError(t, err)
 }
 
 func TestTriton_Ping(t *testing.T) {
