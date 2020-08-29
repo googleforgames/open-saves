@@ -29,6 +29,9 @@ import (
 	empty "google.golang.org/protobuf/types/known/emptypb"
 )
 
+// TODO(hongalex): make this a configurable field for users.
+const maxRecordSizeToCache int = 10 * 1024 * 1024 // 10 MB
+
 type tritonServer struct {
 	cloud      string
 	blobStore  blob.BlobStore
@@ -98,9 +101,11 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 		// Cache fails should be logged but not prevent the Get.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
-		if err := s.cacheStore.Set(ctx, k, str); err != nil {
-			// Cache fails should be logged but not prevent the Get.
-			log.Errorf("failed to update cache for key (%s): %v", k, err)
+		if len(str) < maxRecordSizeToCache {
+			if err := s.cacheStore.Set(ctx, k, str); err != nil {
+				// Cache fails should be logged but not prevent the Get.
+				log.Errorf("failed to update cache for key (%s): %v", k, err)
+			}
 		}
 	}
 
@@ -187,9 +192,11 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 		// Cache fails should be logged but not prevent the Get.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
-		if err := s.cacheStore.Set(ctx, k, str); err != nil {
-			// Cache fails should be logged but not prevent the Get.
-			log.Errorf("failed to update cache for key (%s): %v", k, err)
+		if len(str) < maxRecordSizeToCache {
+			if err := s.cacheStore.Set(ctx, k, str); err != nil {
+				// Cache fails should be logged but not prevent the Get.
+				log.Errorf("failed to update cache for key (%s): %v", k, err)
+			}
 		}
 	}
 
@@ -213,9 +220,11 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 		// Cache fails should be logged but not prevent the Get.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
-		if err := s.cacheStore.Set(ctx, k, str); err != nil {
-			// Cache fails should be logged but not prevent the Get.
-			log.Errorf("failed to update cache for key (%s): %v", k, err)
+		if len(str) < maxRecordSizeToCache {
+			if err := s.cacheStore.Set(ctx, k, str); err != nil {
+				// Cache fails should be logged but not prevent the Get.
+				log.Errorf("failed to update cache for key (%s): %v", k, err)
+			}
 		}
 	}
 
