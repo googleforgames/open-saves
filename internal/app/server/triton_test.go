@@ -137,8 +137,6 @@ func testTritonBackend(ctx context.Context, t *testing.T, cloud string) {
 	t.Run("UpdateRecordSimple", func(t *testing.T) { updateRecordSimple(ctx, t, client) })
 	t.Run("ListStoresNamePerfectMatch",
 		func(t *testing.T) { listStoresNamePerfectMatch(ctx, t, client) })
-	t.Run("UpdateCacheRecords", func(t *testing.T) { updateCacheRecords(ctx, t, client) })
-	t.Run("ClearCacheRecords", func(t *testing.T) { clearCacheRecords(ctx, t, client) })
 }
 
 func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.TritonClient) {
