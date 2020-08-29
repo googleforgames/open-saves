@@ -31,25 +31,66 @@ const (
 )
 
 func TestCache_SerializeRecord(t *testing.T) {
-	r := &pb.Record{
-		Key:      "some-key",
-		Blob:     []byte("some-bytes"),
-		BlobSize: 64,
-		OwnerId:  "new-owner",
-		Tags:     []string{"tag1", "tag2"},
-		CreatedAt: &timestamp.Timestamp{
-			Seconds: 100,
+	rr := []*pb.Record{
+		{
+			CreatedAt: &timestamp.Timestamp{
+				Seconds: 100,
+			},
+			UpdatedAt: &timestamp.Timestamp{
+				Seconds: 110,
+			},
 		},
-		UpdatedAt: &timestamp.Timestamp{
-			Seconds: 110,
+		{
+			Key: "some-key",
+			Properties: map[string]*pb.Property{
+				"prop1": {
+					Type: pb.Property_BOOLEAN,
+					Value: &pb.Property_BooleanValue{
+						BooleanValue: false,
+					},
+				},
+				"prop2": {
+					Type: pb.Property_INTEGER,
+					Value: &pb.Property_IntegerValue{
+						IntegerValue: 200,
+					},
+				},
+				"prop3": {
+					Type: pb.Property_STRING,
+					Value: &pb.Property_StringValue{
+						StringValue: "triton",
+					},
+				},
+			},
+			CreatedAt: &timestamp.Timestamp{
+				Seconds: 100,
+			},
+			UpdatedAt: &timestamp.Timestamp{
+				Seconds: 110,
+			},
+		},
+		{
+			Key:      "some-key",
+			Blob:     []byte("some-bytes"),
+			BlobSize: 64,
+			OwnerId:  "new-owner",
+			Tags:     []string{"tag1", "tag2"},
+			CreatedAt: &timestamp.Timestamp{
+				Seconds: 100,
+			},
+			UpdatedAt: &timestamp.Timestamp{
+				Seconds: 110,
+			},
 		},
 	}
 
-	e, err := EncodeRecord(r)
-	assert.NoError(t, err)
-	d, err := DecodeRecord(e)
-	assert.NoError(t, err)
-	assertEqualRecord(t, r, d)
+	for _, r := range rr {
+		e, err := EncodeRecord(r)
+		assert.NoError(t, err)
+		d, err := DecodeRecord(e)
+		assert.NoError(t, err)
+		assertEqualRecord(t, r, d)
+	}
 }
 
 func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {

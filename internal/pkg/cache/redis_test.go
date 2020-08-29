@@ -34,7 +34,7 @@ func TestRedis_All(t *testing.T) {
 	assert.Empty(t, keys)
 
 	_, err = r.Get(ctx, "unknown")
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	assert.NoError(t, r.Set(ctx, "hello", "triton"))
 

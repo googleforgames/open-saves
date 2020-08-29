@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
+	"sync"
 
 	tritonpb "github.com/googleforgames/triton/api"
 )
@@ -31,13 +32,24 @@ type Cache interface {
 	ListKeys(ctx context.Context) ([]string, error)
 }
 
-// FormatKey concatenates a store and record separated by a backslash.
-func FormatKey(store, record string) string {
-	return fmt.Sprintf("%s/%s", store, record)
+var once sync.Once
+
+// registerProperties is called once and used to register new types
+// for gob encoding/decoding.
+func registerProperties() {
+	gob.Register(&tritonpb.Property_BooleanValue{})
+	gob.Register(&tritonpb.Property_IntegerValue{})
+	gob.Register(&tritonpb.Property_StringValue{})
+}
+
+// FormatKey concatenates store and record keys separated by a backslash.
+func FormatKey(storeKey, recordKey string) string {
+	return fmt.Sprintf("%s/%s", storeKey, recordKey)
 }
 
 // EncodeRecord serializes a tritonpb Record with gob/base64.
 func EncodeRecord(r *tritonpb.Record) (string, error) {
+	once.Do(registerProperties)
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	if err := e.Encode(r); err != nil {
@@ -48,6 +60,7 @@ func EncodeRecord(r *tritonpb.Record) (string, error) {
 
 // EncodeRecord deserializes a string into a tritonpb Record with gob/base64.
 func DecodeRecord(s string) (*tritonpb.Record, error) {
+	once.Do(registerProperties)
 	r := &tritonpb.Record{}
 	by, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
