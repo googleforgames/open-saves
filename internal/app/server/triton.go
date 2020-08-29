@@ -94,7 +94,7 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 		return nil, status.Convert(err).Err()
 	}
 
-	// Update cache.
+	// Update cache store.
 	k := cache.FormatKey(req.GetStoreKey(), req.Record.GetKey())
 	str, err := cache.EncodeRecord(req.Record)
 	if err != nil {
@@ -212,7 +212,7 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 		return nil, status.Convert(err).Err()
 	}
 
-	// Update cache.
+	// Update cache store.
 	k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
 	rp := record.ToProto()
 	str, err := cache.EncodeRecord(rp)
