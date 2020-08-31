@@ -40,7 +40,7 @@ type tritonServer struct {
 }
 
 // newTritonServer creates a new instance of the triton server.
-func newTritonServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (tritonpb.TritonServer, error) {
+func newTritonServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (*tritonServer, error) {
 	switch cloud {
 	case "gcp":
 		log.Infoln("Instantiating Triton server on GCP")
