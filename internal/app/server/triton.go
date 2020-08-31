@@ -174,6 +174,7 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 		if err != nil {
 			return nil, err
 		}
+		log.Infof("cache hit: %+v", re)
 		return re, nil
 	}
 

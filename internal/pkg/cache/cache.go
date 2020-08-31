@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	tritonpb "github.com/googleforgames/triton/api"
 )
 
@@ -30,6 +31,7 @@ type Cache interface {
 	Get(ctx context.Context, key string) (string, error)
 	Delete(ctx context.Context, key string) error
 	ListKeys(ctx context.Context) ([]string, error)
+	FlushAll(ctx context.Context) error
 }
 
 var once sync.Once
@@ -40,6 +42,7 @@ func registerProperties() {
 	gob.Register(&tritonpb.Property_BooleanValue{})
 	gob.Register(&tritonpb.Property_IntegerValue{})
 	gob.Register(&tritonpb.Property_StringValue{})
+	gob.Register(&timestamp.Timestamp{})
 }
 
 // FormatKey concatenates store and record keys separated by a backslash.

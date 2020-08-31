@@ -70,6 +70,17 @@ func (r *Redis) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
+func (r *Redis) FlushAll(ctx context.Context) error {
+	conn := r.redisPool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("FLUSHALL")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *Redis) ListKeys(ctx context.Context) ([]string, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
