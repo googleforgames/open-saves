@@ -96,7 +96,7 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 			Signature: uuid.MustParse("db94be80-e036-4ca8-a9c0-2259b8a67acc"),
 		},
 	}
-	if err := driver.CreateStore(ctx, store); err != nil {
+	if _, err := driver.CreateStore(ctx, store); err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
 
@@ -131,7 +131,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 		Name:    "SimpleCreateGetDeleteRecord",
 		OwnerID: "triton",
 	}
-	if err := driver.CreateStore(ctx, store); err != nil {
+	if _, err := driver.CreateStore(ctx, store); err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
 	recordKey := newRecordKey()
@@ -154,7 +154,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 			Signature: uuid.MustParse("89223949-0414-438e-8f5e-3fd9e2d11c1e"),
 		},
 	}
-	if err := driver.InsertRecord(ctx, storeKey, record); err != nil {
+	if _, err := driver.InsertRecord(ctx, storeKey, record); err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
 
@@ -164,7 +164,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	}
 	assertEqualRecord(t, record, record2, "GetRecord should return the exact same record.")
 
-	err = driver.InsertRecord(ctx, storeKey, record)
+	_, err = driver.InsertRecord(ctx, storeKey, record)
 	if err == nil {
 		t.Fatal("Insert should fail if a record with the same already exists.")
 	}
@@ -191,7 +191,7 @@ func TestDriver_InsertRecordShouldFailWithNonExistentStore(t *testing.T) {
 	record := &m.Record{
 		Key: newRecordKey(),
 	}
-	err := driver.InsertRecord(ctx, storeKey, record)
+	_, err := driver.InsertRecord(ctx, storeKey, record)
 	if err == nil {
 		t.Error("InsertRecord should fail if the store doesn't exist.")
 		driver.DeleteRecord(ctx, storeKey, record.Key)
@@ -207,16 +207,18 @@ func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 	store := &m.Store{Key: newStoreKey()}
 	record := &m.Record{Key: newRecordKey(), Properties: make(m.PropertyMap)}
 
-	assert.NoError(t, driver.CreateStore(ctx, store))
+	_, err := driver.CreateStore(ctx, store)
+	assert.NoError(t, err)
 	t.Cleanup(func() {
 		assert.NoError(t, driver.DeleteStore(ctx, store.Key))
 	})
-	assert.NoError(t, driver.InsertRecord(ctx, store.Key, record))
+	_, err = driver.InsertRecord(ctx, store.Key, record)
+	assert.NoError(t, err)
 	t.Cleanup(func() {
 		assert.NoError(t, driver.DeleteRecord(ctx, store.Key, record.Key))
 	})
 
-	err := driver.DeleteStore(ctx, store.Key)
+	err = driver.DeleteStore(ctx, store.Key)
 	if err == nil {
 		t.Error("DeleteStore should fail if the store is not empty.")
 	} else {
@@ -234,7 +236,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 		Name:    "UpdateRecord",
 		OwnerID: "triton",
 	}
-	if err := driver.CreateStore(ctx, store); err != nil {
+	if _, err := driver.CreateStore(ctx, store); err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
 	recordKey := newRecordKey()
@@ -254,18 +256,18 @@ func TestDriver_UpdateRecord(t *testing.T) {
 		},
 	}
 
-	if err := driver.UpdateRecord(ctx, storeKey, record); err == nil {
+	if _, err := driver.UpdateRecord(ctx, storeKey, record); err == nil {
 		t.Error("UpdateRecord should return an error if the specified record doesn't exist.")
 	}
 
-	if err := driver.InsertRecord(ctx, storeKey, record); err != nil {
+	if _, err := driver.InsertRecord(ctx, storeKey, record); err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
 	record.Tags = append(record.Tags, "ghi")
 	record.OwnerID = "NewOwner"
 	record.Timestamps.UpdatedAt = time.Date(1988, 5, 17, 5, 6, 8, int(4321*time.Microsecond), time.UTC)
 	record.Timestamps.Signature = uuid.MustParse("3c1dc762-8f22-4d85-b729-b90393f45ca6")
-	if err := driver.UpdateRecord(ctx, storeKey, record); err != nil {
+	if _, err := driver.UpdateRecord(ctx, storeKey, record); err != nil {
 		t.Fatalf("Failed to update a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
 

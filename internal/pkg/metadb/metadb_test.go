@@ -64,7 +64,8 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 
 	beforeCreate := time.Now()
 	mockDriver.EXPECT().CreateStore(ctx, store)
-	assert.NoError(t, metadb.CreateStore(ctx, store))
+	_, err := metadb.CreateStore(ctx, store)
+	assert.NoError(t, err)
 	assert.True(t, timeEqualOrAfter(beforeCreate, store.Timestamps.CreatedAt, timeThreshold))
 	assert.True(t, timeEqualOrAfter(beforeCreate, store.Timestamps.UpdatedAt, timeThreshold))
 
@@ -83,13 +84,15 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 
 	beforeInsert := time.Now()
 	mockDriver.EXPECT().InsertRecord(ctx, key, record)
-	assert.NoError(t, metadb.InsertRecord(ctx, key, record))
+	_, err = metadb.InsertRecord(ctx, key, record)
+	assert.NoError(t, err)
 	assert.True(t, timeEqualOrAfter(beforeInsert, record.Timestamps.CreatedAt, timeThreshold))
 	assert.True(t, timeEqualOrAfter(beforeInsert, record.Timestamps.UpdatedAt, timeThreshold))
 
 	createdAt := record.Timestamps.CreatedAt
 	mockDriver.EXPECT().UpdateRecord(ctx, key, record)
-	assert.NoError(t, metadb.UpdateRecord(ctx, key, record))
+	_, err = metadb.UpdateRecord(ctx, key, record)
+	assert.NoError(t, err)
 	assert.True(t, createdAt.Equal(record.Timestamps.CreatedAt))
 	assert.True(t, timeEqualOrAfter(createdAt, record.Timestamps.UpdatedAt, timeThreshold))
 
