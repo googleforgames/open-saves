@@ -100,12 +100,11 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 	rp := newRecord.ToProto()
 	str, err := cache.EncodeRecord(rp)
 	if err != nil {
-		// Cache fails should be logged but not prevent the Get.
+		// Cache fails should be logged but not return error.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
 		if len(str) < maxRecordSizeToCache {
 			if err := s.cacheStore.Set(ctx, k, str); err != nil {
-				// Cache fails should be logged but not prevent the Get.
 				log.Errorf("failed to update cache for key (%s): %v", k, err)
 			}
 		}
@@ -190,12 +189,11 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 	rp := record.ToProto()
 	str, err := cache.EncodeRecord(rp)
 	if err != nil {
-		// Cache fails should be logged but not prevent the Get.
+		// Cache fails should be logged but not return error.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
 		if len(str) < maxRecordSizeToCache {
 			if err := s.cacheStore.Set(ctx, k, str); err != nil {
-				// Cache fails should be logged but not prevent the Get.
 				log.Errorf("failed to update cache for key (%s): %v", k, err)
 			}
 		}
@@ -218,12 +216,11 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 	rp := newRecord.ToProto()
 	str, err := cache.EncodeRecord(rp)
 	if err != nil {
-		// Cache fails should be logged but not prevent the Get.
+		// Cache fails should be logged but not return error.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
 		if len(str) < maxRecordSizeToCache {
 			if err := s.cacheStore.Set(ctx, k, str); err != nil {
-				// Cache fails should be logged but not prevent the Get.
 				log.Errorf("failed to update cache for key (%s): %v", k, err)
 			}
 		}
