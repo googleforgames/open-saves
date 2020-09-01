@@ -77,17 +77,18 @@ func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStor
 		Tags:    req.Store.Tags,
 		OwnerID: req.Store.OwnerId,
 	}
-	if err := s.metaDB.CreateStore(ctx, &store); err != nil {
+	newStore, err := s.metaDB.CreateStore(ctx, &store)
+	if err != nil {
 		log.Warnf("CreateStore failed for store (%s): %v", store.Key, err)
 		return nil, status.Convert(err).Err()
 	}
 	log.Infof("Created store: %+v", store)
-	return store.ToProto(), nil
+	return newStore.ToProto(), nil
 }
 
 func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRecordRequest) (*tritonpb.Record, error) {
 	record := metadb.NewRecordFromProto(req.Record)
-	err := s.metaDB.InsertRecord(ctx, req.StoreKey, record)
+	newRecord, err := s.metaDB.InsertRecord(ctx, req.StoreKey, record)
 	if err != nil {
 		log.Warnf("CreateRecord failed for store (%s), record (%s): %v",
 			req.GetStoreKey(), req.Record.GetKey(), err)
@@ -96,7 +97,8 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 
 	// Update cache store.
 	k := cache.FormatKey(req.GetStoreKey(), req.Record.GetKey())
-	str, err := cache.EncodeRecord(req.Record)
+	rp := newRecord.ToProto()
+	str, err := cache.EncodeRecord(rp)
 	if err != nil {
 		// Cache fails should be logged but not prevent the Get.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
@@ -108,9 +110,7 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 			}
 		}
 	}
-
-	log.Infof("Created record: %+v", record)
-	return record.ToProto(), nil
+	return rp, nil
 }
 
 func (s *tritonServer) DeleteRecord(ctx context.Context, req *tritonpb.DeleteRecordRequest) (*empty.Empty, error) {
@@ -206,7 +206,7 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 
 func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRecordRequest) (*tritonpb.Record, error) {
 	record := metadb.NewRecordFromProto(req.GetRecord())
-	err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record)
+	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record)
 	if err != nil {
 		log.Warnf("UpdateRecord failed for store(%s), record (%s): %v",
 			req.GetStoreKey(), req.GetRecord().GetKey(), err)
@@ -215,7 +215,7 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 
 	// Update cache store.
 	k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
-	rp := record.ToProto()
+	rp := newRecord.ToProto()
 	str, err := cache.EncodeRecord(rp)
 	if err != nil {
 		// Cache fails should be logged but not prevent the Get.
@@ -229,7 +229,7 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 		}
 	}
 
-	return record.ToProto(), nil
+	return rp, nil
 }
 
 func (s *tritonServer) QueryRecords(ctx context.Context, req *tritonpb.QueryRecordsRequest) (*tritonpb.QueryRecordsResponse, error) {

@@ -107,10 +107,13 @@ func (d *Driver) Disconnect(ctx context.Context) error {
 }
 
 // CreateStore creates a new store.
-func (d *Driver) CreateStore(ctx context.Context, store *m.Store) error {
+func (d *Driver) CreateStore(ctx context.Context, store *m.Store) (*m.Store, error) {
 	key := d.createStoreKey(store.Key)
 	mut := ds.NewInsert(key, store)
-	return d.mutateSingle(ctx, mut)
+	if err := d.mutateSingle(ctx, mut); err != nil {
+		return nil, err
+	}
+	return store, nil
 }
 
 // GetStore fetches a store based on the key provided.
@@ -162,7 +165,7 @@ func (d *Driver) DeleteStore(ctx context.Context, key string) error {
 
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
-func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *m.Record) error {
+func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *m.Record) (*m.Record, error) {
 	rkey := d.createRecordKey(storeKey, record.Key)
 	_, err := d.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		dskey := d.createStoreKey(storeKey)
@@ -178,17 +181,20 @@ func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *m.Re
 		return d.mutateSingleInTransaction(tx, mut)
 	})
 	if err != nil {
-		return datastoreErrToGRPCStatus(err)
+		return nil, datastoreErrToGRPCStatus(err)
 	}
-	return nil
+	return record, nil
 }
 
 // UpdateRecord updates the record in the store specified with storeKey.
 // Returns error if the store doesn't have a record with the key provided.
-func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, record *m.Record) error {
+func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, record *m.Record) (*m.Record, error) {
 	rkey := d.createRecordKey(storeKey, record.Key)
 	mut := ds.NewUpdate(rkey, record)
-	return d.mutateSingle(ctx, mut)
+	if err := d.mutateSingle(ctx, mut); err != nil {
+		return nil, err
+	}
+	return record, nil
 }
 
 // GetRecord fetches and returns a record with key in store storeKey.
