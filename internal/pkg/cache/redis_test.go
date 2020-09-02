@@ -38,11 +38,12 @@ func TestRedis_All(t *testing.T) {
 	_, err = r.Get(ctx, "unknown")
 	assert.Error(t, err)
 
-	assert.NoError(t, r.Set(ctx, "hello", "triton"))
+	by := []byte("triton")
+	assert.NoError(t, r.Set(ctx, "hello", by))
 
 	val, err := r.Get(ctx, "hello")
 	assert.NoError(t, err)
-	assert.Equal(t, val, "triton")
+	assert.Equal(t, val, by)
 
 	keys, err = r.ListKeys(ctx)
 	assert.NoError(t, err)

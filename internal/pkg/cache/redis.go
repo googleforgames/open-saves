@@ -37,7 +37,7 @@ func NewRedis(address string, opts ...redis.DialOption) *Redis {
 	}
 }
 
-func (r *Redis) Set(ctx context.Context, key, value string) error {
+func (r *Redis) Set(ctx context.Context, key string, value []byte) error {
 	conn := r.redisPool.Get()
 	defer conn.Close()
 
@@ -48,13 +48,13 @@ func (r *Redis) Set(ctx context.Context, key, value string) error {
 	return nil
 }
 
-func (r *Redis) Get(ctx context.Context, key string) (string, error) {
+func (r *Redis) Get(ctx context.Context, key string) ([]byte, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
 
-	val, err := redis.String(conn.Do("GET", key))
+	val, err := redis.Bytes(conn.Do("GET", key))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return val, nil
 }

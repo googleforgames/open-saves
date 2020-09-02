@@ -17,7 +17,6 @@ package cache
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/gob"
 	"fmt"
 	"sync"
@@ -27,8 +26,8 @@ import (
 )
 
 type Cache interface {
-	Set(ctx context.Context, key string, value string) error
-	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key string, value []byte) error
+	Get(ctx context.Context, key string) ([]byte, error)
 	Delete(ctx context.Context, key string) error
 	ListKeys(ctx context.Context) ([]string, error)
 	FlushAll(ctx context.Context) error
@@ -50,25 +49,21 @@ func FormatKey(storeKey, recordKey string) string {
 	return fmt.Sprintf("%s/%s", storeKey, recordKey)
 }
 
-// EncodeRecord serializes a tritonpb Record with gob/base64.
-func EncodeRecord(r *tritonpb.Record) (string, error) {
+// EncodeRecord serializes a tritonpb Record with gob.
+func EncodeRecord(r *tritonpb.Record) ([]byte, error) {
 	once.Do(registerProperties)
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	if err := e.Encode(r); err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(b.Bytes()), nil
-}
-
-// EncodeRecord deserializes a string into a tritonpb Record with gob/base64.
-func DecodeRecord(s string) (*tritonpb.Record, error) {
-	once.Do(registerProperties)
-	r := &tritonpb.Record{}
-	by, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
 		return nil, err
 	}
+	return b.Bytes(), nil
+}
+
+// EncodeRecord deserializes a tritonpb Record with gob.
+func DecodeRecord(by []byte) (*tritonpb.Record, error) {
+	once.Do(registerProperties)
+	r := &tritonpb.Record{}
 	b := bytes.Buffer{}
 	b.Write(by)
 	d := gob.NewDecoder(&b)
