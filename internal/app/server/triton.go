@@ -98,13 +98,13 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 	// Update cache store.
 	k := cache.FormatKey(req.GetStoreKey(), req.Record.GetKey())
 	rp := newRecord.ToProto()
-	str, err := cache.EncodeRecord(rp)
+	by, err := cache.EncodeRecord(rp)
 	if err != nil {
 		// Cache fails should be logged but not return error.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
-		if len(str) < maxRecordSizeToCache {
-			if err := s.cacheStore.Set(ctx, k, str); err != nil {
+		if len(by) < maxRecordSizeToCache {
+			if err := s.cacheStore.Set(ctx, k, by); err != nil {
 				log.Errorf("failed to update cache for key (%s): %v", k, err)
 			}
 		}
@@ -187,13 +187,13 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 
 	// Update cache store.
 	rp := record.ToProto()
-	str, err := cache.EncodeRecord(rp)
+	by, err := cache.EncodeRecord(rp)
 	if err != nil {
 		// Cache fails should be logged but not return error.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
-		if len(str) < maxRecordSizeToCache {
-			if err := s.cacheStore.Set(ctx, k, str); err != nil {
+		if len(by) < maxRecordSizeToCache {
+			if err := s.cacheStore.Set(ctx, k, by); err != nil {
 				log.Errorf("failed to update cache for key (%s): %v", k, err)
 			}
 		}
@@ -214,13 +214,13 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 	// Update cache store.
 	k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
 	rp := newRecord.ToProto()
-	str, err := cache.EncodeRecord(rp)
+	by, err := cache.EncodeRecord(rp)
 	if err != nil {
 		// Cache fails should be logged but not return error.
 		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
 	} else {
-		if len(str) < maxRecordSizeToCache {
-			if err := s.cacheStore.Set(ctx, k, str); err != nil {
+		if len(by) < maxRecordSizeToCache {
+			if err := s.cacheStore.Set(ctx, k, by); err != nil {
 				log.Errorf("failed to update cache for key (%s): %v", k, err)
 			}
 		}
