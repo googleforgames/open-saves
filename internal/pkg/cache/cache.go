@@ -14,11 +14,61 @@
 
 package cache
 
-import "context"
+import (
+	"bytes"
+	"context"
+	"encoding/gob"
+	"fmt"
+	"sync"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
+	tritonpb "github.com/googleforgames/triton/api"
+)
 
 type Cache interface {
-	Set(ctx context.Context, key string, value string) error
-	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key string, value []byte) error
+	Get(ctx context.Context, key string) ([]byte, error)
 	Delete(ctx context.Context, key string) error
 	ListKeys(ctx context.Context) ([]string, error)
+	FlushAll(ctx context.Context) error
+}
+
+var once sync.Once
+
+// registerProperties is called once and used to register new types
+// for gob encoding/decoding.
+func registerProperties() {
+	gob.Register(&tritonpb.Property_BooleanValue{})
+	gob.Register(&tritonpb.Property_IntegerValue{})
+	gob.Register(&tritonpb.Property_StringValue{})
+	gob.Register(&timestamp.Timestamp{})
+}
+
+// FormatKey concatenates store and record keys separated by a backslash.
+func FormatKey(storeKey, recordKey string) string {
+	return fmt.Sprintf("%s/%s", storeKey, recordKey)
+}
+
+// EncodeRecord serializes a tritonpb Record with gob.
+func EncodeRecord(r *tritonpb.Record) ([]byte, error) {
+	once.Do(registerProperties)
+	b := bytes.Buffer{}
+	e := gob.NewEncoder(&b)
+	if err := e.Encode(r); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// EncodeRecord deserializes a tritonpb Record with gob.
+func DecodeRecord(by []byte) (*tritonpb.Record, error) {
+	once.Do(registerProperties)
+	r := &tritonpb.Record{}
+	b := bytes.Buffer{}
+	b.Write(by)
+	d := gob.NewDecoder(&b)
+	if err := d.Decode(&r); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
