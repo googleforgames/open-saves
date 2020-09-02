@@ -15,57 +15,24 @@
 package cache
 
 import (
-	"context"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/googleforgames/triton/api"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRedis_All(t *testing.T) {
-	ctx := context.Background()
+const (
+	// The threshold of comparing times.
+	// Since the server and client run on the same host for these tests,
+	// 1 second should be enough.
+	timestampDelta = 1 * time.Second
+)
 
-	// Use a local instance of Redis for tests. This
-	// requires starting a redis server prior to test
-	// invocation.
-	r := NewRedis("localhost:6379")
-
-	keys, err := r.ListKeys(ctx)
-	assert.NoError(t, err)
-	assert.Empty(t, keys)
-
-	_, err = r.Get(ctx, "unknown")
-	assert.Error(t, err)
-
-	by := []byte("triton")
-	assert.NoError(t, r.Set(ctx, "hello", by))
-
-	val, err := r.Get(ctx, "hello")
-	assert.NoError(t, err)
-	assert.Equal(t, val, by)
-
-	keys, err = r.ListKeys(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, keys, []string{"hello"})
-
-	assert.NoError(t, r.Delete(ctx, "hello"))
-
-	assert.NoError(t, r.FlushAll(ctx))
-
-	keys, err = r.ListKeys(ctx)
-	assert.NoError(t, err)
-	assert.Empty(t, keys)
-}
-
-func TestRedis_SerializeRecord(t *testing.T) {
-	ctx := context.Background()
-
-	red := NewRedis("localhost:6379")
-
+func TestCache_SerializeRecord(t *testing.T) {
 	rr := []*pb.Record{
 		{
-			Key: "key1",
 			CreatedAt: &timestamp.Timestamp{
 				Seconds: 100,
 			},
@@ -74,7 +41,7 @@ func TestRedis_SerializeRecord(t *testing.T) {
 			},
 		},
 		{
-			Key: "key2",
+			Key: "some-key",
 			Properties: map[string]*pb.Property{
 				"prop1": {
 					Type: pb.Property_BOOLEAN,
@@ -103,7 +70,7 @@ func TestRedis_SerializeRecord(t *testing.T) {
 			},
 		},
 		{
-			Key:      "key3",
+			Key:      "some-key",
 			Blob:     []byte("some-bytes"),
 			BlobSize: 64,
 			OwnerId:  "new-owner",
@@ -123,13 +90,33 @@ func TestRedis_SerializeRecord(t *testing.T) {
 		d, err := DecodeRecord(e)
 		assert.NoError(t, err)
 		assertEqualRecord(t, r, d)
+	}
+}
 
-		red.Set(ctx, r.Key, e)
-		record, err := red.Get(ctx, r.Key)
-		assert.Equal(t, e, record)
-		decodedRecord, err := DecodeRecord(record)
-		assertEqualRecord(t, r, decodedRecord)
-
-		assert.NoError(t, red.FlushAll(ctx))
+func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
+	if expected == nil {
+		assert.Nil(t, actual)
+		return
+	}
+	if assert.NotNil(t, actual) {
+		assert.Equal(t, expected.Key, actual.Key)
+		assert.Equal(t, expected.Blob, actual.Blob)
+		assert.Equal(t, expected.BlobSize, actual.BlobSize)
+		assert.Equal(t, expected.Tags, actual.Tags)
+		assert.Equal(t, expected.OwnerId, actual.OwnerId)
+		assert.Equal(t, len(expected.Properties), len(actual.Properties))
+		for k, v := range expected.Properties {
+			if assert.Contains(t, actual.Properties, k) {
+				av := actual.Properties[k]
+				assert.Equal(t, v.Type, av.Type)
+				assert.Equal(t, v.Value, av.Value)
+			}
+		}
+		assert.NotNil(t, actual.GetCreatedAt())
+		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
+			actual.GetUpdatedAt().AsTime(), timestampDelta)
+		assert.NotNil(t, actual.GetUpdatedAt())
+		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
+			actual.GetUpdatedAt().AsTime(), timestampDelta)
 	}
 }
