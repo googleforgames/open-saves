@@ -70,6 +70,20 @@ func assertEqualRecord(t *testing.T, expected, actual *m.Record, msgAndArgs ...i
 	assert.Equal(t, expected.Timestamps.Signature, actual.Timestamps.Signature, msgAndArgs...)
 }
 
+func cloneRecord(r *m.Record) *m.Record {
+	if r == nil {
+		return nil
+	}
+	ret := *r
+	ret.Blob = append([]byte{}, r.Blob...)
+	ret.Properties = make(m.PropertyMap)
+	for k, v := range r.Properties {
+		ret.Properties[k] = v
+	}
+	ret.Tags = append([]string{}, r.Tags...)
+	return &ret
+}
+
 func TestDriver_ConnectDisconnect(t *testing.T) {
 	ctx := context.Background()
 	// Connect() is tested inside newDriver().
@@ -160,17 +174,18 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 			Signature: uuid.MustParse("89223949-0414-438e-8f5e-3fd9e2d11c1e"),
 		},
 	}
+	expected := cloneRecord(record)
 	createdRecord, err := driver.InsertRecord(ctx, storeKey, record)
 	if err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assertEqualRecord(t, record, createdRecord, "InsertRecord should return the created record.")
+	assertEqualRecord(t, expected, createdRecord, "InsertRecord should return the created record.")
 
 	record2, err := driver.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assertEqualRecord(t, record, record2, "GetRecord should return the exact same record.")
+	assertEqualRecord(t, expected, record2, "GetRecord should return the exact same record.")
 
 	record3, err := driver.InsertRecord(ctx, storeKey, record)
 	assert.NotNil(t, err, "Insert should fail if a record with the same already exists.")
@@ -267,6 +282,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 			Signature: uuid.MustParse("e4a677f6-8f1c-4765-be45-11b6400cc43b"),
 		},
 	}
+	expected := cloneRecord(record)
 
 	updatedRecord, err := driver.UpdateRecord(ctx, storeKey, record)
 	assert.NotNil(t, err, "UpdateRecord should return an error if the specified record doesn't exist.")
@@ -274,22 +290,27 @@ func TestDriver_UpdateRecord(t *testing.T) {
 
 	insertedRecord, err := driver.InsertRecord(ctx, storeKey, record)
 	assert.Nilf(t, err, "Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
-	assertEqualRecord(t, record, insertedRecord, "Inserted record is not the same as original.")
+	assertEqualRecord(t, expected, insertedRecord, "Inserted record is not the same as original.")
 
 	record.Tags = append(record.Tags, "ghi")
+	expected.Tags = append(expected.Tags, "ghi")
 	record.OwnerID = "NewOwner"
+	expected.OwnerID = record.OwnerID
 	record.Timestamps.UpdatedAt = time.Date(1988, 5, 17, 5, 6, 8, int(4321*time.Microsecond), time.UTC)
 	record.Timestamps.Signature = uuid.MustParse("3c1dc762-8f22-4d85-b729-b90393f45ca6")
+	expected.Timestamps = record.Timestamps
 
+	// Make sure UpdateRecord doesn't update CreatedAt
+	record.Timestamps.CreatedAt = time.Unix(0, 0)
 	updatedRecord, err = driver.UpdateRecord(ctx, storeKey, record)
 	assert.Nilf(t, err, "Failed to update a record (%s) in store (%s): %v", recordKey, storeKey, err)
-	assertEqualRecord(t, record, updatedRecord, "Updated record is not the same as original.")
+	assertEqualRecord(t, expected, updatedRecord, "Updated record is not the same as original.")
 
 	record2, err := driver.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assertEqualRecord(t, record, record2, "GetRecord should fetch the updated record.")
+	assertEqualRecord(t, expected, record2, "GetRecord should fetch the updated record.")
 
 	err = driver.DeleteRecord(ctx, storeKey, recordKey)
 	if err != nil {
