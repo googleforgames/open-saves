@@ -300,6 +300,7 @@ func updateRecordSimple(ctx context.Context, t *testing.T, client pb.TritonClien
 		UpdatedAt: timestamppb.Now(),
 	}
 	assertEqualRecord(t, expected, record)
+	assert.True(t, created.GetCreatedAt().AsTime().Equal(record.GetCreatedAt().AsTime()))
 	assert.NotEqual(t, record.GetCreatedAt().AsTime(), record.GetUpdatedAt().AsTime())
 	assert.True(t, beforeUpdate.Before(record.GetUpdatedAt().AsTime()))
 }

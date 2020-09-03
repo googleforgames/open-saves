@@ -189,9 +189,20 @@ func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *m.Re
 // UpdateRecord updates the record in the store specified with storeKey.
 // Returns error if the store doesn't have a record with the key provided.
 func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, record *m.Record) (*m.Record, error) {
-	rkey := d.createRecordKey(storeKey, record.Key)
-	mut := ds.NewUpdate(rkey, record)
-	if err := d.mutateSingle(ctx, mut); err != nil {
+	_, err := d.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		rkey := d.createRecordKey(storeKey, record.Key)
+
+		// TODO(yuryu): Consider supporting transactions in MetaDB and move
+		// this operation out of the Datastore specific code.
+		oldRecord := new(m.Record)
+		if err := tx.Get(rkey, oldRecord); err != nil {
+			return err
+		}
+		record.Timestamps.CreatedAt = oldRecord.Timestamps.CreatedAt
+		mut := ds.NewUpdate(rkey, record)
+		return d.mutateSingleInTransaction(tx, mut)
+	})
+	if err != nil {
 		return nil, err
 	}
 	return record, nil
