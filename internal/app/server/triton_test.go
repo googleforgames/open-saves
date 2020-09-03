@@ -34,9 +34,9 @@ const (
 	bufferSize    = 1024 * 1024
 	testCacheAddr = "localhost:6379"
 	// The threshold of comparing times.
-	// Since the server and client run on the same host for these tests,
-	// 1 second should be enough.
-	timestampDelta = 1 * time.Second
+	// Since the server will actually access the backend datastore,
+	// we need enough time to prevent flaky tests.
+	timestampDelta = 10 * time.Second
 )
 
 func getTestServer(ctx context.Context, t *testing.T, cloud string) (*grpc.Server, *bufconn.Listener) {
