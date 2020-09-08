@@ -15,10 +15,8 @@
 package blob
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/gcsblob"
@@ -47,36 +45,14 @@ func (b *BlobGCP) Put(ctx context.Context, path string, data []byte) error {
 	if b.bucket == nil {
 		return fmt.Errorf("could not find bucket for storage provider")
 	}
-	w, err := b.bucket.NewWriter(ctx, path, nil)
-	if err != nil {
-		return err
-	}
-	if _, err := w.Write(data); err != nil {
-		return err
-	}
-	if err := w.Close(); err != nil {
-		return err
-	}
-	return nil
+	return b.bucket.WriteAll(ctx, path, data, nil)
 }
 
 func (b *BlobGCP) Get(ctx context.Context, path string) ([]byte, error) {
 	if b.bucket == nil {
 		return []byte{}, fmt.Errorf("could not find bucket for storage provider")
 	}
-	r, err := b.bucket.NewReader(ctx, path, nil)
-	if err != nil {
-		return []byte{}, err
-	}
-	defer r.Close()
-	buf := new(bytes.Buffer)
-
-	// Copy from the reader to buffer.
-	if _, err := io.Copy(buf, r); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
+	return b.bucket.ReadAll(ctx, path)
 }
 
 func (b *BlobGCP) Delete(ctx context.Context, path string) error {
