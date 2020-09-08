@@ -44,7 +44,6 @@ internal/pkg/metadb/mock/mock_metadb.go: internal/pkg/metadb/metadb.go
 
 ${API_DIR}/triton.pb.go: ${API_DIR}/triton.proto
 	$(PROTOC) -I. \
-  		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
  		--go_out=plugins=grpc:. \
 		--go_opt=paths=source_relative \
   		$<
