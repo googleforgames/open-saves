@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func getBucket(t *testing.T) *BlobGCP {
@@ -25,6 +27,7 @@ func getBucket(t *testing.T) *BlobGCP {
 	if err != nil {
 		t.Fatalf("Initializing bucket error: %v", err)
 	}
+	t.Cleanup(func() { assert.NoError(t, gcs.Close(), "Close should not fail.") })
 	return gcs
 }
 
