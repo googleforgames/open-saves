@@ -17,6 +17,7 @@ package blob
 import (
 	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -85,4 +86,60 @@ func TestGCS_Delete(t *testing.T) {
 	if _, err := gcs.Get(ctx, filePath); err == nil {
 		t.Fatalf("Get should fail after file has been deleted, got nil")
 	}
+}
+
+func TestGCS_SimpleStreamTests(t *testing.T) {
+	ctx := context.Background()
+	gcs := getBucket(t)
+	filePath := "simple-stream-tests.txt"
+	testBlob := []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit")
+
+	writer, err := gcs.NewWriter(ctx, filePath)
+	if err != nil {
+		t.Fatalf("NewWriter(%q) in GCS got error: %v", filePath, err)
+	}
+	assert.NotNil(t, writer)
+	n, err := writer.Write(testBlob[:10])
+	assert.NoError(t, err)
+	assert.Equal(t, 10, n)
+	n, err = writer.Write(testBlob[10:])
+	assert.NoError(t, err)
+	assert.Equal(t, len(testBlob)-10, n)
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close writer: %v", err)
+	}
+	t.Cleanup(func() { assert.NoError(t, gcs.Delete(ctx, filePath)) })
+
+	reader, err := gcs.NewReader(ctx, filePath)
+	if err != nil {
+		t.Fatalf("NewReader(%q) in GCS got error: %v", filePath, err)
+	}
+	assert.NotNil(t, reader)
+	readBuf := make([]byte, 1)
+	n, err = reader.Read(readBuf)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, n)
+	assert.Equal(t, testBlob[:1], readBuf)
+	readBuf = make([]byte, 100)
+	n, err = reader.Read(readBuf)
+	assert.NoError(t, err)
+	assert.Equal(t, len(testBlob)-1, n)
+	assert.Equal(t, testBlob[1:], readBuf[:n])
+	n, err = reader.Read(readBuf)
+	assert.Zero(t, n)
+	assert.Equal(t, io.EOF, err)
+	assert.NoError(t, reader.Close())
+
+	rangeReader, err := gcs.NewRangeReader(ctx, filePath, 3, 5)
+	if err != nil {
+		t.Fatalf("NewRangeReader(%q, %q, %q) in GCS got error: %v", filePath, 3, 5, err)
+	}
+	n, err = rangeReader.Read(readBuf)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, n)
+	assert.Equal(t, testBlob[3:3+5], readBuf[:5])
+	n, err = rangeReader.Read(readBuf)
+	assert.Zero(t, n)
+	assert.Equal(t, io.EOF, err)
+	assert.NoError(t, rangeReader.Close())
 }
