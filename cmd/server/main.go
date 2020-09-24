@@ -18,9 +18,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/googleforgames/triton/internal/app/server"
 )
@@ -88,7 +89,7 @@ func getEnvVarUInt(name string, defValue uint64) uint64 {
 	if value := os.Getenv(name); value != "" {
 		uval, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
-			log.Printf("failed to parse %s env variable, default to %v", name, defValue)
+			log.Warningf("failed to parse %s env variable, default to %v", name, defValue)
 			uval = defValue
 		}
 		return uval
