@@ -18,22 +18,29 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/googleforgames/triton/internal/app/server"
 )
 
-var (
-	port    = flag.Uint("port", 6000, "The port number to run Triton on")
-	cloud   = flag.String("cloud", "gcp", "The public cloud provider you wish to run Triton on")
-	bucket  = flag.String("bucket", "gs://triton-dev-store", "The bucket which will hold Triton blobs")
-	project = flag.String("project", "triton-for-games-dev", "The GCP project ID to use for Datastore")
-	cache   = flag.String("cache", "localhost:6379", "The address of the cache store instance")
-)
-
 func main() {
+	defaultPort := getEnvVarUInt("TRITON_PORT", 6000)
+	defaultCloud := getEnvVarString("TRITON_CLOUD", "gcp")
+	defaultBucket := getEnvVarString("TRITON_BUCKET", "gs://triton-dev-store")
+	defaultProject := getEnvVarString("TRITON_PROJECT", "triton-for-games-dev")
+	defaultCache := getEnvVarString("TRITON_CACHE", "localhost:6379")
+
+	var (
+		port    = flag.Uint("port", uint(defaultPort), "The port number to run Triton on")
+		cloud   = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Triton on")
+		bucket  = flag.String("bucket", defaultBucket, "The bucket which will hold Triton blobs")
+		project = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
+		cache   = flag.String("cache", defaultCache, "The address of the cache store instance")
+	)
+
 	flag.Parse()
 	if *cloud == "" {
 		log.Fatal("missing -cloud argument for cloud provider")
@@ -69,4 +76,23 @@ func main() {
 	if err := server.Run(ctx, "tcp", cfg); err != nil {
 		log.Fatalf("got error starting server: %v", err)
 	}
+}
+
+func getEnvVarString(name string, defValue string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return defValue
+}
+
+func getEnvVarUInt(name string, defValue uint64) uint64 {
+	if value := os.Getenv(name); value != "" {
+		uval, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			log.Warningf("failed to parse %s env variable, default to %v", name, defValue)
+			uval = defValue
+		}
+		return uval
+	}
+	return defValue
 }
