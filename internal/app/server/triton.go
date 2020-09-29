@@ -39,6 +39,9 @@ type tritonServer struct {
 	cacheStore cache.Cache
 }
 
+// Assert tritonServer implements tritonpb.TritonServer
+var _ tritonpb.TritonServer = new(tritonServer)
+
 // newTritonServer creates a new instance of the triton server.
 func newTritonServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (*tritonServer, error) {
 	switch cloud {
@@ -95,19 +98,10 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 		return nil, status.Convert(err).Err()
 	}
 
-	// Update cache store.
-	k := cache.FormatKey(req.GetStoreKey(), req.Record.GetKey())
 	rp := newRecord.ToProto()
-	by, err := cache.EncodeRecord(rp)
-	if err != nil {
-		// Cache fails should be logged but not return error.
-		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
-	} else {
-		if len(by) < maxRecordSizeToCache {
-			if err := s.cacheStore.Set(ctx, k, by); err != nil {
-				log.Errorf("failed to update cache for key (%s): %v", k, err)
-			}
-		}
+	if shouldStoreCache(req.Hint) {
+		k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
+		s.storeRecordInCache(ctx, k, rp)
 	}
 	return rp, nil
 }
@@ -165,16 +159,14 @@ func (s *tritonServer) DeleteStore(ctx context.Context, req *tritonpb.DeleteStor
 
 func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordRequest) (*tritonpb.Record, error) {
 	k := cache.FormatKey(req.GetStoreKey(), req.GetKey())
-	r, err := s.cacheStore.Get(ctx, k)
 
-	// Cache hit, use value from cache store.
-	if err == nil {
-		re, err := cache.DecodeRecord(r)
+	if shouldCheckCache(req.Hint) {
+		r, err := s.getRecordFromCache(ctx, k)
 		if err != nil {
-			return nil, err
+			log.Infof("cache miss")
+		} else if r != nil {
+			return r, nil
 		}
-		log.Infof("cache hit: %+v", re)
-		return re, nil
 	}
 
 	record, err := s.metaDB.GetRecord(ctx, req.GetStoreKey(), req.GetKey())
@@ -187,16 +179,9 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 
 	// Update cache store.
 	rp := record.ToProto()
-	by, err := cache.EncodeRecord(rp)
-	if err != nil {
-		// Cache fails should be logged but not return error.
-		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
-	} else {
-		if len(by) < maxRecordSizeToCache {
-			if err := s.cacheStore.Set(ctx, k, by); err != nil {
-				log.Errorf("failed to update cache for key (%s): %v", k, err)
-			}
-		}
+
+	if shouldStoreCache(req.Hint) {
+		s.storeRecordInCache(ctx, k, rp)
 	}
 
 	return rp, nil
@@ -212,18 +197,11 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 	}
 
 	// Update cache store.
-	k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
 	rp := newRecord.ToProto()
-	by, err := cache.EncodeRecord(rp)
-	if err != nil {
-		// Cache fails should be logged but not return error.
-		log.Errorf("failed to encode record for cache for key (%s): %v", k, err)
-	} else {
-		if len(by) < maxRecordSizeToCache {
-			if err := s.cacheStore.Set(ctx, k, by); err != nil {
-				log.Errorf("failed to update cache for key (%s): %v", k, err)
-			}
-		}
+
+	if shouldStoreCache(req.Hint) {
+		k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
+		s.storeRecordInCache(ctx, k, rp)
 	}
 
 	return rp, nil
@@ -237,4 +215,53 @@ func (s *tritonServer) Ping(ctx context.Context, req *tritonpb.PingRequest) (*tr
 	return &tritonpb.PingResponse{
 		Pong: req.GetPing(),
 	}, nil
+}
+
+func (s *tritonServer) getRecordFromCache(ctx context.Context, key string) (*tritonpb.Record, error) {
+	r, err := s.cacheStore.Get(ctx, key)
+	if err != nil {
+		// cache miss.
+		return nil, err
+	}
+	// cache hit, use value from cache store.
+	re, err := cache.DecodeRecord(r)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("cache hit: %+v", re)
+	return re, nil
+}
+
+func (s *tritonServer) storeRecordInCache(ctx context.Context, key string, rp *tritonpb.Record) {
+	by, err := cache.EncodeRecord(rp)
+	if err != nil {
+		// Cache fails should be logged but not return error.
+		log.Errorf("failed to encode record for cache for key (%s): %v", key, err)
+	} else {
+		if len(by) < maxRecordSizeToCache {
+			if err := s.cacheStore.Set(ctx, key, by); err != nil {
+				log.Errorf("failed to update cache for key (%s): %v", key, err)
+			}
+		}
+	}
+}
+
+// shouldStoreCache returns whether or not triton should try to store
+// the record in the cache store. Default behavior is to cache
+// if hint is not specified.
+func shouldStoreCache(hint *tritonpb.Hint) bool {
+	if hint == nil || hint.DoNotCache == nil {
+		return true
+	}
+	return !*hint.DoNotCache
+}
+
+// shouldCache returns whether or not triton should try to check
+// the record in the cache store. Default behavior is to check
+// the cache if hint is not specified.
+func shouldCheckCache(hint *tritonpb.Hint) bool {
+	if hint == nil || hint.SkipCache == nil {
+		return true
+	}
+	return !*hint.SkipCache
 }
