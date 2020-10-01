@@ -362,7 +362,6 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 
 	recordKey := uuid.New().String()
 	testBlob := []byte{0x42, 0x24, 0x00}
-	ptrue := true
 	createReq := &pb.CreateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
@@ -379,7 +378,7 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 			},
 		},
 		Hint: &pb.Hint{
-			DoNotCache: &ptrue,
+			DoNotCache: true,
 		},
 	}
 	expected := createReq.Record
@@ -401,7 +400,7 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 		StoreKey: storeKey,
 		Key:      recordKey,
 		Hint: &pb.Hint{
-			DoNotCache: &ptrue,
+			DoNotCache: true,
 		},
 	}
 	if _, err = client.GetRecord(ctx, getReq); err != nil {
@@ -431,7 +430,7 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 		StoreKey: storeKey,
 		Key:      recordKey,
 		Hint: &pb.Hint{
-			SkipCache: &ptrue,
+			SkipCache: true,
 		},
 	}
 	gotRecord, err := client.GetRecord(ctx, getReqSkipCache)

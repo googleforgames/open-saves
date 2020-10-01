@@ -85,7 +85,7 @@ func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStor
 		log.Warnf("CreateStore failed for store (%s): %v", store.Key, err)
 		return nil, status.Convert(err).Err()
 	}
-	log.Infof("Created store: %+v", store)
+	log.Debugf("Created store: %+v", store)
 	return newStore.ToProto(), nil
 }
 
@@ -99,7 +99,7 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 	}
 
 	rp := newRecord.ToProto()
-	if shouldStoreCache(req.Hint) {
+	if shouldCache(req.Hint) {
 		k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
 		s.storeRecordInCache(ctx, k, rp)
 	}
@@ -113,7 +113,7 @@ func (s *tritonServer) DeleteRecord(ctx context.Context, req *tritonpb.DeleteRec
 			req.GetStoreKey(), req.GetKey(), err)
 		return nil, status.Convert(err).Err()
 	}
-	log.Infof("Deleted record: store (%s), record (%s)",
+	log.Debugf("Deleted record: store (%s), record (%s)",
 		req.GetStoreKey(), req.GetKey())
 
 	// Purge record from cache store.
@@ -153,7 +153,7 @@ func (s *tritonServer) DeleteStore(ctx context.Context, req *tritonpb.DeleteStor
 		log.Warnf("DeleteStore failed for store (%s): %v", req.GetKey(), err)
 		return nil, status.Convert(err).Err()
 	}
-	log.Infof("Deletes store: %s", req.GetKey())
+	log.Debugf("Deletes store: %s", req.GetKey())
 	return new(empty.Empty), nil
 }
 
@@ -163,7 +163,7 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 	if shouldCheckCache(req.Hint) {
 		r, err := s.getRecordFromCache(ctx, k)
 		if err != nil {
-			log.Infof("cache miss")
+			log.Debugf("cache miss")
 		} else if r != nil {
 			return r, nil
 		}
@@ -175,12 +175,12 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 			req.GetStoreKey(), req.GetKey(), err)
 		return nil, status.Convert(err).Err()
 	}
-	log.Infof("Got record %+v", record)
+	log.Debugf("Got record %+v", record)
 
 	// Update cache store.
 	rp := record.ToProto()
 
-	if shouldStoreCache(req.Hint) {
+	if shouldCache(req.Hint) {
 		s.storeRecordInCache(ctx, k, rp)
 	}
 
@@ -199,7 +199,7 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 	// Update cache store.
 	rp := newRecord.ToProto()
 
-	if shouldStoreCache(req.Hint) {
+	if shouldCache(req.Hint) {
 		k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
 		s.storeRecordInCache(ctx, k, rp)
 	}
@@ -228,7 +228,7 @@ func (s *tritonServer) getRecordFromCache(ctx context.Context, key string) (*tri
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("cache hit: %+v", re)
+	log.Debugf("cache hit: %+v", re)
 	return re, nil
 }
 
@@ -236,32 +236,32 @@ func (s *tritonServer) storeRecordInCache(ctx context.Context, key string, rp *t
 	by, err := cache.EncodeRecord(rp)
 	if err != nil {
 		// Cache fails should be logged but not return error.
-		log.Errorf("failed to encode record for cache for key (%s): %v", key, err)
+		log.Warnf("failed to encode record for cache for key (%s): %v", key, err)
 	} else {
 		if len(by) < maxRecordSizeToCache {
 			if err := s.cacheStore.Set(ctx, key, by); err != nil {
-				log.Errorf("failed to update cache for key (%s): %v", key, err)
+				log.Warnf("failed to update cache for key (%s): %v", key, err)
 			}
 		}
 	}
 }
 
-// shouldStoreCache returns whether or not triton should try to store
+// shouldCache returns whether or not triton should try to store
 // the record in the cache store. Default behavior is to cache
 // if hint is not specified.
-func shouldStoreCache(hint *tritonpb.Hint) bool {
-	if hint == nil || hint.DoNotCache == nil {
+func shouldCache(hint *tritonpb.Hint) bool {
+	if hint == nil {
 		return true
 	}
-	return !*hint.DoNotCache
+	return !hint.DoNotCache
 }
 
-// shouldCache returns whether or not triton should try to check
+// shouldCheckCache returns whether or not triton should try to check
 // the record in the cache store. Default behavior is to check
 // the cache if hint is not specified.
 func shouldCheckCache(hint *tritonpb.Hint) bool {
-	if hint == nil || hint.SkipCache == nil {
+	if hint == nil {
 		return true
 	}
-	return !*hint.SkipCache
+	return !hint.SkipCache
 }

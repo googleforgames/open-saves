@@ -119,19 +119,21 @@ message Record {
 // Performance optimization hints for the server.
 // The server may silently ignore the hints when not feasible.
 message Hint {
-  // Do not cache the record for future requests.
-  optional bool do_not_cache = 1;
+  // If true, do not cache the record for future requests.
+  bool do_not_cache = 1;
 
-  // Skip the cache check and always check the metadata server.
-  optional bool skip_cache = 2;
+  // If true, skip the cache check and always check the metadata server.
+  // If false, allow file size to determine cache checks.
+  bool skip_cache = 2;
 
-  // Always store the blob in blob storage, rather than in the metadata server.
-  optional bool force_blob_store = 3;
+  // If true, always store the blob in blob storage, rather than in the metadata
+  // server. If false, allow file size to determine where to store the blob.
+  bool force_blob_store = 3;
 
   // Tells the server to not use blob storage. Always store the blob into
   // the metadata entity. The server will return an error if the blob is too
   // large. The exact size limit depends on the backend implementation.
-  optional bool skip_blob_store = 4;
+  bool force_inline_blob = 4;
 }
 
 // Store represents an internal bucket to contain records.
