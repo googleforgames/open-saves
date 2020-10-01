@@ -163,7 +163,7 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 	if shouldCheckCache(req.Hint) {
 		r, err := s.getRecordFromCache(ctx, k)
 		if err != nil {
-			log.Debugf("cache miss")
+			log.Debug("cache miss")
 		} else if r != nil {
 			return r, nil
 		}
