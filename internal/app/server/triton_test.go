@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/triton/api"
+	"github.com/googleforgames/triton/internal/pkg/cache"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -39,7 +40,7 @@ const (
 	timestampDelta = 10 * time.Second
 )
 
-func getTestServer(ctx context.Context, t *testing.T, cloud string) (*grpc.Server, *bufconn.Listener) {
+func getTritonServer(ctx context.Context, t *testing.T, cloud string) (*tritonServer, *bufconn.Listener) {
 	impl, err := newTritonServer(ctx, cloud, testProject, testBucket, testCacheAddr)
 	if err != nil {
 		t.Fatalf("Failed to create a new Triton server instance: %v", err)
@@ -54,7 +55,7 @@ func getTestServer(ctx context.Context, t *testing.T, cloud string) (*grpc.Serve
 		}
 	}()
 	t.Cleanup(func() { server.Stop() })
-	return server, listener
+	return impl, listener
 }
 
 func assertEqualStore(t *testing.T, expected, actual *pb.Store) {
@@ -130,13 +131,14 @@ func TestTriton(t *testing.T) {
 }
 
 func testTritonBackend(ctx context.Context, t *testing.T, cloud string) {
-	_, listener := getTestServer(ctx, t, cloud)
+	triton, listener := getTritonServer(ctx, t, cloud)
 	_, client := getTestClient(ctx, t, listener)
 	t.Run("CreateGetDeleteStore", func(t *testing.T) { createGetDeleteStore(ctx, t, client) })
 	t.Run("CreateGetDeleteRecord", func(t *testing.T) { createGetDeleteRecord(ctx, t, client) })
 	t.Run("UpdateRecordSimple", func(t *testing.T) { updateRecordSimple(ctx, t, client) })
 	t.Run("ListStoresNamePerfectMatch",
 		func(t *testing.T) { listStoresNamePerfectMatch(ctx, t, client) })
+	t.Run("CacheRecordsWithHints", func(t *testing.T) { cacheRecordsWithHints(ctx, t, triton, client) })
 }
 
 func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.TritonClient) {
@@ -341,9 +343,118 @@ func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.Tri
 	}
 }
 
+func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServer, client pb.TritonClient) {
+	storeKey := uuid.New().String()
+	storeReq := &pb.CreateStoreRequest{
+		Store: &pb.Store{
+			Key: storeKey,
+		},
+	}
+	_, err := client.CreateStore(ctx, storeReq)
+	if err != nil {
+		t.Fatalf("CreateStore failed: %v", err)
+	}
+	t.Cleanup(func() {
+		req := &pb.DeleteStoreRequest{Key: storeKey}
+		_, err := client.DeleteStore(ctx, req)
+		assert.NoError(t, err)
+	})
+
+	recordKey := uuid.New().String()
+	testBlob := []byte{0x42, 0x24, 0x00}
+	createReq := &pb.CreateRecordRequest{
+		StoreKey: storeKey,
+		Record: &pb.Record{
+			Key:      recordKey,
+			Blob:     testBlob,
+			BlobSize: int64(len(testBlob)),
+			Tags:     []string{"tag1", "tag2"},
+			OwnerId:  "owner",
+			Properties: map[string]*pb.Property{
+				"prop1": {
+					Type:  pb.Property_INTEGER,
+					Value: &pb.Property_IntegerValue{IntegerValue: -42},
+				},
+			},
+		},
+		Hint: &pb.Hint{
+			DoNotCache: true,
+		},
+	}
+	expected := createReq.Record
+	record, err := client.CreateRecord(ctx, createReq)
+	if err != nil {
+		t.Fatalf("CreateRecord failed: %v", err)
+	}
+	expected.CreatedAt = timestamppb.Now()
+	expected.UpdatedAt = expected.CreatedAt
+	assertEqualRecord(t, expected, record)
+	assert.Equal(t, record.GetCreatedAt(), record.GetUpdatedAt())
+
+	// Check do not cache hint was honored.
+	key := cache.FormatKey(storeKey, recordKey)
+	recFromCache, _ := triton.getRecordFromCache(ctx, key)
+	assert.Nil(t, recFromCache, "should not have retrieved record from cache after Create with DoNotCache hint")
+
+	getReq := &pb.GetRecordRequest{
+		StoreKey: storeKey,
+		Key:      recordKey,
+		Hint: &pb.Hint{
+			DoNotCache: true,
+		},
+	}
+	if _, err = client.GetRecord(ctx, getReq); err != nil {
+		t.Errorf("GetRecord failed: %v", err)
+	}
+
+	recFromCache2, _ := triton.getRecordFromCache(ctx, key)
+	assert.Nil(t, recFromCache2, "should not have retrieved record from cache after Get with DoNotCache hint")
+
+	// Modify GetRecordRequest to not use the hint.
+	getReq.Hint = nil
+	if _, err = client.GetRecord(ctx, getReq); err != nil {
+		t.Errorf("GetRecord failed: %v", err)
+	}
+
+	recFromCache3, _ := triton.getRecordFromCache(ctx, key)
+	assert.NotNil(t, recFromCache3, "should have retrieved record from cache after Get without hints")
+	assertEqualRecord(t, expected, recFromCache3)
+
+	// Insert some bad data directly into the cache store.
+	// Check that the SkipCache hint successfully skips the
+	// cache and retrieves the correct data directly.
+	triton.storeRecordInCache(ctx, key, &pb.Record{
+		Key: "bad record",
+	})
+	getReqSkipCache := &pb.GetRecordRequest{
+		StoreKey: storeKey,
+		Key:      recordKey,
+		Hint: &pb.Hint{
+			SkipCache: true,
+		},
+	}
+	gotRecord, err := client.GetRecord(ctx, getReqSkipCache)
+	if err != nil {
+		t.Errorf("GetRecord failed: %v", err)
+	}
+	assertEqualRecord(t, expected, gotRecord)
+
+	deleteReq := &pb.DeleteRecordRequest{
+		StoreKey: storeKey,
+		Key:      recordKey,
+	}
+	_, err = client.DeleteRecord(ctx, deleteReq)
+	if err != nil {
+		t.Errorf("DeleteRecord failed: %v", err)
+	}
+
+	recFromCache4, _ := triton.getRecordFromCache(ctx, key)
+	assert.Nil(t, recFromCache4, "should not have retrieved record from cache post-delete")
+}
+
 func TestTriton_Ping(t *testing.T) {
 	ctx := context.Background()
-	_, listener := getTestServer(ctx, t, "gcp")
+	_, listener := getTritonServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 
 	pong, err := client.Ping(ctx, new(pb.PingRequest))

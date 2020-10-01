@@ -118,23 +118,22 @@ message Record {
 
 // Performance optimization hints for the server.
 // The server may silently ignore the hints when not feasible.
-enum Hint {
-  // Unspecified. This value must not be used.
-  HINT_UNSPECIFIED = 0;
+message Hint {
+  // If true, do not cache the record for future requests.
+  bool do_not_cache = 1;
 
-  // Do not cache the record for future requests.
-  DO_NOT_CACHE = 1;
+  // If true, skip the cache check and always check the metadata server.
+  // If false, allow file size to determine cache checks.
+  bool skip_cache = 2;
 
-  // Skip the cache and always check the metadata server.
-  IGNORE_CACHE = 2;
+  // If true, always store the blob in blob storage, rather than in the metadata
+  // server. If false, allow file size to determine where to store the blob.
+  bool force_blob_store = 3;
 
-  // Always store the blob in the bulk storage
-  ALWAYS_USE_BULK_STORE = 3;
-
-  // Do not use the bulk storage. Always store the blob into the metadata
-  // entity. The server will return an error if the blob is too large. The exact
-  // size limit depends on the backend implementation.
-  DO_NOT_USE_BULK_STORE = 4;
+  // Tells the server to not use blob storage. Always store the blob into
+  // the metadata entity. The server will return an error if the blob is too
+  // large. The exact size limit depends on the backend implementation.
+  bool force_inline_blob = 4;
 }
 
 // Store represents an internal bucket to contain records.
@@ -246,7 +245,7 @@ message QueryRecordsResponse {
 
   // Performance hints.
   // Query caching is not supported at the moment
-  repeated Hint hints = 3;
+  Hint hint = 3;
 }
 
 message DeleteStoreRequest {
@@ -262,7 +261,7 @@ message CreateRecordRequest {
   Record record = 2;
 
   // Performance hints.
-  repeated Hint hints = 3;
+  Hint hint = 3;
 }
 
 message GetRecordRequest {
@@ -273,7 +272,7 @@ message GetRecordRequest {
   string key = 2;
 
   // Performance hints.
-  repeated Hint hints = 3;
+  Hint hint = 3;
 }
 
 message UpdateRecordRequest {
@@ -284,7 +283,7 @@ message UpdateRecordRequest {
   Record record = 2;
 
   // Performance hints.
-  repeated Hint hints = 3;
+  Hint hint = 3;
 }
 
 message DeleteRecordRequest {
