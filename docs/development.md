@@ -104,7 +104,7 @@ instance when starting the cache store. As an example, if in a development
 environment, you can run the following command.
 
 ```bash
-./build/server -cloud=gcp -bucket="gs://your-bucket"
+./build/server -cloud=gcp -bucket="gs://your-bucket" -cache="localhost:6379"
 ```
 
 If using [Memorystore](https://cloud.google.com/memorystore) for Redis, you will
@@ -223,6 +223,101 @@ $ go run examples/grpc-client/main.go -address=$ENDPOINT:443
 2020/08/03 18:56:06 successfully created store: key:"2199d8d8-9988-445f-bf12-2ecf092b6109" name:"test" owner_id:"test-user"
 ```
 
+## Deploying to Google Kubernetes Engine (GKE)
+
+Similar to Cloud Run, GKE depends on an image that we can build and push to GCR.
+
+```bash
+export TAG=gcr.io/triton-for-games-dev/triton-server:testing
+docker build -t $TAG .
+docker push $TAG
+```
+
+Next, we need to create a cluster that has Workload Identity enabled.
+For more information on Workload Identity, see [here](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
+
+```bash
+export GCP_PROJECT="your-project-id"
+export GCP_REGION="us-west1"
+gcloud config set compute/region $GCP_REGION
+
+gcloud container clusters create open-saves-cluster \
+  --workload-pool=$GCP_PROJECT.svc.id.goog \
+```
+
+Next, add a new node pool to the cluster with Workload Identity enabled
+
+```bash
+gcloud container node-pools create open-saves-nodepool \
+  --cluster=open-saves-cluster \
+  --workload-metadata=GKE_METADATA \
+```
+
+Configure `kubectl` to communicate with the cluster:
+
+```bash
+gcloud container clusters get-credentials open-saves-cluster
+```
+
+Create a separate namespace for the Kubernetes service account
+
+```bash
+kubectl create namespace open-saves-namespace
+```
+
+Create the Kubernetes service account to use for your application:
+
+```bash
+kubectl create serviceaccount --namespace open-saves-namespace open-saves-ksa
+```
+
+Create a new service account for your application. After creation
+you will need to grant this service account access to the services
+needed for Open Saves to function, including Memorystore, Datastore, and Storage.
+
+```bash
+gcloud iam service-accounts create open-saves-gsa
+```
+
+Add the iam policy binding
+
+```bash
+gcloud iam service-accounts add-iam-policy-binding \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:$GCP_PROJECT.svc.id.goog[open-saves-namespace/open-saves-ksa]" \
+  open-saves-gsa@$GCP_PROJECT.iam.gserviceaccount.com
+```
+
+Annotate the Kubernetes service account
+
+```bash
+kubectl annotate serviceaccount \
+  --namespace open-saves-namespace \
+  open-saves-ksa \
+  iam.gke.io/gcp-service-account=open-saves-gsa@$GCP_PROJECT.iam.gserviceaccount.com
+```
+
+Deploy to kubernetes
+
+```bash
+cd deploy/gke
+kubectl apply -f deployment.yaml
+```
+
+Deploy the load balancer service and wait for the external IP to become available
+
+```bash
+kubectl apply -f service.yaml
+kubectl get services -n open-saves-namespace
+```
+
+Using the endpoint from the previous step, try running the example client to make sure everything was set up properly.
+
+```bash
+export ENDPOINT="12.34.56.78:6000" # your endpoint from previous step
+go run examples/grpc-client/main.go -address=$ENDPOINT -insecure=true
+```
+
 ## IDE Support
 
 Triton is a standard Go project so any IDE that understands that should
@@ -238,3 +333,7 @@ TODO
 ## Contributing to the project
 
 Check out [How to Contribute](contributing.md) before contributing to the project.
+
+```
+
+```

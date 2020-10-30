@@ -20,6 +20,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	tritonpb "github.com/googleforgames/triton/api"
 )
@@ -51,6 +52,7 @@ func Run(ctx context.Context, network string, cfg *Config) error {
 		return err
 	}
 	tritonpb.RegisterTritonServer(s, tritonServer)
+	reflection.Register(s)
 
 	log.Infof("starting server on %s %s", network, cfg.Address)
 	return s.Serve(lis)
