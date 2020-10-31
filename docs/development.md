@@ -225,6 +225,8 @@ $ go run examples/grpc-client/main.go -address=$ENDPOINT:443
 
 ## Deploying to Google Kubernetes Engine (GKE)
 
+This step requires `kubectl` to be installed.
+
 Similar to Cloud Run, GKE depends on an image that we can build and push to GCR.
 
 ```bash
@@ -279,7 +281,7 @@ needed for Open Saves to function, including Memorystore, Datastore, and Storage
 gcloud iam service-accounts create open-saves-gsa
 ```
 
-Add the iam policy binding
+Add the IAM policy binding for your service account to use the workload identity.
 
 ```bash
 gcloud iam service-accounts add-iam-policy-binding \
@@ -288,7 +290,7 @@ gcloud iam service-accounts add-iam-policy-binding \
   open-saves-gsa@$GCP_PROJECT.iam.gserviceaccount.com
 ```
 
-Annotate the Kubernetes service account
+Annotate the Kubernetes service account with your Google service account.
 
 ```bash
 kubectl annotate serviceaccount \
@@ -297,11 +299,12 @@ kubectl annotate serviceaccount \
   iam.gke.io/gcp-service-account=open-saves-gsa@$GCP_PROJECT.iam.gserviceaccount.com
 ```
 
-Deploy to kubernetes
+Deploy to GKE.
 
 ```bash
 cd deploy/gke
 kubectl apply -f deployment.yaml
+kubectl get deployment -n open-saves-namespace
 ```
 
 Deploy the load balancer service and wait for the external IP to become available
@@ -316,6 +319,22 @@ Using the endpoint from the previous step, try running the example client to mak
 ```bash
 export ENDPOINT="12.34.56.78:6000" # your endpoint from previous step
 go run examples/grpc-client/main.go -address=$ENDPOINT -insecure=true
+```
+
+Alternatively, if you have `grpc_cli` installed, test you can see the functions using:
+
+```bash
+$ grpc_cli ls $ENDPOINT triton.Triton
+CreateStore
+GetStore
+ListStores
+DeleteStore
+CreateRecord
+GetRecord
+QueryRecords
+UpdateRecord
+DeleteRecord
+Ping
 ```
 
 ## IDE Support
@@ -333,7 +352,3 @@ TODO
 ## Contributing to the project
 
 Check out [How to Contribute](contributing.md) before contributing to the project.
-
-```
-
-```
