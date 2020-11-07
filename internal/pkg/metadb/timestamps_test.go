@@ -20,7 +20,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	m "github.com/googleforgames/triton/internal/pkg/metadb"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 )
 

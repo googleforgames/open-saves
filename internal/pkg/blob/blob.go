@@ -19,7 +19,7 @@ import (
 	"io"
 )
 
-// BlobStore is a public interface for Blob operations within Triton.
+// BlobStore is a public interface for Blob operations within Open Saves.
 // Use one of the structs defined in the package.
 // Currently available drivers:
 // 	- BlobGCP: Google Cloud Storage

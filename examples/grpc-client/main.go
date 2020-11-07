@@ -24,11 +24,11 @@ import (
 	gtransport "google.golang.org/api/transport/grpc"
 	"google.golang.org/grpc"
 
-	tritonpb "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/open-saves/api"
 )
 
 var (
-	address  = flag.String("address", "localhost:6000", "Address of Triton server")
+	address  = flag.String("address", "localhost:6000", "Address of Open Saves server")
 	insecure = flag.Bool("insecure", false, "Dial grpc server insecurely")
 )
 
@@ -55,14 +55,14 @@ func main() {
 		log.Fatalf("got err dialing conn pool: %v", err)
 	}
 
-	c := tritonpb.NewTritonClient(connPool)
+	c := pb.NewOpenSavesClient(connPool)
 
-	store := &tritonpb.Store{
+	store := &pb.Store{
 		Key:     uuid.New().String(),
 		Name:    "test",
 		OwnerId: "test-user",
 	}
-	req := &tritonpb.CreateStoreRequest{
+	req := &pb.CreateStoreRequest{
 		Store: store,
 	}
 

@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	pb "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/open-saves/api"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,7 +38,7 @@ func TestRedis_All(t *testing.T) {
 	_, err = r.Get(ctx, "unknown")
 	assert.Error(t, err)
 
-	by := []byte("triton")
+	by := []byte("byte")
 	assert.NoError(t, r.Set(ctx, "hello", by))
 
 	val, err := r.Get(ctx, "hello")
@@ -91,7 +91,7 @@ func TestRedis_SerializeRecord(t *testing.T) {
 				"prop3": {
 					Type: pb.Property_STRING,
 					Value: &pb.Property_StringValue{
-						StringValue: "triton",
+						StringValue: "string value",
 					},
 				},
 			},

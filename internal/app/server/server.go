@@ -21,10 +21,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	tritonpb "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/open-saves/api"
 )
 
-// Config defines common fields needed to start Triton.
+// Config defines common fields needed to start Open Saves.
 type Config struct {
 	Address string
 	Cloud   string
@@ -33,7 +33,7 @@ type Config struct {
 	Project string
 }
 
-// Run starts the triton gRPC service.
+// Run starts the Open Saves gRPC service.
 func Run(ctx context.Context, network string, cfg *Config) error {
 	lis, err := net.Listen(network, cfg.Address)
 	if err != nil {
@@ -46,11 +46,11 @@ func Run(ctx context.Context, network string, cfg *Config) error {
 	}()
 
 	s := grpc.NewServer()
-	tritonServer, err := newTritonServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
+	server, err := newOpenSavesServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
 	if err != nil {
 		return err
 	}
-	tritonpb.RegisterTritonServer(s, tritonServer)
+	pb.RegisterOpenSavesServer(s, server)
 
 	log.Infof("starting server on %s %s", network, cfg.Address)
 	return s.Serve(lis)

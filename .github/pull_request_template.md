@@ -1,6 +1,6 @@
 <!--  Thanks for sending a pull request!  Here are some tips for you:
 
-1. If this is your first time, please read our contributor guidelines: https://github.com/googleforgames/triton/blob/master/docs/contributing.md and developer guide https://github.com/googleforgames/triton/blob/master/docs/development.md
+1. If this is your first time, please read our contributor guidelines: https://github.com/googleforgames/open-saves/blob/master/docs/contributing.md and developer guide https://github.com/googleforgames/open-saves/blob/master/docs/development.md
 2. Please label this pull request according to what type of issue you are addressing.
 3. Ensure you have added or ran the appropriate tests for your PR.
 -->

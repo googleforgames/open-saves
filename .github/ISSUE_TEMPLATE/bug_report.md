@@ -20,7 +20,7 @@ assignees: ''
 **Anything else we need to know?**:
 
 **Environment**:
-- Triton version: 
+- Open Saves version:
 - Kubernetes version (use `kubectl version`):
 - Cloud provider or hardware configuration:
 - Install method (yaml/helm):

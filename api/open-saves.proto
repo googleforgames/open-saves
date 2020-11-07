@@ -14,16 +14,16 @@
 
 syntax = "proto3";
 
-package triton;
+package opensaves;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/googleforgames/triton";
+option go_package = "github.com/googleforgames/open-saves;opensaves";
 
-// Public interface of the Triton service.
+// Public interface of the Open Saves service.
 // TODO(#69): Add streaming endpoints to transfer large blobs.
-service Triton {
+service OpenSaves {
   // CreateStore creates and returns a new store.
   rpc CreateStore(CreateStoreRequest) returns (Store) {}
 
@@ -58,7 +58,7 @@ service Triton {
   rpc Ping(PingRequest) returns (PingResponse) {}
 }
 
-// Property represents typed data in Triton.
+// Property represents typed data in Open Saves.
 // This is limited to one type per key.
 message Property {
   // Supported structured data types
@@ -77,7 +77,7 @@ message Property {
   }
 }
 
-// Record represents each entity in the Triton database.
+// Record represents each entity in the Open Saves database.
 message Record {
   // key is the user defined primary key.
   // It is recommended to use uniformally distributed key (e.g. UUID) rather
@@ -98,8 +98,8 @@ message Record {
   map<string, Property> properties = 4;
 
   // owner_id is the owner of the record, represented as an external user ID.
-  // Triton doesn't maintain list of valid users and it is the responsibility of
-  // the client to keep track of user IDs.
+  // Open Saves doesn't maintain list of valid users and it is the
+  // responsibility of the client to keep track of user IDs.
   string owner_id = 5;
 
   // tags are queryable strings to categorize records
@@ -107,12 +107,12 @@ message Record {
   repeated string tags = 6;
 
   // created_at is the point in time in UTC when the Record is created
-  // on the triton server. It is managed and set by the server.
+  // on the Open Saves server. It is managed and set by the server.
   google.protobuf.Timestamp created_at = 7;
 
   // updated_at is the point in time in UTC when the Record is updated
-  // on the triton server. It is managed by the server and updated every time
-  // the Record is updated.
+  // on the Open Saves server. It is managed by the server and updated every
+  // time the Record is updated.
   google.protobuf.Timestamp updated_at = 8;
 }
 
@@ -154,17 +154,17 @@ message Store {
   repeated string tags = 3;
 
   // owner_id is the owner of the store, represented as an external user ID.
-  // Triton doesn't maintain list of valid users and it is the responsibility of
-  // the client to keep track of user IDs.
+  // Open Saves doesn't maintain list of valid users and it is the
+  // responsibility of the client to keep track of user IDs.
   string owner_id = 4;
 
   // created_at is the point in time in UTC when the Store is created
-  // on the triton server. It is managed and set by the server.
+  // on the Open Saves server. It is managed and set by the server.
   google.protobuf.Timestamp created_at = 5;
 
   // updated_at is the point in time in UTC when the Store is updated
-  // on the triton server. It is managed by the server and updated every time
-  // the Store is updated.
+  // on the Open Saves server. It is managed by the server and updated every
+  // time the Store is updated.
   google.protobuf.Timestamp updated_at = 6;
 }
 

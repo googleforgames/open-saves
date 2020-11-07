@@ -20,8 +20,8 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	pb "github.com/googleforgames/triton/api"
-	m "github.com/googleforgames/triton/internal/pkg/metadb"
+	pb "github.com/googleforgames/open-saves/api"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
