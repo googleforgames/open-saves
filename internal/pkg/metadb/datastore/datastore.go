@@ -19,7 +19,7 @@ import (
 	"time"
 
 	ds "cloud.google.com/go/datastore"
-	m "github.com/googleforgames/triton/internal/pkg/metadb"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"

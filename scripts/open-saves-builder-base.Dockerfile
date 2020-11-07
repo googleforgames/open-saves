@@ -36,6 +36,5 @@ ENV PATH /usr/local/go/bin:/go/bin:$PATH
 RUN go get -u \
     golang.org/x/lint/golint \
     github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
-    github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
     github.com/golang/protobuf/protoc-gen-go \
     github.com/golang/mock/mockgen

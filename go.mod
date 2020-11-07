@@ -1,4 +1,4 @@
-module github.com/googleforgames/triton
+module github.com/googleforgames/open-saves
 
 go 1.14
 

@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	tritonpb "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/open-saves/api"
 )
 
 type Cache interface {
@@ -38,9 +38,9 @@ var once sync.Once
 // registerProperties is called once and used to register new types
 // for gob encoding/decoding.
 func registerProperties() {
-	gob.Register(&tritonpb.Property_BooleanValue{})
-	gob.Register(&tritonpb.Property_IntegerValue{})
-	gob.Register(&tritonpb.Property_StringValue{})
+	gob.Register(&pb.Property_BooleanValue{})
+	gob.Register(&pb.Property_IntegerValue{})
+	gob.Register(&pb.Property_StringValue{})
 	gob.Register(&timestamp.Timestamp{})
 }
 
@@ -49,8 +49,8 @@ func FormatKey(storeKey, recordKey string) string {
 	return fmt.Sprintf("%s/%s", storeKey, recordKey)
 }
 
-// EncodeRecord serializes a tritonpb Record with gob.
-func EncodeRecord(r *tritonpb.Record) ([]byte, error) {
+// EncodeRecord serializes a Open Saves pb Record with gob.
+func EncodeRecord(r *pb.Record) ([]byte, error) {
 	once.Do(registerProperties)
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
@@ -60,10 +60,10 @@ func EncodeRecord(r *tritonpb.Record) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// EncodeRecord deserializes a tritonpb Record with gob.
-func DecodeRecord(by []byte) (*tritonpb.Record, error) {
+// EncodeRecord deserializes a Open Saves pb Record with gob.
+func DecodeRecord(by []byte) (*pb.Record, error) {
 	once.Do(registerProperties)
-	r := &tritonpb.Record{}
+	r := &pb.Record{}
 	b := bytes.Buffer{}
 	b.Write(by)
 	d := gob.NewDecoder(&b)

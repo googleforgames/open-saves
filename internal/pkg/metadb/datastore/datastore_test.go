@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	pb "github.com/googleforgames/triton/api"
-	m "github.com/googleforgames/triton/internal/pkg/metadb"
+	pb "github.com/googleforgames/open-saves/api"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -102,7 +102,7 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	store := &m.Store{
 		Key:     storeKey,
 		Name:    storeName,
-		OwnerID: "triton",
+		OwnerID: "owner",
 		Tags:    []string{"abc", "def"},
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
@@ -146,7 +146,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	store := &m.Store{
 		Key:     storeKey,
 		Name:    "SimpleCreateGetDeleteRecord",
-		OwnerID: "triton",
+		OwnerID: "owner",
 	}
 	createdStore, err := driver.CreateStore(ctx, store)
 	if err != nil {
@@ -161,7 +161,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 		Key:      recordKey,
 		Blob:     blob,
 		BlobSize: int64(len(blob)),
-		OwnerID:  "Triton",
+		OwnerID:  "record owner",
 		Tags:     []string{"abc", "def"},
 		Properties: m.PropertyMap{
 			"BoolTP":   {Type: pb.Property_BOOLEAN, BooleanValue: false},
@@ -258,7 +258,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	store := &m.Store{
 		Key:     storeKey,
 		Name:    "UpdateRecord",
-		OwnerID: "triton",
+		OwnerID: "owner",
 	}
 	createdStore, err := driver.CreateStore(ctx, store)
 	if err != nil {
@@ -274,7 +274,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 		Blob:       blob,
 		BlobSize:   int64(len(blob)),
 		Properties: make(m.PropertyMap),
-		OwnerID:    "Triton",
+		OwnerID:    "record owner",
 		Tags:       []string{"abc", "def"},
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,

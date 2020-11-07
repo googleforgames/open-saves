@@ -119,10 +119,10 @@ cmd/swaggerui/swaggerui
 tools/certgen/certgen
 
 # Secrets Directories
-install/helm/triton/secrets/
+install/helm/open-saves/secrets/
 
 # Helm tar charts
-install/helm/triton/charts/
+install/helm/open-saves/charts/
 
 # Ignore all bazel-* symlinks. There is no full list since this can change
 # based on the name of the directory bazel is cloned into.

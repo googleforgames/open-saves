@@ -6,9 +6,9 @@ FROM golang:1.14 AS builder
 WORKDIR /src
 
 # Copy local code to the container image.
-COPY . ./triton
+COPY . ./open-saves
 
-WORKDIR /src/triton
+WORKDIR /src/open-saves
 
 ENV GO111MODULE=on \
   CGO_ENABLED=0 \
@@ -25,7 +25,7 @@ FROM alpine:3
 RUN apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /src/triton/build/server /server
+COPY --from=builder /src/open-saves/build/server /server
 
 # Run the web service on container startup.
 CMD ["/server"]
