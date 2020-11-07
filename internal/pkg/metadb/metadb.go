@@ -38,7 +38,7 @@ type Driver interface {
 	TimestampPrecision() time.Duration
 }
 
-// MetaDB is a metadata database manager of Triton.
+// MetaDB is a metadata database manager of Open Saves.
 // It performs operations through the Driver interface.
 type MetaDB struct {
 	driver Driver

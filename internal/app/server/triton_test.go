@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	pb "github.com/googleforgames/triton/api"
-	"github.com/googleforgames/triton/internal/pkg/cache"
+	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -40,14 +40,14 @@ const (
 	timestampDelta = 10 * time.Second
 )
 
-func getTritonServer(ctx context.Context, t *testing.T, cloud string) (*tritonServer, *bufconn.Listener) {
-	impl, err := newTritonServer(ctx, cloud, testProject, testBucket, testCacheAddr)
+func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
+	impl, err := newOpenSavesServer(ctx, cloud, testProject, testBucket, testCacheAddr)
 	if err != nil {
-		t.Fatalf("Failed to create a new Triton server instance: %v", err)
+		t.Fatalf("Failed to create a new Open Saves server instance: %v", err)
 	}
 
 	server := grpc.NewServer()
-	pb.RegisterTritonServer(server, impl)
+	pb.RegisterOpenSavesServer(server, impl)
 	listener := bufconn.Listen(bufferSize)
 	go func() {
 		if err := server.Serve(listener); err != nil {
@@ -105,7 +105,7 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 	}
 }
 
-func getTestClient(ctx context.Context, t *testing.T, listener *bufconn.Listener) (*grpc.ClientConn, pb.TritonClient) {
+func getTestClient(ctx context.Context, t *testing.T, listener *bufconn.Listener) (*grpc.ClientConn, pb.OpenSavesClient) {
 	conn, err := grpc.DialContext(ctx, "", grpc.WithContextDialer(
 		func(_ context.Context, _ string) (net.Conn, error) {
 			return listener.Dial()
@@ -116,32 +116,32 @@ func getTestClient(ctx context.Context, t *testing.T, listener *bufconn.Listener
 		t.Fatalf("Failed to create a gRPC connection: %v", err)
 	}
 	t.Cleanup(func() { assert.NoError(t, conn.Close()) })
-	client := pb.NewTritonClient(conn)
+	client := pb.NewOpenSavesClient(conn)
 	return conn, client
 }
 
-func TestTriton(t *testing.T) {
+func TestOpenSaves(t *testing.T) {
 	ctx := context.Background()
 	backends := []string{"gcp"}
 	for _, v := range backends {
 		t.Run(v, func(t *testing.T) {
-			testTritonBackend(ctx, t, v)
+			testOpenSavesBackend(ctx, t, v)
 		})
 	}
 }
 
-func testTritonBackend(ctx context.Context, t *testing.T, cloud string) {
-	triton, listener := getTritonServer(ctx, t, cloud)
+func testOpenSavesBackend(ctx context.Context, t *testing.T, cloud string) {
+	server, listener := getOpenSavesServer(ctx, t, cloud)
 	_, client := getTestClient(ctx, t, listener)
 	t.Run("CreateGetDeleteStore", func(t *testing.T) { createGetDeleteStore(ctx, t, client) })
 	t.Run("CreateGetDeleteRecord", func(t *testing.T) { createGetDeleteRecord(ctx, t, client) })
 	t.Run("UpdateRecordSimple", func(t *testing.T) { updateRecordSimple(ctx, t, client) })
 	t.Run("ListStoresNamePerfectMatch",
 		func(t *testing.T) { listStoresNamePerfectMatch(ctx, t, client) })
-	t.Run("CacheRecordsWithHints", func(t *testing.T) { cacheRecordsWithHints(ctx, t, triton, client) })
+	t.Run("CacheRecordsWithHints", func(t *testing.T) { cacheRecordsWithHints(ctx, t, server, client) })
 }
 
-func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.TritonClient) {
+func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -181,7 +181,7 @@ func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.TritonCli
 	assert.NoError(t, err)
 }
 
-func createGetDeleteRecord(ctx context.Context, t *testing.T, client pb.TritonClient) {
+func createGetDeleteRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -245,7 +245,7 @@ func createGetDeleteRecord(ctx context.Context, t *testing.T, client pb.TritonCl
 	}
 }
 
-func updateRecordSimple(ctx context.Context, t *testing.T, client pb.TritonClient) {
+func updateRecordSimple(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -307,7 +307,7 @@ func updateRecordSimple(ctx context.Context, t *testing.T, client pb.TritonClien
 	assert.True(t, beforeUpdate.Before(record.GetUpdatedAt().AsTime()))
 }
 
-func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.TritonClient) {
+func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
 	storeKey := uuid.New().String()
 	storeName := "test store " + uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
@@ -343,7 +343,7 @@ func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.Tri
 	}
 }
 
-func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServer, client pb.TritonClient) {
+func cacheRecordsWithHints(ctx context.Context, t *testing.T, server *openSavesServer, client pb.OpenSavesClient) {
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -393,7 +393,7 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 
 	// Check do not cache hint was honored.
 	key := cache.FormatKey(storeKey, recordKey)
-	recFromCache, _ := triton.getRecordFromCache(ctx, key)
+	recFromCache, _ := server.getRecordFromCache(ctx, key)
 	assert.Nil(t, recFromCache, "should not have retrieved record from cache after Create with DoNotCache hint")
 
 	getReq := &pb.GetRecordRequest{
@@ -407,7 +407,7 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 		t.Errorf("GetRecord failed: %v", err)
 	}
 
-	recFromCache2, _ := triton.getRecordFromCache(ctx, key)
+	recFromCache2, _ := server.getRecordFromCache(ctx, key)
 	assert.Nil(t, recFromCache2, "should not have retrieved record from cache after Get with DoNotCache hint")
 
 	// Modify GetRecordRequest to not use the hint.
@@ -416,14 +416,14 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 		t.Errorf("GetRecord failed: %v", err)
 	}
 
-	recFromCache3, _ := triton.getRecordFromCache(ctx, key)
+	recFromCache3, _ := server.getRecordFromCache(ctx, key)
 	assert.NotNil(t, recFromCache3, "should have retrieved record from cache after Get without hints")
 	assertEqualRecord(t, expected, recFromCache3)
 
 	// Insert some bad data directly into the cache store.
 	// Check that the SkipCache hint successfully skips the
 	// cache and retrieves the correct data directly.
-	triton.storeRecordInCache(ctx, key, &pb.Record{
+	server.storeRecordInCache(ctx, key, &pb.Record{
 		Key: "bad record",
 	})
 	getReqSkipCache := &pb.GetRecordRequest{
@@ -448,13 +448,13 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, triton *tritonServ
 		t.Errorf("DeleteRecord failed: %v", err)
 	}
 
-	recFromCache4, _ := triton.getRecordFromCache(ctx, key)
+	recFromCache4, _ := server.getRecordFromCache(ctx, key)
 	assert.Nil(t, recFromCache4, "should not have retrieved record from cache post-delete")
 }
 
 func TestTriton_Ping(t *testing.T) {
 	ctx := context.Background()
-	_, listener := getTritonServer(ctx, t, "gcp")
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 
 	pong, err := client.Ping(ctx, new(pb.PingRequest))

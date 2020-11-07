@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 
-	tritonpb "github.com/googleforgames/triton/api"
-	"github.com/googleforgames/triton/internal/pkg/blob"
-	"github.com/googleforgames/triton/internal/pkg/cache"
-	"github.com/googleforgames/triton/internal/pkg/metadb"
-	"github.com/googleforgames/triton/internal/pkg/metadb/datastore"
+	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/blob"
+	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/datastore"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,21 +32,21 @@ import (
 // TODO(hongalex): make this a configurable field for users.
 const maxRecordSizeToCache int = 10 * 1024 * 1024 // 10 MB
 
-type tritonServer struct {
+type openSavesServer struct {
 	cloud      string
 	blobStore  blob.BlobStore
 	metaDB     *metadb.MetaDB
 	cacheStore cache.Cache
 }
 
-// Assert tritonServer implements tritonpb.TritonServer
-var _ tritonpb.TritonServer = new(tritonServer)
+// Assert openSavesServer implements pb.OpenSavesServer
+var _ pb.OpenSavesServer = new(openSavesServer)
 
-// newTritonServer creates a new instance of the triton server.
-func newTritonServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (*tritonServer, error) {
+// newOpenSavesServer creates a new instance of the Open Saves server.
+func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (*openSavesServer, error) {
 	switch cloud {
 	case "gcp":
-		log.Infoln("Instantiating Triton server on GCP")
+		log.Infoln("Instantiating Open Saves server on GCP")
 		gcs, err := blob.NewBlobGCP(bucket)
 		if err != nil {
 			return nil, err
@@ -61,19 +61,19 @@ func newTritonServer(ctx context.Context, cloud, project, bucket, cacheAddr stri
 			return nil, err
 		}
 		redis := cache.NewRedis(cacheAddr)
-		triton := &tritonServer{
+		server := &openSavesServer{
 			cloud:      cloud,
 			blobStore:  gcs,
 			metaDB:     metadb,
 			cacheStore: redis,
 		}
-		return triton, nil
+		return server, nil
 	default:
 		return nil, fmt.Errorf("cloud provider(%q) is not yet supported", cloud)
 	}
 }
 
-func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStoreRequest) (*tritonpb.Store, error) {
+func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRequest) (*pb.Store, error) {
 	store := metadb.Store{
 		Key:     req.Store.Key,
 		Name:    req.Store.Name,
@@ -89,7 +89,7 @@ func (s *tritonServer) CreateStore(ctx context.Context, req *tritonpb.CreateStor
 	return newStore.ToProto(), nil
 }
 
-func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRecordRequest) (*tritonpb.Record, error) {
+func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
 	record := metadb.NewRecordFromProto(req.Record)
 	newRecord, err := s.metaDB.InsertRecord(ctx, req.StoreKey, record)
 	if err != nil {
@@ -106,7 +106,7 @@ func (s *tritonServer) CreateRecord(ctx context.Context, req *tritonpb.CreateRec
 	return rp, nil
 }
 
-func (s *tritonServer) DeleteRecord(ctx context.Context, req *tritonpb.DeleteRecordRequest) (*empty.Empty, error) {
+func (s *openSavesServer) DeleteRecord(ctx context.Context, req *pb.DeleteRecordRequest) (*empty.Empty, error) {
 	err := s.metaDB.DeleteRecord(ctx, req.GetStoreKey(), req.GetKey())
 	if err != nil {
 		log.Warnf("DeleteRecord failed for store (%s), record (%s): %v",
@@ -125,7 +125,7 @@ func (s *tritonServer) DeleteRecord(ctx context.Context, req *tritonpb.DeleteRec
 	return new(empty.Empty), nil
 }
 
-func (s *tritonServer) GetStore(ctx context.Context, req *tritonpb.GetStoreRequest) (*tritonpb.Store, error) {
+func (s *openSavesServer) GetStore(ctx context.Context, req *pb.GetStoreRequest) (*pb.Store, error) {
 	store, err := s.metaDB.GetStore(ctx, req.GetKey())
 	if err != nil {
 		log.Warnf("GetStore failed for store (%s): %v", req.GetKey(), err)
@@ -134,20 +134,20 @@ func (s *tritonServer) GetStore(ctx context.Context, req *tritonpb.GetStoreReque
 	return store.ToProto(), nil
 }
 
-func (s *tritonServer) ListStores(ctx context.Context, req *tritonpb.ListStoresRequest) (*tritonpb.ListStoresResponse, error) {
+func (s *openSavesServer) ListStores(ctx context.Context, req *pb.ListStoresRequest) (*pb.ListStoresResponse, error) {
 	store, err := s.metaDB.FindStoreByName(ctx, req.Name)
 	if err != nil {
 		log.Warnf("ListStores failed: %v", err)
 		return nil, status.Convert(err).Err()
 	}
-	storeProtos := []*tritonpb.Store{store.ToProto()}
-	res := &tritonpb.ListStoresResponse{
+	storeProtos := []*pb.Store{store.ToProto()}
+	res := &pb.ListStoresResponse{
 		Stores: storeProtos,
 	}
 	return res, nil
 }
 
-func (s *tritonServer) DeleteStore(ctx context.Context, req *tritonpb.DeleteStoreRequest) (*empty.Empty, error) {
+func (s *openSavesServer) DeleteStore(ctx context.Context, req *pb.DeleteStoreRequest) (*empty.Empty, error) {
 	err := s.metaDB.DeleteStore(ctx, req.GetKey())
 	if err != nil {
 		log.Warnf("DeleteStore failed for store (%s): %v", req.GetKey(), err)
@@ -157,7 +157,7 @@ func (s *tritonServer) DeleteStore(ctx context.Context, req *tritonpb.DeleteStor
 	return new(empty.Empty), nil
 }
 
-func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordRequest) (*tritonpb.Record, error) {
+func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordRequest) (*pb.Record, error) {
 	k := cache.FormatKey(req.GetStoreKey(), req.GetKey())
 
 	if shouldCheckCache(req.Hint) {
@@ -187,7 +187,7 @@ func (s *tritonServer) GetRecord(ctx context.Context, req *tritonpb.GetRecordReq
 	return rp, nil
 }
 
-func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRecordRequest) (*tritonpb.Record, error) {
+func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
 	record := metadb.NewRecordFromProto(req.GetRecord())
 	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record)
 	if err != nil {
@@ -207,17 +207,17 @@ func (s *tritonServer) UpdateRecord(ctx context.Context, req *tritonpb.UpdateRec
 	return rp, nil
 }
 
-func (s *tritonServer) QueryRecords(ctx context.Context, req *tritonpb.QueryRecordsRequest) (*tritonpb.QueryRecordsResponse, error) {
+func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "QueryRecords is not implemented yet.")
 }
 
-func (s *tritonServer) Ping(ctx context.Context, req *tritonpb.PingRequest) (*tritonpb.PingResponse, error) {
-	return &tritonpb.PingResponse{
+func (s *openSavesServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
+	return &pb.PingResponse{
 		Pong: req.GetPing(),
 	}, nil
 }
 
-func (s *tritonServer) getRecordFromCache(ctx context.Context, key string) (*tritonpb.Record, error) {
+func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*pb.Record, error) {
 	r, err := s.cacheStore.Get(ctx, key)
 	if err != nil {
 		// cache miss.
@@ -232,7 +232,7 @@ func (s *tritonServer) getRecordFromCache(ctx context.Context, key string) (*tri
 	return re, nil
 }
 
-func (s *tritonServer) storeRecordInCache(ctx context.Context, key string, rp *tritonpb.Record) {
+func (s *openSavesServer) storeRecordInCache(ctx context.Context, key string, rp *pb.Record) {
 	by, err := cache.EncodeRecord(rp)
 	if err != nil {
 		// Cache fails should be logged but not return error.
@@ -246,20 +246,20 @@ func (s *tritonServer) storeRecordInCache(ctx context.Context, key string, rp *t
 	}
 }
 
-// shouldCache returns whether or not triton should try to store
+// shouldCache returns whether or not Open Saves should try to store
 // the record in the cache store. Default behavior is to cache
 // if hint is not specified.
-func shouldCache(hint *tritonpb.Hint) bool {
+func shouldCache(hint *pb.Hint) bool {
 	if hint == nil {
 		return true
 	}
 	return !hint.DoNotCache
 }
 
-// shouldCheckCache returns whether or not triton should try to check
+// shouldCheckCache returns whether or not Open Saves should try to check
 // the record in the cache store. Default behavior is to check
 // the cache if hint is not specified.
-func shouldCheckCache(hint *tritonpb.Hint) bool {
+func shouldCheckCache(hint *pb.Hint) bool {
 	if hint == nil {
 		return true
 	}

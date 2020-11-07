@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	m "github.com/googleforgames/triton/internal/pkg/metadb"
-	mock_metadb "github.com/googleforgames/triton/internal/pkg/metadb/mock"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
+	mock_metadb "github.com/googleforgames/open-saves/internal/pkg/metadb/mock"
 	"github.com/stretchr/testify/assert"
 )
 

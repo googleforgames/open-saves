@@ -23,20 +23,20 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/googleforgames/triton/internal/app/server"
+	"github.com/googleforgames/open-saves/internal/app/server"
 )
 
 func main() {
-	defaultPort := getEnvVarUInt("TRITON_PORT", 6000)
-	defaultCloud := getEnvVarString("TRITON_CLOUD", "gcp")
-	defaultBucket := getEnvVarString("TRITON_BUCKET", "gs://triton-dev-store")
-	defaultProject := getEnvVarString("TRITON_PROJECT", "triton-for-games-dev")
-	defaultCache := getEnvVarString("TRITON_CACHE", "localhost:6379")
+	defaultPort := getEnvVarUInt("OPEN_SAVES_PORT", 6000)
+	defaultCloud := getEnvVarString("OPEN_SAVES_CLOUD", "gcp")
+	defaultBucket := getEnvVarString("OPEN_SAVES_BUCKET", "gs://triton-dev-store")
+	defaultProject := getEnvVarString("OPEN_SAVES_PROJECT", "triton-for-games-dev")
+	defaultCache := getEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
 
 	var (
-		port    = flag.Uint("port", uint(defaultPort), "The port number to run Triton on")
-		cloud   = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Triton on")
-		bucket  = flag.String("bucket", defaultBucket, "The bucket which will hold Triton blobs")
+		port    = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
+		cloud   = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
+		bucket  = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
 		project = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
 		cache   = flag.String("cache", defaultCache, "The address of the cache store instance")
 	)

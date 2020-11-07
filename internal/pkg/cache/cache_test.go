@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	pb "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/open-saves/api"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,7 +58,7 @@ func TestCache_SerializeRecord(t *testing.T) {
 				"prop3": {
 					Type: pb.Property_STRING,
 					Value: &pb.Property_StringValue{
-						StringValue: "triton",
+						StringValue: "string value",
 					},
 				},
 			},

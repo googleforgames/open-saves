@@ -1,11 +1,11 @@
 # Development Guide
 
-Triton is a service that platform agnostic cloud storage & save solution that
+Open Saves is a service that platform agnostic cloud storage & save solution that
 runs within [Kubernetes](https://kubernetes.io).
 
 ## Install Prerequisites
 
-To build Triton you'll need the following applications installed.
+To build Open Saves you'll need the following applications installed.
 
 - [Git](https://git-scm.com/downloads)
 - [Go](https://golang.org/doc/install)
@@ -42,8 +42,8 @@ managers tend to lag behind the latest Go releases._
 mkdir -p $HOME/workspace
 cd $HOME/workspace
 # Download the source code.
-git clone https://github.com/googleforgames/triton.git
-cd triton
+git clone https://github.com/googleforgames/open-saves.git
+cd open-saves
 ```
 
 _Typically for contributing you'll want to
@@ -52,7 +52,7 @@ but for purpose of this guide we'll be using the upstream/master._
 
 ## Building
 
-In order to build the main triton server, simply invoke the Makefile in the root project directory by running
+In order to build the main Open Saves server, simply invoke the Makefile in the root project directory by running
 
 ```bash
 make
@@ -86,7 +86,7 @@ You should see an output like the following
 
 ```bash
 $ ./build/server -cloud=gcp -project="your-project" -bucket="gs://your-bucket" -cache="localhost:6379"
-INFO[0000] Instantiating Triton server on GCP
+INFO[0000] Instantiating Open Saves server on GCP
 INFO[0000] starting server on tcp :6000
 ```
 
@@ -122,12 +122,12 @@ gcloud compute ssh redis-forwarder -- -N -L 6379:10.0.0.3:6379
 
 You need to set up [Cloud Firestore in Datastore mode](https://cloud.google.com/datastore/docs)
 (Datastore) and [Cloud Storage](https://cloud.google.com/storage) to run the
-current version of Triton.
+current version of Open Saves.
 
 ### Cloud Firestore in Datastore mode
 
 Cloud Firestore in Datastore mode (Datastore) is primarily used to manage
-metadata of Triton. Smaller blob data (usually up to a few kilobytes) could
+metadata of Open Saves. Smaller blob data (usually up to a few kilobytes) could
 also be stored in Datastore.
 
 Please follow the [quick start guide](https://cloud.google.com/datastore/docs/quickstart)
@@ -154,13 +154,13 @@ We use Cloud Build to run build tests for the GitHub repository. It is occasiona
 necessary to update the base image to upgrade to a new Go version, add a new build
 dependency, etc.
 
-The base image is built using scripts/triton-builder-base.Dockerfile. You can build
-a new image locally by running scripts/build-triton-builder-base.sh.
+The base image is built using scripts/open-saves-builder-base.Dockerfile. You can build
+a new image locally by running scripts/build-open-saves-builder-base.sh.
 
 After building the image, you can push it to Cloud Container Repository by running
 
 ```bash
-$ docker push gcr.io/triton-for-games-dev/triton-builder-base:testing
+$ docker push gcr.io/open-saves-dev/open-saves-builder-base:testing
 ```
 
 Then, change the image tag in scripts/cloudbuild.Dockerfile from latest to
@@ -177,8 +177,8 @@ changes to the master branch on GitHub, and tag and push the new image as latest
 by running
 
 ```
-$ docker tag triton-builder-base:latest gcr.io/triton-for-games-dev/triton-builder-base:latest
-$ docker push gcr.io/triton-for-games-dev/triton-builder-base:latest
+$ docker tag open-saves-builder-base:latest gcr.io/open-saves-dev/open-saves-builder-base:latest
+$ docker push gcr.io/open-saves-dev/open-saves-builder-base:latest
 ```
 
 ## Deploying to Cloud Run
@@ -189,7 +189,7 @@ Registry (GCR) will be used for this example. Please replace `$TAG` with a
 registry that you have permissions to write to.
 
 ```bash
-export TAG=gcr.io/triton-for-games-dev/triton-server:testing
+export TAG=gcr.io/open-saves-for-games-dev/open-saves-server:testing
 docker build -t $TAG .
 docker push $TAG
 ```
@@ -215,7 +215,7 @@ gcloud run services list \
   --region=$GCP_REGION \
   --platform=managed \
   --format="value(status.address.url)" \
-  --filter="metadata.name=triton-server")
+  --filter="metadata.name=open-saves-server")
 
 ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
 
@@ -225,7 +225,7 @@ $ go run examples/grpc-client/main.go -address=$ENDPOINT:443
 
 ## IDE Support
 
-Triton is a standard Go project so any IDE that understands that should
+Open Saves is a standard Go project so any IDE that understands that should
 work. We use [Go Modules](https://github.com/golang/go/wiki/Modules) which is a
 relatively new feature in Go so make sure the IDE you are using was built around
 Summer 2019. The latest version of

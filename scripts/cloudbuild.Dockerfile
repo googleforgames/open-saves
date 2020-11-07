@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/triton-for-games-dev/triton-builder-base:latest
+FROM gcr.io/triton-for-games-dev/open-saves-builder-base:latest
 
 ENV GO_VERSION=1.14.3
 ENV GOPATH=/go

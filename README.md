@@ -1,6 +1,6 @@
-# Triton
+# Open Saves
 
-Triton is an open source cloud save and storage solution.
+Open Saves is an open source cloud save and storage solution.
 
 # Disclaimer
 
@@ -10,7 +10,7 @@ This software is currently alpha, and subject to change. It is not yet ready to 
 
 Check out [How to Contribute](docs/contributing.md) before contributing to the project.
 
-The [Triton development guide](docs/development.md) has detailed instructions on getting the source code, making changes, testing, and submitting a pull request to Triton.
+The [Open Saves development guide](docs/development.md) has detailed instructions on getting the source code, making changes, testing, and submitting a pull request to Open Saves.
 
 # Code of Conduct
 

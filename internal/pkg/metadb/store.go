@@ -16,12 +16,12 @@ package metadb
 
 import (
 	"cloud.google.com/go/datastore"
-	pb "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/open-saves/api"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Store represents a Triton store in the metadata database.
-// See the Triton API definition for details.
+// Store represents a Open Saves store in the metadata database.
+// See the Open Saves API definition for details.
 type Store struct {
 	Key     string `datastore:"-"`
 	Name    string

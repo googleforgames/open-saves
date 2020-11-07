@@ -13,12 +13,20 @@
 # limitations under the License.
 
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'build-docker', '.', '-f', 'scripts/cloudbuild.Dockerfile']
-  id: init-build-docker
-- name: 'build-docker'
-  args: ['bash', 'scripts/run-triton-test.sh']
-  waitFor: ['init-build-docker']
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "build-docker",
+        ".",
+        "-f",
+        "scripts/cloudbuild.Dockerfile",
+      ]
+    id: init-build-docker
+  - name: "build-docker"
+    args: ["bash", "scripts/run-open-saves-test.sh"]
+    waitFor: ["init-build-docker"]
 
 options:
-  machineType: 'N1_HIGHCPU_8'
+  machineType: "N1_HIGHCPU_8"

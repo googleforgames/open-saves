@@ -19,12 +19,12 @@ import (
 	"reflect"
 
 	"cloud.google.com/go/datastore"
-	pb "github.com/googleforgames/triton/api"
+	pb "github.com/googleforgames/open-saves/api"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PropertyValue is an internal representation of the user-defined property.
-// See the Triton API definition for details.
+// See the Open Saves API definition for details.
 type PropertyValue struct {
 	Type         pb.Property_Type
 	IntegerValue int64
@@ -38,8 +38,8 @@ type PropertyMap map[string]*PropertyValue
 // Assert PropertyMap implements PropertyLoadSave.
 var _ datastore.PropertyLoadSaver = new(PropertyMap)
 
-// Record represents a Triton record in the metadata database.
-// See the Triton API definition for details.
+// Record represents a Open Saves record in the metadata database.
+// See the Open Saves API definition for details.
 type Record struct {
 	Key          string `datastore:"-"`
 	Blob         []byte `datastore:",noindex"`
