@@ -255,50 +255,66 @@ gcloud container node-pools create open-saves-nodepool \
   --workload-metadata=GKE_METADATA
 ```
 
-Configure `kubectl` to communicate with the cluster:
+Configure `kubectl` to communicate with the cluster.
 
 ```bash
 gcloud container clusters get-credentials open-saves-cluster
 ```
 
-Create a separate namespace for the Kubernetes service account
+Create a separate namespace for the Kubernetes service account.
 
 ```bash
-kubectl create namespace open-saves-namespace
+export OPEN_SAVES_NAMESPACE="open-saves-namespace"
+kubectl create namespace $OPEN_SAVES_NAMESPACE
 ```
 
-Create the Kubernetes service account to use for your application:
+Create the Kubernetes service account to use for your application.
 
 ```bash
-kubectl create serviceaccount --namespace open-saves-namespace open-saves-ksa
+export OPEN_SAVES_KSA="open-saves-ksa"
+kubectl create serviceaccount --namespace $OPEN_SAVES_NAMESPACE $OPEN_SAVES_KSA
 ```
 
-Create a new service account for your application. After creation
-you will need to grant this service account access to the services
-needed for Open Saves to function, including Memorystore, Datastore, and Storage.
+Create a new service account for your application.
 
 ```bash
-gcloud iam service-accounts create open-saves-gsa
+export OPEN_SAVES_GSA="open-saves-gsa"
+gcloud iam service-accounts create $OPEN_SAVES_GSA
+```
+
+Next, you will need to grant this service account access to the services
+needed for Open Saves to function, including Memorystore (Redis), Datastore, and Storage.
+
+```bash
+gcloud projects add-iam-policy-binding $GCP_PROJECT \
+  --member="serviceAccount:$OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com" \
+  --role="roles/redis.editor"
+
+gcloud projects add-iam-policy-binding $GCP_PROJECT \
+  --member="serviceAccount:$OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com" \
+  --role="roles/datastore.user"
+
+gcloud projects add-iam-policy-binding $GCP_PROJECT \
+  --member="serviceAccount:$OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com" \
+  --role="roles/storage.objectAdmin"
 ```
 
 Add the IAM policy binding for your service account to use the workload identity.
 
 ```bash
 gcloud iam service-accounts add-iam-policy-binding \
-  --role roles/iam.workloadIdentityUser \
-  --member "serviceAccount:$GCP_PROJECT.svc.id.goog[open-saves-namespace/open-saves-ksa]" \
-  open-saves-gsa@$GCP_PROJECT.iam.gserviceaccount.com
+  --role="roles/iam.workloadIdentityUser" \
+  --member="serviceAccount:$GCP_PROJECT.svc.id.goog[$OPEN_SACES_NAMESPACE/$OPEN_SAVES_KSA]" \
+  $OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com
 ```
-
-<!-- TODO add privilegs to the service account -->
 
 Annotate the Kubernetes service account with your Google service account.
 
 ```bash
 kubectl annotate serviceaccount \
-  --namespace open-saves-namespace \
-  open-saves-ksa \
-  iam.gke.io/gcp-service-account=open-saves-gsa@$GCP_PROJECT.iam.gserviceaccount.com
+  --namespace=$OPEN_SAVES_NAMESPACE \
+  $OPEN_SAVES_KSA \
+  iam.gke.io/gcp-service-account=$OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com
 ```
 
 Deploy to GKE.
@@ -306,14 +322,14 @@ Deploy to GKE.
 ```bash
 cd deploy/gke
 kubectl apply -f deployment.yaml
-kubectl get deployment -n open-saves-namespace
+kubectl get deployment -n $OPEN_SAVES_NAMESPACE
 ```
 
 Deploy the load balancer service and wait for the external IP to become available
 
 ```bash
 kubectl apply -f service.yaml
-kubectl get services -n open-saves-namespace
+kubectl get services -n $OPEN_SAVES_NAMESPACE
 ```
 
 Using the endpoint from the previous step, try running the example client to make sure everything was set up properly.
