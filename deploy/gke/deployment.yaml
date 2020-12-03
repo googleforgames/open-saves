@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-saves-gke
+  labels:
+    app: open-saves-server
+  namespace: open-saves-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-saves-server
+  template:
+    metadata:
+      labels:
+        app: open-saves-server
+    spec:
+      containers:
+      - name: open-saves
+        image: gcr.io/triton-for-games-dev/triton-server:testing
+        imagePullPolicy: "Always"
+        ports:
+        - containerPort: 6000
+      serviceAccountName: open-saves-ksa
