@@ -230,29 +230,29 @@ This step requires `kubectl` to be installed.
 Similar to Cloud Run, GKE depends on an image that we can build and push to GCR.
 
 ```bash
-export TAG=gcr.io/triton-for-games-dev/triton-server:testing
+export GCP_PROJECT="your-project-id"
+export TAG=gcr.io/$GCP_PROJECT/open-saves-server:testing
 docker build -t $TAG .
 docker push $TAG
 ```
 
-Next, we need to create a cluster that has Workload Identity enabled.
+Next, we need to create a cluster that has Workload Identity enabled. It may take several minutes to create a cluster.
 For more information on Workload Identity, see [here](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
 
 ```bash
-export GCP_PROJECT="your-project-id"
 export GCP_REGION="us-west1"
 gcloud config set compute/region $GCP_REGION
 
 gcloud container clusters create open-saves-cluster \
-  --workload-pool=$GCP_PROJECT.svc.id.goog \
+  --workload-pool=$GCP_PROJECT.svc.id.goog
 ```
 
-Next, add a new node pool to the cluster with Workload Identity enabled
+Next, add a new node pool to the cluster with Workload Identity enabled. This step also takes a few minutes to complete.
 
 ```bash
 gcloud container node-pools create open-saves-nodepool \
   --cluster=open-saves-cluster \
-  --workload-metadata=GKE_METADATA \
+  --workload-metadata=GKE_METADATA
 ```
 
 Configure `kubectl` to communicate with the cluster:
@@ -290,6 +290,8 @@ gcloud iam service-accounts add-iam-policy-binding \
   open-saves-gsa@$GCP_PROJECT.iam.gserviceaccount.com
 ```
 
+<!-- TODO add privilegs to the service account -->
+
 Annotate the Kubernetes service account with your Google service account.
 
 ```bash
@@ -317,6 +319,7 @@ kubectl get services -n open-saves-namespace
 Using the endpoint from the previous step, try running the example client to make sure everything was set up properly.
 
 ```bash
+cd ../..
 export ENDPOINT="12.34.56.78:6000" # your endpoint from previous step
 go run examples/grpc-client/main.go -address=$ENDPOINT -insecure=true
 ```
@@ -324,7 +327,7 @@ go run examples/grpc-client/main.go -address=$ENDPOINT -insecure=true
 Alternatively, if you have `grpc_cli` installed, test you can see the functions using:
 
 ```bash
-$ grpc_cli ls $ENDPOINT triton.Triton
+$ grpc_cli ls $ENDPOINT opensaves.OpenSaves
 CreateStore
 GetStore
 ListStores

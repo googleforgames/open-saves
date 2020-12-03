@@ -51,7 +51,7 @@ func Run(ctx context.Context, network string, cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	pb.RegisterTritonServer(s, tritonServer)
+	pb.RegisterOpenSavesServer(s, server)
 	reflection.Register(s)
 
 	log.Infof("starting server on %s %s", network, cfg.Address)
