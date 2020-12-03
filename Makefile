@@ -17,8 +17,8 @@ API_DIR = api
 PROTOC = protoc
 
 SERVER_BIN = ${BIN_DIR}/server
-TRITON_GO_PROTOS = ${API_DIR}/triton.pb.go
-ALL_TARGETS = ${SERVER_BIN} ${TRITON_GO_PROTOS} internal/pkg/metadb/mock/mock_metadb.go
+OPENSAVES_GO_PROTOS = ${API_DIR}/open-saves.pb.go
+ALL_TARGETS = ${SERVER_BIN} ${OPENSAVES_GO_PROTOS} internal/pkg/metadb/mock/mock_metadb.go
 
 .PHONY: all clean test server protos swagger mock FORCE
 
@@ -35,17 +35,17 @@ clean:
 test: server
 	go test -race -v ./...
 
-protos: ${TRITON_GO_PROTOS}
+protos: ${OPENSAVES_GO_PROTOS}
 
 mock: internal/pkg/metadb/mock/mock_metadb.go
 
 internal/pkg/metadb/mock/mock_metadb.go: internal/pkg/metadb/metadb.go
 	mockgen -source "$<" -destination "$@"
 
-${API_DIR}/triton.pb.go: ${API_DIR}/triton.proto
+${API_DIR}/open-saves.pb.go: ${API_DIR}/open-saves.proto
 	$(PROTOC) -I. \
- 		--go_out=plugins=grpc:. \
-		--go_opt=paths=source_relative \
+		--go_out=. --go_opt=paths=source_relative \
+		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
   		$<
 
 FORCE:

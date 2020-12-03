@@ -12,6 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package triton provides a platform agnostic cloud storage and save solution.
-package triton // import "github.com/googleforgames/triton"
-
+// Package opensaves provides a platform agnostic cloud storage and save solution.
+package opensaves // import "github.com/googleforgames/open-saves"

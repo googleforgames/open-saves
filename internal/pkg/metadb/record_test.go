@@ -20,8 +20,8 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	pb "github.com/googleforgames/triton/api"
-	m "github.com/googleforgames/triton/internal/pkg/metadb"
+	pb "github.com/googleforgames/open-saves/api"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -41,10 +41,10 @@ func TestPropertyValue_ToProto(t *testing.T) {
 	}
 	assert.Equal(t, integerExpected, integerProperty.ToProto())
 
-	stringProperty := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "triton"}
+	stringProperty := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
 	stringExpected := &pb.Property{
 		Type:  pb.Property_STRING,
-		Value: &pb.Property_StringValue{StringValue: "triton"},
+		Value: &pb.Property_StringValue{StringValue: "string value"},
 	}
 	assert.Equal(t, stringExpected, stringProperty.ToProto())
 }
@@ -73,9 +73,9 @@ func TestPropertyValue_NewPropertyFromProto(t *testing.T) {
 
 	stringProto := &pb.Property{
 		Type:  pb.Property_STRING,
-		Value: &pb.Property_StringValue{StringValue: "triton"},
+		Value: &pb.Property_StringValue{StringValue: "string value"},
 	}
-	stringExpected := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "triton"}
+	stringExpected := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
 	assert.Equal(t, stringExpected, m.NewPropertyValueFromProto(stringProto))
 
 }
