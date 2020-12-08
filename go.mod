@@ -3,8 +3,8 @@ module github.com/googleforgames/open-saves
 go 1.14
 
 require (
-	cloud.google.com/go v0.61.0 // indirect
-	cloud.google.com/go/datastore v1.2.0
+	cloud.google.com/go v0.72.0 // indirect
+	cloud.google.com/go/datastore v1.3.0
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.3
 	github.com/gomodule/redigo v1.8.2

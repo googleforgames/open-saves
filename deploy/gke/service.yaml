@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-saves-service
+  namespace: open-saves-namespace
+spec:
+  type: LoadBalancer
+  selector:
+    app: open-saves-server
+  ports:
+  - port: 6000
+    targetPort: 6000 

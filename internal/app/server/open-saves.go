@@ -37,6 +37,8 @@ type openSavesServer struct {
 	blobStore  blob.BlobStore
 	metaDB     *metadb.MetaDB
 	cacheStore cache.Cache
+
+	pb.UnimplementedOpenSavesServer
 }
 
 // Assert openSavesServer implements pb.OpenSavesServer
@@ -207,7 +209,7 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	return rp, nil
 }
 
-func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
+func (s *openSavesServer) QueryRecords(ctx context.Context, stream *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "QueryRecords is not implemented yet.")
 }
 

@@ -14,7 +14,7 @@
 
 FROM debian:testing
 
-ENV GO_VERSION=1.14.3
+ENV GO_VERSION=1.15.5
 ENV GOPATH=/go
 ENV SOURCE_DIR=/app
 ENV BUILD_DIR=/build
@@ -35,6 +35,6 @@ ENV PATH /usr/local/go/bin:/go/bin:$PATH
 
 RUN go get -u \
     golang.org/x/lint/golint \
-    github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
-    github.com/golang/protobuf/protoc-gen-go \
+    google.golang.org/protobuf/cmd/protoc-gen-go \
+    google.golang.org/grpc/cmd/protoc-gen-go-grpc \
     github.com/golang/mock/mockgen
