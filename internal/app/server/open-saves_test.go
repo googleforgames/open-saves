@@ -41,6 +41,7 @@ const (
 )
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
+	t.Helper()
 	impl, err := newOpenSavesServer(ctx, cloud, testProject, testBucket, testCacheAddr)
 	if err != nil {
 		t.Fatalf("Failed to create a new Open Saves server instance: %v", err)
@@ -58,7 +59,19 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 	return impl, listener
 }
 
+func assertTimestampsWithinDelta(t *testing.T, expected, actual *timestamppb.Timestamp) {
+	t.Helper()
+	if expected == nil {
+		assert.Nil(t, actual)
+		return
+	}
+	if assert.NotNil(t, actual) {
+		assert.WithinDuration(t, expected.AsTime(), actual.AsTime(), timestampDelta)
+	}
+}
+
 func assertEqualStore(t *testing.T, expected, actual *pb.Store) {
+	t.Helper()
 	if expected == nil {
 		assert.Nil(t, actual)
 		return
@@ -66,18 +79,15 @@ func assertEqualStore(t *testing.T, expected, actual *pb.Store) {
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected.Key, actual.Key)
 		assert.Equal(t, expected.Name, actual.Name)
-		assert.Equal(t, expected.Tags, actual.Tags)
+		assert.ElementsMatch(t, expected.Tags, actual.Tags)
 		assert.Equal(t, expected.OwnerId, actual.OwnerId)
-		assert.NotNil(t, actual.GetCreatedAt())
-		assert.WithinDuration(t, expected.GetCreatedAt().AsTime(),
-			actual.GetCreatedAt().AsTime(), timestampDelta)
-		assert.NotNil(t, actual.GetUpdatedAt())
-		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
-			actual.GetUpdatedAt().AsTime(), timestampDelta)
+		assertTimestampsWithinDelta(t, expected.GetCreatedAt(), actual.GetCreatedAt())
+		assertTimestampsWithinDelta(t, expected.GetUpdatedAt(), actual.GetUpdatedAt())
 	}
 }
 
 func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
+	t.Helper()
 	if expected == nil {
 		assert.Nil(t, actual)
 		return
@@ -86,8 +96,10 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 		assert.Equal(t, expected.Key, actual.Key)
 		assert.Equal(t, expected.Blob, actual.Blob)
 		assert.Equal(t, expected.BlobSize, actual.BlobSize)
-		assert.Equal(t, expected.Tags, actual.Tags)
+		assert.ElementsMatch(t, expected.Tags, actual.Tags)
 		assert.Equal(t, expected.OwnerId, actual.OwnerId)
+		// assert.Equal(t, expectecd.Properties, actual.Properties) doesn't work.
+		// See Issue #138
 		assert.Equal(t, len(expected.Properties), len(actual.Properties))
 		for k, v := range expected.Properties {
 			if assert.Contains(t, actual.Properties, k) {
@@ -96,16 +108,13 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 				assert.Equal(t, v.Value, av.Value)
 			}
 		}
-		assert.NotNil(t, actual.GetCreatedAt())
-		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
-			actual.GetUpdatedAt().AsTime(), timestampDelta)
-		assert.NotNil(t, actual.GetUpdatedAt())
-		assert.WithinDuration(t, expected.GetUpdatedAt().AsTime(),
-			actual.GetUpdatedAt().AsTime(), timestampDelta)
+		assertTimestampsWithinDelta(t, expected.GetCreatedAt(), actual.GetCreatedAt())
+		assertTimestampsWithinDelta(t, expected.GetUpdatedAt(), actual.GetUpdatedAt())
 	}
 }
 
 func getTestClient(ctx context.Context, t *testing.T, listener *bufconn.Listener) (*grpc.ClientConn, pb.OpenSavesClient) {
+	t.Helper()
 	conn, err := grpc.DialContext(ctx, "", grpc.WithContextDialer(
 		func(_ context.Context, _ string) (net.Conn, error) {
 			return listener.Dial()
@@ -120,28 +129,10 @@ func getTestClient(ctx context.Context, t *testing.T, listener *bufconn.Listener
 	return conn, client
 }
 
-func TestOpenSaves(t *testing.T) {
+func TestOpenSaves_CreateGetDeleteStore(t *testing.T) {
 	ctx := context.Background()
-	backends := []string{"gcp"}
-	for _, v := range backends {
-		t.Run(v, func(t *testing.T) {
-			testOpenSavesBackend(ctx, t, v)
-		})
-	}
-}
-
-func testOpenSavesBackend(ctx context.Context, t *testing.T, cloud string) {
-	server, listener := getOpenSavesServer(ctx, t, cloud)
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	t.Run("CreateGetDeleteStore", func(t *testing.T) { createGetDeleteStore(ctx, t, client) })
-	t.Run("CreateGetDeleteRecord", func(t *testing.T) { createGetDeleteRecord(ctx, t, client) })
-	t.Run("UpdateRecordSimple", func(t *testing.T) { updateRecordSimple(ctx, t, client) })
-	t.Run("ListStoresNamePerfectMatch",
-		func(t *testing.T) { listStoresNamePerfectMatch(ctx, t, client) })
-	t.Run("CacheRecordsWithHints", func(t *testing.T) { cacheRecordsWithHints(ctx, t, server, client) })
-}
-
-func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -181,7 +172,10 @@ func createGetDeleteStore(ctx context.Context, t *testing.T, client pb.OpenSaves
 	assert.NoError(t, err)
 }
 
-func createGetDeleteRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
+func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -245,7 +239,10 @@ func createGetDeleteRecord(ctx context.Context, t *testing.T, client pb.OpenSave
 	}
 }
 
-func updateRecordSimple(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
+func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -307,7 +304,10 @@ func updateRecordSimple(ctx context.Context, t *testing.T, client pb.OpenSavesCl
 	assert.True(t, beforeUpdate.Before(record.GetUpdatedAt().AsTime()))
 }
 
-func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.OpenSavesClient) {
+func TestOpenSaves_ListStoresNamePerfectMatch(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
 	storeName := "test store " + uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
@@ -343,7 +343,10 @@ func listStoresNamePerfectMatch(ctx context.Context, t *testing.T, client pb.Ope
 	}
 }
 
-func cacheRecordsWithHints(ctx context.Context, t *testing.T, server *openSavesServer, client pb.OpenSavesClient) {
+func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
+	ctx := context.Background()
+	server, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
 	storeReq := &pb.CreateStoreRequest{
 		Store: &pb.Store{
@@ -452,7 +455,7 @@ func cacheRecordsWithHints(ctx context.Context, t *testing.T, server *openSavesS
 	assert.Nil(t, recFromCache4, "should not have retrieved record from cache post-delete")
 }
 
-func TestTriton_Ping(t *testing.T) {
+func TestOpenSaves_Ping(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
