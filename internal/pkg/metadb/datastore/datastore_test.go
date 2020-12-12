@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -46,28 +47,6 @@ func newStoreKey() string {
 
 func newRecordKey() string {
 	return "unittest_record_" + uuid.New().String()
-}
-
-func assertEqualStore(t *testing.T, expected, actual *m.Store, msgAndArgs ...interface{}) {
-	assert.Equal(t, expected.Key, actual.Key, msgAndArgs...)
-	assert.Equal(t, expected.Name, actual.Name, msgAndArgs...)
-	assert.Equal(t, expected.OwnerID, actual.OwnerID, msgAndArgs...)
-	assert.ElementsMatch(t, expected.Tags, actual.Tags, msgAndArgs...)
-	assert.True(t, expected.Timestamps.CreatedAt.Equal(actual.Timestamps.CreatedAt), msgAndArgs...)
-	assert.True(t, expected.Timestamps.UpdatedAt.Equal(actual.Timestamps.UpdatedAt), msgAndArgs...)
-	assert.Equal(t, expected.Timestamps.Signature, actual.Timestamps.Signature, msgAndArgs...)
-}
-
-func assertEqualRecord(t *testing.T, expected, actual *m.Record, msgAndArgs ...interface{}) {
-	assert.Equal(t, expected.Key, actual.Key, msgAndArgs...)
-	assert.Equal(t, expected.Blob, actual.Blob, msgAndArgs...)
-	assert.Equal(t, expected.BlobSize, actual.BlobSize, msgAndArgs...)
-	assert.Equal(t, expected.Properties, actual.Properties, msgAndArgs...)
-	assert.ElementsMatch(t, expected.Tags, actual.Tags, msgAndArgs...)
-	assert.Equal(t, expected.OwnerID, actual.OwnerID, msgAndArgs...)
-	assert.True(t, expected.Timestamps.CreatedAt.Equal(actual.Timestamps.CreatedAt), msgAndArgs...)
-	assert.True(t, expected.Timestamps.UpdatedAt.Equal(actual.Timestamps.UpdatedAt), msgAndArgs...)
-	assert.Equal(t, expected.Timestamps.Signature, actual.Timestamps.Signature, msgAndArgs...)
 }
 
 func cloneRecord(r *m.Record) *m.Record {
@@ -114,19 +93,19 @@ func TestDriver_SimpleCreateGetDeleteStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
-	assertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
+	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
 
 	store2, err := driver.GetStore(ctx, storeKey)
 	if err != nil {
 		t.Fatalf("Could not get store (%s): %v", storeKey, err)
 	}
-	assertEqualStore(t, store, store2, "GetStore should return the exact same store.")
+	metadbtest.AssertEqualStore(t, store, store2, "GetStore should return the exact same store.")
 
 	store3, err := driver.FindStoreByName(ctx, storeName)
 	if err != nil {
 		t.Fatalf("Could not fetch store by name (%s): %v", storeName, err)
 	}
-	assertEqualStore(t, store, store3, "FindStoreByName should return the exact same store.")
+	metadbtest.AssertEqualStore(t, store, store3, "FindStoreByName should return the exact same store.")
 
 	err = driver.DeleteStore(ctx, storeKey)
 	if err != nil {
@@ -152,7 +131,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
-	assertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
+	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
 
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
@@ -179,13 +158,13 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assertEqualRecord(t, expected, createdRecord, "InsertRecord should return the created record.")
+	metadbtest.AssertEqualRecord(t, expected, createdRecord, "InsertRecord should return the created record.")
 
 	record2, err := driver.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assertEqualRecord(t, expected, record2, "GetRecord should return the exact same record.")
+	metadbtest.AssertEqualRecord(t, expected, record2, "GetRecord should return the exact same record.")
 
 	record3, err := driver.InsertRecord(ctx, storeKey, record)
 	assert.NotNil(t, err, "Insert should fail if a record with the same already exists.")
@@ -233,14 +212,14 @@ func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 	t.Cleanup(func() {
 		assert.NoError(t, driver.DeleteStore(ctx, store.Key))
 	})
-	assertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
+	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
 
 	createdRecord, err := driver.InsertRecord(ctx, store.Key, record)
 	assert.NoError(t, err)
 	t.Cleanup(func() {
 		assert.NoError(t, driver.DeleteRecord(ctx, store.Key, record.Key))
 	})
-	assertEqualRecord(t, record, createdRecord, "InsertRecord should return the created record.")
+	metadbtest.AssertEqualRecord(t, record, createdRecord, "InsertRecord should return the created record.")
 
 	err = driver.DeleteStore(ctx, store.Key)
 	if err == nil {
@@ -264,7 +243,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
-	assertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
+	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
 
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
@@ -290,7 +269,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 
 	insertedRecord, err := driver.InsertRecord(ctx, storeKey, record)
 	assert.Nilf(t, err, "Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
-	assertEqualRecord(t, expected, insertedRecord, "Inserted record is not the same as original.")
+	metadbtest.AssertEqualRecord(t, expected, insertedRecord, "Inserted record is not the same as original.")
 
 	record.Tags = append(record.Tags, "ghi")
 	expected.Tags = append(expected.Tags, "ghi")
@@ -304,13 +283,13 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	record.Timestamps.CreatedAt = time.Unix(0, 0)
 	updatedRecord, err = driver.UpdateRecord(ctx, storeKey, record)
 	assert.Nilf(t, err, "Failed to update a record (%s) in store (%s): %v", recordKey, storeKey, err)
-	assertEqualRecord(t, expected, updatedRecord, "Updated record is not the same as original.")
+	metadbtest.AssertEqualRecord(t, expected, updatedRecord, "Updated record is not the same as original.")
 
 	record2, err := driver.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	assertEqualRecord(t, expected, record2, "GetRecord should fetch the updated record.")
+	metadbtest.AssertEqualRecord(t, expected, record2, "GetRecord should fetch the updated record.")
 
 	err = driver.DeleteRecord(ctx, storeKey, recordKey)
 	if err != nil {
