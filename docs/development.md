@@ -94,7 +94,7 @@ To test the server is actually running, there is a sample gRPC client usage in
 `examples/grpc-client/main.go`. While the server is running, run
 
 ```bash
-go run examples/grpc-client/main.go
+go run examples/grpc-client/main.go -address=localhost:6000 -insecure=true
 ```
 
 ### Starting cache store
