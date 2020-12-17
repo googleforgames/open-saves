@@ -1,7 +1,7 @@
 # Reference documentation
 
 <!---
-To regenerate:
+To regenerate this documentation:
 $ protoc  --plugin=protoc-gen-doc=/Users/nickcook/go/bin/protoc-gen-doc \
           --doc_opt=markdown,reference.md  --doc_out=docs api/*.proto
 See also: https://github.com/pseudomuto/protoc-gen-doc
