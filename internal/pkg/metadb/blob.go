@@ -22,11 +22,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// BlobStatus represents the current blob status.
+// BlobRefStatus represents a current blob status.
 //
 // Life of a Blob
 //
-// [New Record created] --> [new Blob entity with BlobStatusInitializing]
+// [New Record created] --> [new BlobRef entity with BlobStatusInitializing]
 //                         /               \
 //                        / fail            \  success
 //                       v                   v
@@ -37,28 +37,27 @@ import (
 //     delete the record |          -----[BlobStatusPendingDeletion]
 //                       v                  /
 //  [Delete the blob entity] <-------------/   Garbage collection
-//
-type BlobStatus int16
+type BlobRefStatus int16
 
 const (
-	// BlobStatusUnknown represents internal error.
-	BlobStatusUnknown = BlobStatus(iota)
-	// BlobStatusInitializing means the blob is currently being prepared, i.e.
+	// BlobRefStatusUnknown represents internal error.
+	BlobRefStatusUnknown BlobRefStatus = iota
+	// BlobRefStatusInitializing means the blob is currently being prepared, i.e.
 	// being uploaded to the blob store.
-	BlobStatusInitializing
-	// BlobStatusReady means the blob is committed and ready for use.
-	BlobStatusReady
-	// BlobStatusPendingDeletion means the blob is no longer referenced by
+	BlobRefStatusInitializing
+	// BlobRefStatusReady means the blob is committed and ready for use.
+	BlobRefStatusReady
+	// BlobRefStatusPendingDeletion means the blob is no longer referenced by
 	// any Record entities and needs to be deleted.
-	BlobStatusPendingDeletion
-	// BlobStatusError means the blob was not uploaded due to client or server
-	// errors and the corresponding record needs to be updated (either by retrying
-	// blob upload or deleting the entry).s
-	BlobStatusError
+	BlobRefStatusPendingDeletion
+	// BlobRefStatusError means the blob was not uploaded due to client or server
+	// errors and the corresponding record needs to be updated (either by
+	// retrying blob upload or deleting the entry).
+	BlobRefStatusError
 )
 
-// Blob is a metadata document to keep track of blobs stored in an external blob store.
-type Blob struct {
+// BlobRef is a metadata document to keep track of blobs stored in an external blob store.
+type BlobRef struct {
 	// Key is the primary key for the blob entry
 	Key uuid.UUID `datastore:"-"`
 	// Size is the byte size of the blob
@@ -66,7 +65,13 @@ type Blob struct {
 	// ObjectName represents the object name stored in the blob store.
 	ObjectName string
 	// Status is the current status of the blob
-	Status BlobStatus
+	Status BlobRefStatus
+	// StoreKey is the key of the store that the blob belongs to
+	StoreKey string
+	// RecordKey is the key of the record that the blob belongs to
+	// It can be non-existent (e.g. deleted already) but then the Status
+	// should not be Blob StatusReady.
+	RecordKey string
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
@@ -74,8 +79,8 @@ type Blob struct {
 }
 
 // Assert Blob implements both PropertyLoadSave and KeyLoader.
-var _ datastore.PropertyLoadSaver = new(Blob)
-var _ datastore.KeyLoader = new(Blob)
+var _ datastore.PropertyLoadSaver = new(BlobRef)
+var _ datastore.KeyLoader = new(BlobRef)
 
 // These functions need to be implemented here instead of the datastore package because
 // go doesn't permit to define additional receivers in another package.
@@ -84,20 +89,22 @@ var _ datastore.KeyLoader = new(Blob)
 
 // Save implements the Datastore PropertyLoadSaver interface and converts the properties
 // field in the struct to separate Datastore properties.
-func (b *Blob) Save() ([]datastore.Property, error) {
+func (b *BlobRef) Save() ([]datastore.Property, error) {
 	return datastore.SaveStruct(b)
 }
 
 // Load implements the Datastore PropertyLoadSaver interface and converts Datstore
 // properties to the Properties field.
-func (b *Blob) Load(ps []datastore.Property) error {
+func (b *BlobRef) Load(ps []datastore.Property) error {
 	return datastore.LoadStruct(b, ps)
 }
 
 // LoadKey implements the KeyLoader interface and sets the value to the Key field.
-func (b *Blob) LoadKey(k *datastore.Key) error {
+func (b *BlobRef) LoadKey(k *datastore.Key) error {
 	key, err := uuid.Parse(k.Name)
-	b.Key = key
+	if err == nil {
+		b.Key = key
+	}
 	return err
 }
 
@@ -109,14 +116,16 @@ func (b *Blob) LoadKey(k *datastore.Key) error {
 //
 // Initialize should be called once on a zero-initialized (empty) Blob whose
 // Status is set to BlobStatusUnknown, otherwise it returns an error.
-func (b *Blob) Initialize(size int64, objectName string) error {
-	if b.Status != BlobStatusUnknown {
+func (b *BlobRef) Initialize(size int64, storeKey, recordKey, objectName string) error {
+	if b.Status != BlobRefStatusUnknown {
 		return errors.New("cannot re-initialize a blob entry")
 	}
 	b.Key = uuid.New()
 	b.Size = size
 	b.ObjectName = objectName
-	b.Status = BlobStatusInitializing
+	b.Status = BlobRefStatusInitializing
+	b.StoreKey = storeKey
+	b.RecordKey = recordKey
 	// Nanosecond is fine as it will not be returned to clients.
 	b.Timestamps.NewTimestamps(time.Nanosecond)
 	return nil
@@ -124,22 +133,22 @@ func (b *Blob) Initialize(size int64, objectName string) error {
 
 // Ready changes Status to BlobStatusReady and updates Timestamps.
 // It returns an error if the current Status is not BlobStatusInitializing.
-func (b *Blob) Ready() error {
-	if b.Status != BlobStatusInitializing {
+func (b *BlobRef) Ready() error {
+	if b.Status != BlobRefStatusInitializing {
 		return errors.New("Ready was called when Status is not Initializing")
 	}
-	b.Status = BlobStatusReady
+	b.Status = BlobRefStatusReady
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
 }
 
-// Retire marks the Blob as BlobStatusPendingDeletion and updates Timestamps.
+// MarkForDeletion marks the Blob as BlobStatusPendingDeletion and updates Timestamps.
 // Returns an error if the current Status is not BlobStatusReady.
-func (b *Blob) Retire() error {
-	if b.Status != BlobStatusReady {
+func (b *BlobRef) MarkForDeletion() error {
+	if b.Status != BlobRefStatusInitializing && b.Status != BlobRefStatusReady {
 		return errors.New("Retire was called when Status is not either Initializing or Ready")
 	}
-	b.Status = BlobStatusPendingDeletion
+	b.Status = BlobRefStatusPendingDeletion
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
 }
@@ -147,11 +156,11 @@ func (b *Blob) Retire() error {
 // Fail marks the Blob as BlobStatusError and updates Timestamps.
 // Returns an error if the current Status is not either BlobStatusInitializing
 // or BlobStatusPendingDeletion.
-func (b *Blob) Fail() error {
-	if b.Status != BlobStatusInitializing && b.Status != BlobStatusPendingDeletion {
+func (b *BlobRef) Fail() error {
+	if b.Status != BlobRefStatusInitializing && b.Status != BlobRefStatusPendingDeletion {
 		return errors.New("Fail was called when Status is not either Error or Initializing or PendingDeletion")
 	}
-	b.Status = BlobStatusError
+	b.Status = BlobRefStatusError
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
 }
