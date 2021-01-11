@@ -17,9 +17,11 @@ package cache
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/googleforgames/open-saves/api"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -63,56 +65,44 @@ func TestRedis_SerializeRecord(t *testing.T) {
 
 	red := NewRedis("localhost:6379")
 
-	rr := []*pb.Record{
+	rr := []*m.Record{
 		{
 			Key: "key1",
-			CreatedAt: &timestamp.Timestamp{
-				Seconds: 100,
-			},
-			UpdatedAt: &timestamp.Timestamp{
-				Seconds: 110,
+			Timestamps: m.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
 			},
 		},
 		{
 			Key: "key2",
-			Properties: map[string]*pb.Property{
+			Properties: m.PropertyMap{
 				"prop1": {
-					Type: pb.Property_BOOLEAN,
-					Value: &pb.Property_BooleanValue{
-						BooleanValue: false,
-					},
+					Type:         pb.Property_BOOLEAN,
+					BooleanValue: false,
 				},
 				"prop2": {
-					Type: pb.Property_INTEGER,
-					Value: &pb.Property_IntegerValue{
-						IntegerValue: 200,
-					},
+					Type:         pb.Property_INTEGER,
+					IntegerValue: 200,
 				},
 				"prop3": {
-					Type: pb.Property_STRING,
-					Value: &pb.Property_StringValue{
-						StringValue: "string value",
-					},
+					Type:        pb.Property_STRING,
+					StringValue: "string value",
 				},
 			},
-			CreatedAt: &timestamp.Timestamp{
-				Seconds: 100,
-			},
-			UpdatedAt: &timestamp.Timestamp{
-				Seconds: 110,
+			Timestamps: m.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
 			},
 		},
 		{
 			Key:      "key3",
 			Blob:     []byte("some-bytes"),
 			BlobSize: 64,
-			OwnerId:  "new-owner",
+			OwnerID:  "new-owner",
 			Tags:     []string{"tag1", "tag2"},
-			CreatedAt: &timestamp.Timestamp{
-				Seconds: 100,
-			},
-			UpdatedAt: &timestamp.Timestamp{
-				Seconds: 110,
+			Timestamps: m.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
 			},
 		},
 	}
@@ -122,13 +112,13 @@ func TestRedis_SerializeRecord(t *testing.T) {
 		assert.NoError(t, err)
 		d, err := DecodeRecord(e)
 		assert.NoError(t, err)
-		assertEqualRecord(t, r, d)
+		metadbtest.AssertEqualRecord(t, r, d)
 
 		red.Set(ctx, r.Key, e)
 		record, err := red.Get(ctx, r.Key)
 		assert.Equal(t, e, record)
 		decodedRecord, err := DecodeRecord(record)
-		assertEqualRecord(t, r, decodedRecord)
+		metadbtest.AssertEqualRecord(t, r, decodedRecord)
 
 		assert.NoError(t, red.FlushAll(ctx))
 	}

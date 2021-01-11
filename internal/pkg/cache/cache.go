@@ -19,10 +19,8 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-	"sync"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
-	pb "github.com/googleforgames/open-saves/api"
+	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 )
 
 type Cache interface {
@@ -33,25 +31,13 @@ type Cache interface {
 	FlushAll(ctx context.Context) error
 }
 
-var once sync.Once
-
-// registerProperties is called once and used to register new types
-// for gob encoding/decoding.
-func registerProperties() {
-	gob.Register(&pb.Property_BooleanValue{})
-	gob.Register(&pb.Property_IntegerValue{})
-	gob.Register(&pb.Property_StringValue{})
-	gob.Register(&timestamp.Timestamp{})
-}
-
 // FormatKey concatenates store and record keys separated by a backslash.
 func FormatKey(storeKey, recordKey string) string {
 	return fmt.Sprintf("%s/%s", storeKey, recordKey)
 }
 
-// EncodeRecord serializes a Open Saves pb Record with gob.
-func EncodeRecord(r *pb.Record) ([]byte, error) {
-	once.Do(registerProperties)
+// EncodeRecord serializes a Open Saves Record with gob.
+func EncodeRecord(r *m.Record) ([]byte, error) {
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	if err := e.Encode(r); err != nil {
@@ -60,10 +46,9 @@ func EncodeRecord(r *pb.Record) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// EncodeRecord deserializes a Open Saves pb Record with gob.
-func DecodeRecord(by []byte) (*pb.Record, error) {
-	once.Do(registerProperties)
-	r := &pb.Record{}
+// DecodeRecord deserializes a Open Saves Record with gob.
+func DecodeRecord(by []byte) (*m.Record, error) {
+	r := &m.Record{}
 	b := bytes.Buffer{}
 	b.Write(by)
 	d := gob.NewDecoder(&b)
