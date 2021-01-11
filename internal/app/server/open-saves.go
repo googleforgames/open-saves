@@ -231,11 +231,11 @@ func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*
 		return nil, err
 	}
 	log.Debugf("cache hit: %+v", re)
-	return re, nil
+	return re.ToProto(), nil
 }
 
 func (s *openSavesServer) storeRecordInCache(ctx context.Context, key string, rp *pb.Record) {
-	by, err := cache.EncodeRecord(rp)
+	by, err := cache.EncodeRecord(metadb.NewRecordFromProto(rp))
 	if err != nil {
 		// Cache fails should be logged but not return error.
 		log.Warnf("failed to encode record for cache for key (%s): %v", key, err)
