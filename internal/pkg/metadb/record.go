@@ -141,7 +141,6 @@ func (r *Record) LoadKey(k *datastore.Key) error {
 func (r *Record) ToProto() *pb.Record {
 	ret := &pb.Record{
 		Key:        r.Key,
-		Blob:       r.Blob,
 		BlobSize:   r.BlobSize,
 		OwnerId:    r.OwnerID,
 		Tags:       r.Tags,
@@ -160,7 +159,6 @@ func NewRecordFromProto(p *pb.Record) *Record {
 	}
 	return &Record{
 		Key:        p.GetKey(),
-		Blob:       p.GetBlob(),
 		BlobSize:   p.GetBlobSize(),
 		OwnerID:    p.GetOwnerId(),
 		Tags:       p.GetTags(),

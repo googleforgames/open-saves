@@ -94,12 +94,7 @@ message Record {
   // https://cloud.google.com/datastore/docs/best-practices#keys for details.
   string key = 1;
 
-  // Arbitrary blob data associated to the record
-  // This is opaque to the server, and can contain anything.
-  // TODO(#69): Add a way to handle larger blobs that don't fit in a message
-  bytes blob = 2;
-
-  // Byte length of the blob
+  // Byte length of the blob (read-only)
   int64 blob_size = 3;
 
   // Typed values that are indexed and searchable.
