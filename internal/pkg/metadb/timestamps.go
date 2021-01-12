@@ -19,8 +19,6 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -65,24 +63,11 @@ func (t *Timestamps) UpdateTimestamps(d time.Duration) {
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.
 func (t *Timestamps) Load(ps []datastore.Property) error {
-	for i, p := range ps {
-		if p.Name == signaturePropertyName {
-			if s, ok := p.Value.(string); ok {
-				sig, err := uuid.Parse(s)
-				if err != nil {
-					return err
-				}
-				t.Signature = sig
-				// Signature needs to be removed from ps before passed to LoadStruct.
-				// This overwrites the ps argument but it seems fine with the current library.
-				ps[i] = ps[len(ps)-1]
-				ps = ps[:len(ps)-1]
-				break
-			} else {
-				return status.Errorf(codes.Internal, "Signature property is not string: %+v", p.Value)
-			}
-		}
+	sig, ps, err := datastoreLoadUUID(ps, signaturePropertyName)
+	if err != nil {
+		return err
 	}
+	t.Signature = sig
 	return datastore.LoadStruct(t, ps)
 }
 
@@ -93,10 +78,7 @@ func (t *Timestamps) Save() ([]datastore.Property, error) {
 	if err != nil {
 		return nil, err
 	}
-	ps = append(ps, datastore.Property{
-		Name:    signaturePropertyName,
-		Value:   t.Signature.String(),
-		NoIndex: true,
-	})
+
+	ps = append(ps, uuidToDatastoreProperty(signaturePropertyName, t.Signature, true))
 	return ps, nil
 }
