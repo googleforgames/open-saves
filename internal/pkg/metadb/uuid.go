@@ -41,17 +41,20 @@ func datastoreLoadUUID(ps []datastore.Property, name string) (uuid.UUID, []datas
 	for i, p := range ps {
 		if p.Name == name {
 			if s, ok := p.Value.(string); ok {
+				// The property needs to be removed from ps before passed to LoadStruct.
+				// This overwrites the slice but it seems fine with the current library.
+				ps[i] = ps[len(ps)-1]
+				ps = ps[:len(ps)-1]
+
 				if s == "" {
+					// Treat empty strings as the nil UUID
 					return uuid.Nil, ps, nil
 				}
 				sig, err := uuid.Parse(s)
 				if err != nil {
 					return uuid.Nil, ps, err
 				}
-				// The property needs to be removed from ps before passed to LoadStruct.
-				// This overwrites the slice but it seems fine with the current library.
-				ps[i] = ps[len(ps)-1]
-				ps = ps[:len(ps)-1]
+
 				return sig, ps, nil
 			}
 			return uuid.Nil, ps, status.Errorf(codes.Internal, "UUID property is not string: %+v", p.Value)
