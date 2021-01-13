@@ -63,6 +63,33 @@ func cloneRecord(r *m.Record) *m.Record {
 	return &ret
 }
 
+// setupTestStoreRecord creates a new store and inserts a record into it, then registers
+// cleanup functions to delete these test store and record.
+// Passing a nil to record will skip the record insertion.
+func setupTestStoreRecord(ctx context.Context, t *testing.T, driver *Driver, store *m.Store, record *m.Record) (*m.Store, *m.Record) {
+	newStore, err := driver.CreateStore(ctx, store)
+	if err != nil {
+		t.Fatalf("Could not create a new store: %v", err)
+	}
+	t.Cleanup(func() {
+		driver.DeleteStore(ctx, newStore.Key)
+		assert.NoError(t, driver.DeleteStore(ctx, newStore.Key))
+	})
+	metadbtest.AssertEqualStore(t, store, newStore, "CreateStore should return the created store.")
+	var newRecord *m.Record
+	if record != nil {
+		newRecord, err = driver.InsertRecord(ctx, newStore.Key, record)
+		if err != nil {
+			t.Fatalf("Could not create a new record: %v", err)
+		}
+		t.Cleanup(func() {
+			assert.NoError(t, driver.DeleteRecord(ctx, newStore.Key, newRecord.Key))
+		})
+		metadbtest.AssertEqualRecord(t, record, newRecord, "GetRecord should return the exact same record.")
+	}
+	return newStore, newRecord
+}
+
 func TestDriver_ConnectDisconnect(t *testing.T) {
 	ctx := context.Background()
 	// Connect() is tested inside newDriver().
@@ -127,11 +154,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 		Name:    "SimpleCreateGetDeleteRecord",
 		OwnerID: "owner",
 	}
-	createdStore, err := driver.CreateStore(ctx, store)
-	if err != nil {
-		t.Fatalf("Could not create a new store: %v", err)
-	}
-	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
+	setupTestStoreRecord(ctx, t, driver, store, nil)
 
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
@@ -154,6 +177,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 		},
 	}
 	expected := cloneRecord(record)
+
 	createdRecord, err := driver.InsertRecord(ctx, storeKey, record)
 	if err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
@@ -177,10 +201,7 @@ func TestDriver_SimpleCreateGetDeleteRecord(t *testing.T) {
 	assert.NotNilf(t, err, "GetRecord didn't return an error after deleting a record (%s)", recordKey)
 	assert.Nil(t, record4, "GetRecord should return a nil with error")
 
-	err = driver.DeleteStore(ctx, storeKey)
-	if err != nil {
-		t.Fatalf("Failed to delete a store (%s): %v", storeKey, err)
-	}
+	// The test store is deleted inside the cleanup function.
 }
 
 func TestDriver_InsertRecordShouldFailWithNonExistentStore(t *testing.T) {
@@ -207,22 +228,9 @@ func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 	store := &m.Store{Key: newStoreKey()}
 	record := &m.Record{Key: newRecordKey(), Properties: make(m.PropertyMap)}
 
-	createdStore, err := driver.CreateStore(ctx, store)
-	assert.NoError(t, err)
-	t.Cleanup(func() {
-		assert.NoError(t, driver.DeleteStore(ctx, store.Key))
-	})
-	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
+	setupTestStoreRecord(ctx, t, driver, store, record)
 
-	createdRecord, err := driver.InsertRecord(ctx, store.Key, record)
-	assert.NoError(t, err)
-	t.Cleanup(func() {
-		assert.NoError(t, driver.DeleteRecord(ctx, store.Key, record.Key))
-	})
-	metadbtest.AssertEqualRecord(t, record, createdRecord, "InsertRecord should return the created record.")
-
-	err = driver.DeleteStore(ctx, store.Key)
-	if err == nil {
+	if err := driver.DeleteStore(ctx, store.Key); err == nil {
 		t.Error("DeleteStore should fail if the store is not empty.")
 	} else {
 		assert.Equalf(t, codes.FailedPrecondition, status.Code(err),
@@ -233,17 +241,13 @@ func TestDriver_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 func TestDriver_UpdateRecord(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
+
 	storeKey := newStoreKey()
 	store := &m.Store{
 		Key:     storeKey,
 		Name:    "UpdateRecord",
 		OwnerID: "owner",
 	}
-	createdStore, err := driver.CreateStore(ctx, store)
-	if err != nil {
-		t.Fatalf("Could not create a new store: %v", err)
-	}
-	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
 
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
@@ -267,9 +271,7 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	assert.NotNil(t, err, "UpdateRecord should return an error if the specified record doesn't exist.")
 	assert.Nil(t, updatedRecord, "UpdateRecord should return nil with error")
 
-	insertedRecord, err := driver.InsertRecord(ctx, storeKey, record)
-	assert.Nilf(t, err, "Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
-	metadbtest.AssertEqualRecord(t, expected, insertedRecord, "Inserted record is not the same as original.")
+	setupTestStoreRecord(ctx, t, driver, store, record)
 
 	record.Tags = append(record.Tags, "ghi")
 	expected.Tags = append(expected.Tags, "ghi")
@@ -290,15 +292,6 @@ func TestDriver_UpdateRecord(t *testing.T) {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
 	metadbtest.AssertEqualRecord(t, expected, record2, "GetRecord should fetch the updated record.")
-
-	err = driver.DeleteRecord(ctx, storeKey, recordKey)
-	if err != nil {
-		t.Fatalf("Failed to delete a record (%s) in store (%s): %v", recordKey, storeKey, err)
-	}
-	err = driver.DeleteStore(ctx, storeKey)
-	if err != nil {
-		t.Fatalf("Failed to delete a store (%s): %v", storeKey, err)
-	}
 }
 
 func TestDriver_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
