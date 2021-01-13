@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -421,12 +422,12 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 
 	recFromCache3, _ := server.getRecordFromCache(ctx, key)
 	assert.NotNil(t, recFromCache3, "should have retrieved record from cache after Get without hints")
-	assertEqualRecord(t, expected, recFromCache3)
+	assertEqualRecord(t, expected, recFromCache3.ToProto())
 
 	// Insert some bad data directly into the cache store.
 	// Check that the SkipCache hint successfully skips the
 	// cache and retrieves the correct data directly.
-	server.storeRecordInCache(ctx, key, &pb.Record{
+	server.storeRecordInCache(ctx, key, &metadb.Record{
 		Key: "bad record",
 	})
 	getReqSkipCache := &pb.GetRecordRequest{

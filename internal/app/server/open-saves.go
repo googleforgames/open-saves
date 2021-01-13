@@ -100,12 +100,11 @@ func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecord
 		return nil, status.Convert(err).Err()
 	}
 
-	rp := newRecord.ToProto()
 	if shouldCache(req.Hint) {
 		k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
-		s.storeRecordInCache(ctx, k, rp)
+		s.storeRecordInCache(ctx, k, newRecord)
 	}
-	return rp, nil
+	return newRecord.ToProto(), nil
 }
 
 func (s *openSavesServer) DeleteRecord(ctx context.Context, req *pb.DeleteRecordRequest) (*empty.Empty, error) {
@@ -167,7 +166,7 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 		if err != nil {
 			log.Debug("cache miss")
 		} else if r != nil {
-			return r, nil
+			return r.ToProto(), nil
 		}
 	}
 
@@ -180,13 +179,11 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 	log.Debugf("Got record %+v", record)
 
 	// Update cache store.
-	rp := record.ToProto()
-
 	if shouldCache(req.Hint) {
-		s.storeRecordInCache(ctx, k, rp)
+		s.storeRecordInCache(ctx, k, record)
 	}
 
-	return rp, nil
+	return record.ToProto(), nil
 }
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
@@ -199,14 +196,12 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	}
 
 	// Update cache store.
-	rp := newRecord.ToProto()
-
 	if shouldCache(req.Hint) {
 		k := cache.FormatKey(req.GetStoreKey(), req.GetRecord().GetKey())
-		s.storeRecordInCache(ctx, k, rp)
+		s.storeRecordInCache(ctx, k, newRecord)
 	}
 
-	return rp, nil
+	return newRecord.ToProto(), nil
 }
 
 func (s *openSavesServer) QueryRecords(ctx context.Context, stream *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
@@ -219,23 +214,23 @@ func (s *openSavesServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.Pi
 	}, nil
 }
 
-func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*pb.Record, error) {
+func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*metadb.Record, error) {
 	r, err := s.cacheStore.Get(ctx, key)
 	if err != nil {
 		// cache miss.
 		return nil, err
 	}
 	// cache hit, use value from cache store.
-	re, err := cache.DecodeRecord(r)
+	record, err := cache.DecodeRecord(r)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("cache hit: %+v", re)
-	return re.ToProto(), nil
+	log.Debugf("cache hit: %+v", record)
+	return record, nil
 }
 
-func (s *openSavesServer) storeRecordInCache(ctx context.Context, key string, rp *pb.Record) {
-	by, err := cache.EncodeRecord(metadb.NewRecordFromProto(rp))
+func (s *openSavesServer) storeRecordInCache(ctx context.Context, key string, record *metadb.Record) {
+	by, err := cache.EncodeRecord(record)
 	if err != nil {
 		// Cache fails should be logged but not return error.
 		log.Warnf("failed to encode record for cache for key (%s): %v", key, err)
