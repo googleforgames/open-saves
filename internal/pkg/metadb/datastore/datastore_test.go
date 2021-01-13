@@ -65,7 +65,7 @@ func cloneRecord(r *m.Record) *m.Record {
 
 // setupTestStoreRecord creates a new store and inserts a record into it, then registers
 // cleanup functions to delete these test store and record.
-// Passing a nil to store will skip the record insertion.
+// Passing a nil to record will skip the record insertion.
 func setupTestStoreRecord(ctx context.Context, t *testing.T, driver *Driver, store *m.Store, record *m.Record) (*m.Store, *m.Record) {
 	newStore, err := driver.CreateStore(ctx, store)
 	if err != nil {
