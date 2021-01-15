@@ -176,8 +176,8 @@ func TestBlobRef_LifeCycle(t *testing.T) {
 func TestBlobRef_Fail(t *testing.T) {
 	blob := new(m.BlobRef)
 
-	// Fail should fail for BlobStatusUnknown
-	assert.Error(t, blob.Fail())
+	// Fail should work for BlobStatusUnknown too.
+	assert.NoError(t, blob.Fail())
 
 	blob = newInitBlob(t)
 	assert.NoError(t, blob.Fail())
@@ -189,8 +189,8 @@ func TestBlobRef_Fail(t *testing.T) {
 	assert.NoError(t, blob.Fail())
 
 	blob.Status = m.BlobRefStatusReady
-	assert.Error(t, blob.Fail())
+	assert.NoError(t, blob.Fail())
 
 	blob.Status = m.BlobRefStatusError
-	assert.Error(t, blob.Fail())
+	assert.NoError(t, blob.Fail())
 }

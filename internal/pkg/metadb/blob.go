@@ -26,15 +26,15 @@ import (
 //
 // Life of a Blob
 //
-// [New Record created] --> [new BlobRef entity with BlobStatusInitializing]
+// [New Record created] --> [new BlobRef entity with BlobRefStatusInitializing]
 //                         /               \
 //                        / fail            \  success
 //                       v                   v
-//                [BlobStatusError]       [BlobStatusReady]
+//                [BlobRefStatusError]       [BlobRefStatusReady]
 //                       |       x            |
 //      Upload new blob  |        \ fail      | Record deleted or new blob uploaded
 //            or         |         \          v
-//     delete the record |          -----[BlobStatusPendingDeletion]
+//     delete the record |          -----[BlobRefStatusPendingDeletion]
 //                       v                  /
 //  [Delete the blob entity] <-------------/   Garbage collection
 type BlobRefStatus int16
@@ -111,11 +111,11 @@ func (b *BlobRef) LoadKey(k *datastore.Key) error {
 // Initialize sets up the Blob as follows:
 //	- Set a new UUID to Key
 //	- Initialize Size and ObjectName as specified
-//	- Set Status to BlobStatusInitializing
+//	- Set Status to BlobRefStatusInitializing
 //	- Set current time to Timestamps (both created and updated at)
 //
-// Initialize should be called once on a zero-initialized (empty) Blob whose
-// Status is set to BlobStatusUnknown, otherwise it returns an error.
+// Initialize should be called once on a zero-initialized (empty) BlobRef whose
+// Status is set to BlobRefStatusUnknown, otherwise it returns an error.
 func (b *BlobRef) Initialize(size int64, storeKey, recordKey, objectName string) error {
 	if b.Status != BlobRefStatusUnknown {
 		return errors.New("cannot re-initialize a blob entry")
@@ -131,8 +131,8 @@ func (b *BlobRef) Initialize(size int64, storeKey, recordKey, objectName string)
 	return nil
 }
 
-// Ready changes Status to BlobStatusReady and updates Timestamps.
-// It returns an error if the current Status is not BlobStatusInitializing.
+// Ready changes Status to BlobRefStatusReady and updates Timestamps.
+// It returns an error if the current Status is not BlobRefStatusInitializing.
 func (b *BlobRef) Ready() error {
 	if b.Status != BlobRefStatusInitializing {
 		return errors.New("Ready was called when Status is not Initializing")
@@ -142,8 +142,8 @@ func (b *BlobRef) Ready() error {
 	return nil
 }
 
-// MarkForDeletion marks the Blob as BlobStatusPendingDeletion and updates Timestamps.
-// Returns an error if the current Status is not BlobStatusReady.
+// MarkForDeletion marks the BlobRef as BlobRefStatusPendingDeletion and updates Timestamps.
+// Returns an error if the current Status is not BlobRefStatusReady.
 func (b *BlobRef) MarkForDeletion() error {
 	if b.Status != BlobRefStatusInitializing && b.Status != BlobRefStatusReady {
 		return errors.New("Retire was called when Status is not either Initializing or Ready")
@@ -153,13 +153,9 @@ func (b *BlobRef) MarkForDeletion() error {
 	return nil
 }
 
-// Fail marks the Blob as BlobStatusError and updates Timestamps.
-// Returns an error if the current Status is not either BlobStatusInitializing
-// or BlobStatusPendingDeletion.
+// Fail marks the BlobRef as BlobRefStatusError and updates Timestamps.
+// Any state can transition to BlobRefStatusError.
 func (b *BlobRef) Fail() error {
-	if b.Status != BlobRefStatusInitializing && b.Status != BlobRefStatusPendingDeletion {
-		return errors.New("Fail was called when Status is not either Error or Initializing or PendingDeletion")
-	}
 	b.Status = BlobRefStatusError
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
