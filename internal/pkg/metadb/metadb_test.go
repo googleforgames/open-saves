@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	mock_metadb "github.com/googleforgames/open-saves/internal/pkg/metadb/mock"
 	"github.com/stretchr/testify/assert"
@@ -52,6 +53,7 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 		name          = "random name"
 		timeThreshold = 1 * time.Second
 	)
+	aUUID := uuid.New()
 
 	metadb := m.NewMetaDB(mockDriver)
 	mockDriver.EXPECT().TimestampPrecision().AnyTimes().Return(time.Microsecond)
@@ -106,4 +108,41 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 
 	mockDriver.EXPECT().DeleteRecord(ctx, key, key2)
 	assert.NoError(t, metadb.DeleteRecord(ctx, key, key2))
+
+	blob := new(m.BlobRef)
+
+	mockDriver.EXPECT().InsertBlobRef(ctx, blob).Return(blob, nil)
+	actualBlob, err := metadb.InsertBlobRef(ctx, blob)
+	assert.Same(t, blob, actualBlob)
+	assert.NoError(t, err)
+
+	mockDriver.EXPECT().UpdateBlobRef(ctx, blob).Return(blob, nil)
+	actualBlob, err = metadb.UpdateBlobRef(ctx, blob)
+	assert.Same(t, blob, actualBlob)
+	assert.NoError(t, err)
+
+	mockDriver.EXPECT().GetBlobRef(ctx, aUUID).Return(blob, nil)
+	actualBlob, err = metadb.GetBlobRef(ctx, aUUID)
+	assert.Same(t, blob, actualBlob)
+	assert.NoError(t, err)
+
+	mockDriver.EXPECT().GetCurrentBlobRef(ctx, key, key2).Return(blob, nil)
+	actualBlob, err = metadb.GetCurrentBlobRef(ctx, key, key2)
+	assert.Same(t, blob, actualBlob)
+	assert.NoError(t, err)
+
+	mockDriver.EXPECT().PromoteBlobRefToCurrent(ctx, blob).Return(record, blob, nil)
+	actualrecord, actualBlob, err = metadb.PromoteBlobRefToCurrent(ctx, blob)
+	assert.Same(t, record, actualrecord)
+	assert.Same(t, blob, actualBlob)
+	assert.NoError(t, err)
+
+	mockDriver.EXPECT().MarkBlobRefForDeletion(ctx, key, key2).Return(record, blob, nil)
+	actualrecord, actualBlob, err = metadb.MarkBlobRefForDeletion(ctx, key, key2)
+	assert.Same(t, record, actualrecord)
+	assert.Same(t, blob, actualBlob)
+	assert.NoError(t, err)
+
+	mockDriver.EXPECT().DeleteBlobRef(ctx, aUUID)
+	assert.NoError(t, metadb.DeleteBlobRef(ctx, aUUID))
 }
