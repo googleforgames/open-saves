@@ -43,11 +43,11 @@ func newDriver(ctx context.Context, t *testing.T) *Driver {
 }
 
 func newStoreKey() string {
-	return "unittest_store_" + uuid.New().String()
+	return uuid.New().String() + "_unittest_store"
 }
 
 func newRecordKey() string {
-	return "unittest_record_" + uuid.New().String()
+	return uuid.New().String() + "_unittest_record"
 }
 
 func cloneRecord(r *m.Record) *m.Record {

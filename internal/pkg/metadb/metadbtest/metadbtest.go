@@ -22,6 +22,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func assertTimestampsWithinDuration(t *testing.T, expected, actual *metadb.Timestamps, delta time.Duration, msgAndArgs ...interface{}) {
+	assert.WithinDuration(t, expected.CreatedAt, actual.CreatedAt, delta, msgAndArgs...)
+	assert.WithinDuration(t, expected.UpdatedAt, actual.UpdatedAt, delta, msgAndArgs...)
+	assert.Equal(t, expected.Signature, actual.Signature, msgAndArgs...)
+}
+
 // AssertEqualStore is equivalent to
 // AssertEqualStoreWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 func AssertEqualStore(t *testing.T, expected, actual *metadb.Store, msgAndArgs ...interface{}) {
@@ -42,9 +48,7 @@ func AssertEqualStoreWithinDuration(t *testing.T, expected, actual *metadb.Store
 		assert.Equal(t, expected.Name, actual.Name, msgAndArgs...)
 		assert.Equal(t, expected.OwnerID, actual.OwnerID, msgAndArgs...)
 		assert.ElementsMatch(t, expected.Tags, actual.Tags, msgAndArgs...)
-		assert.WithinDuration(t, expected.Timestamps.CreatedAt, actual.Timestamps.CreatedAt, delta, msgAndArgs...)
-		assert.WithinDuration(t, expected.Timestamps.UpdatedAt, actual.Timestamps.UpdatedAt, delta, msgAndArgs...)
-		assert.Equal(t, expected.Timestamps.Signature, actual.Timestamps.Signature, msgAndArgs...)
+		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
 	}
 }
 
@@ -70,8 +74,32 @@ func AssertEqualRecordWithinDuration(t *testing.T, expected, actual *metadb.Reco
 		assert.Equal(t, expected.Properties, actual.Properties, msgAndArgs...)
 		assert.ElementsMatch(t, expected.Tags, actual.Tags, msgAndArgs...)
 		assert.Equal(t, expected.OwnerID, actual.OwnerID, msgAndArgs...)
-		assert.WithinDuration(t, expected.Timestamps.CreatedAt, actual.Timestamps.CreatedAt, delta, msgAndArgs...)
-		assert.WithinDuration(t, expected.Timestamps.UpdatedAt, actual.Timestamps.UpdatedAt, delta, msgAndArgs...)
-		assert.Equal(t, expected.Timestamps.Signature, actual.Timestamps.Signature, msgAndArgs...)
+		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
+	}
+}
+
+// AssertEqualBlobRef is equivalent to
+// AssertEqualBlobRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
+func AssertEqualBlobRef(t *testing.T, expected, actual *metadb.BlobRef, msgAndArgs ...interface{}) {
+	AssertEqualBlobRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
+}
+
+// AssertEqualBlobRefWithinDuration compares each field in metadb.BlobRef and asserts the timestamps
+// are within delta.
+func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *metadb.BlobRef, delta time.Duration, msgAndArgs ...interface{}) {
+	t.Helper()
+	if expected == nil {
+		assert.Nil(t, actual)
+		return
+	}
+	if assert.NotNil(t, actual) {
+		assert.Equal(t, expected.Key, actual.Key, msgAndArgs...)
+		assert.Equal(t, expected.ObjectName, actual.ObjectName, msgAndArgs...)
+		assert.Equal(t, expected.RecordKey, actual.RecordKey, msgAndArgs...)
+		assert.Equal(t, expected.Size, actual.Size, msgAndArgs...)
+		assert.Equal(t, expected.Status, actual.Status, msgAndArgs...)
+		assert.Equal(t, expected.StoreKey, actual.StoreKey, msgAndArgs...)
+		assert.Equal(t, expected.RecordKey, actual.RecordKey, msgAndArgs...)
+		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
 	}
 }
