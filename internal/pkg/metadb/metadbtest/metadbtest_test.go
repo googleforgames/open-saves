@@ -78,3 +78,25 @@ func TestMetaDBTest_TestAssertEqualRecord(t *testing.T) {
 	record2.Timestamps.UpdatedAt = record2.Timestamps.UpdatedAt.Add(time.Duration(42))
 	AssertEqualRecordWithinDuration(t, record, record2, time.Duration(42))
 }
+
+func TestMetaDBTest_TestAssertEqualBlobRef(t *testing.T) {
+	blob := &metadb.BlobRef{
+		Key:        uuid.MustParse("35B7DABC-9523-45E1-995A-D76F3EF29F79"),
+		Size:       12345,
+		ObjectName: "test",
+		Status:     metadb.BlobRefStatusInitializing,
+		StoreKey:   "storeKey",
+		RecordKey:  "recordKey",
+		Timestamps: metadb.Timestamps{
+			CreatedAt: time.Unix(100, 0),
+			UpdatedAt: time.Unix(200, 0),
+			Signature: uuid.MustParse("D4F08F0D-0FD1-49E4-9681-A0569A608FC9"),
+		},
+	}
+	AssertEqualBlobRef(t, blob, blob)
+	blob2 := new(metadb.BlobRef)
+	*blob2 = *blob
+	blob2.Timestamps.CreatedAt = blob.Timestamps.CreatedAt.Add(time.Duration(42))
+	blob2.Timestamps.UpdatedAt = blob.Timestamps.UpdatedAt.Add(time.Duration(42))
+	AssertEqualBlobRefWithinDuration(t, blob, blob2, time.Duration(42))
+}
