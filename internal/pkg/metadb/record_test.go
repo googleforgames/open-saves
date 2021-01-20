@@ -374,7 +374,6 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	}
 	expected := &m.Record{
 		Key:          "key",
-		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
 		Properties: m.PropertyMap{
