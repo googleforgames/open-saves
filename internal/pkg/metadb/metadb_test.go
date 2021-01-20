@@ -92,8 +92,11 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	assert.True(t, timeEqualOrAfter(beforeInsert, insertedRecord.Timestamps.UpdatedAt, timeThreshold))
 
 	createdAt := record.Timestamps.CreatedAt
-	mockDriver.EXPECT().UpdateRecord(ctx, key, record).Return(record, nil)
-	updatedRecord, err := metadb.UpdateRecord(ctx, key, record)
+	// The mock driver cannot verify the function argument
+	// due to a technical limitation: https://github.com/golang/mock/issues/324
+	// Passing a nil as a workaround.
+	mockDriver.EXPECT().UpdateRecord(ctx, key, key2, nil).Return(record, nil)
+	updatedRecord, err := metadb.UpdateRecord(ctx, key, key2, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, updatedRecord)
 	assert.True(t, createdAt.Equal(updatedRecord.Timestamps.CreatedAt))

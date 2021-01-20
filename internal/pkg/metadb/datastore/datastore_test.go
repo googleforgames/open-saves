@@ -28,6 +28,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const testTimestampThreshold = 30 * time.Second
+
 func newDriver(ctx context.Context, t *testing.T) *Driver {
 	driver, err := NewDriver(ctx, "triton-for-games-dev")
 	if err != nil {
@@ -251,7 +253,6 @@ func TestDriver_UpdateRecord(t *testing.T) {
 
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
-	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
 	record := &m.Record{
 		Key:        recordKey,
 		Blob:       blob,
@@ -259,15 +260,12 @@ func TestDriver_UpdateRecord(t *testing.T) {
 		Properties: make(m.PropertyMap),
 		OwnerID:    "record owner",
 		Tags:       []string{"abc", "def"},
-		Timestamps: m.Timestamps{
-			CreatedAt: createdAt,
-			UpdatedAt: createdAt,
-			Signature: uuid.MustParse("e4a677f6-8f1c-4765-be45-11b6400cc43b"),
-		},
 	}
+	record.Timestamps.NewTimestamps(driver.TimestampPrecision())
 	expected := cloneRecord(record)
 
-	updatedRecord, err := driver.UpdateRecord(ctx, storeKey, record)
+	updatedRecord, err := driver.UpdateRecord(ctx, storeKey, recordKey,
+		func(*m.Record) (*m.Record, error) { return nil, nil })
 	assert.NotNil(t, err, "UpdateRecord should return an error if the specified record doesn't exist.")
 	assert.Nil(t, updatedRecord, "UpdateRecord should return nil with error")
 
@@ -277,21 +275,28 @@ func TestDriver_UpdateRecord(t *testing.T) {
 	expected.Tags = append(expected.Tags, "ghi")
 	record.OwnerID = "NewOwner"
 	expected.OwnerID = record.OwnerID
-	record.Timestamps.UpdatedAt = time.Date(1988, 5, 17, 5, 6, 8, int(4321*time.Microsecond), time.UTC)
-	record.Timestamps.Signature = uuid.MustParse("3c1dc762-8f22-4d85-b729-b90393f45ca6")
-	expected.Timestamps = record.Timestamps
+	expected.Timestamps.NewTimestamps(driver.TimestampPrecision())
 
 	// Make sure UpdateRecord doesn't update CreatedAt
 	record.Timestamps.CreatedAt = time.Unix(0, 0)
-	updatedRecord, err = driver.UpdateRecord(ctx, storeKey, record)
+	updatedRecord, err = driver.UpdateRecord(ctx, storeKey, recordKey,
+		func(r *m.Record) (*m.Record, error) {
+			r.OwnerID = record.OwnerID
+			r.Tags = record.Tags
+			return r, nil
+		})
 	assert.Nilf(t, err, "Failed to update a record (%s) in store (%s): %v", recordKey, storeKey, err)
-	metadbtest.AssertEqualRecord(t, expected, updatedRecord, "Updated record is not the same as original.")
+	// Make sure the signatures are different before passing to AssertEqualRecordWithinDuration
+	assert.NotEqual(t, expected.Timestamps.Signature, updatedRecord.Timestamps.Signature)
+	expected.Timestamps.Signature = updatedRecord.Timestamps.Signature
+	metadbtest.AssertEqualRecordWithinDuration(t, expected,
+		updatedRecord, testTimestampThreshold, "Updated record is not the same as original.")
 
 	record2, err := driver.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	metadbtest.AssertEqualRecord(t, expected, record2, "GetRecord should fetch the updated record.")
+	metadbtest.AssertEqualRecord(t, updatedRecord, record2, "GetRecord should fetch the updated record.")
 }
 
 func TestDriver_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
