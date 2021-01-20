@@ -391,7 +391,7 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetCurrentBlobRef failed: %v", err)
 	} else {
-		metadbtest.AssertEqualBlobRef(t, promoBlob, currentBlob)
+		metadbtest.AssertEqualBlobRefWithinDuration(t, promoBlob, currentBlob, driver.TimestampPrecision())
 	}
 
 	if err := driver.DeleteBlobRef(ctx, blobKey); err == nil {
