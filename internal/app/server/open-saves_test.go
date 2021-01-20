@@ -95,7 +95,6 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 	}
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected.Key, actual.Key)
-		assert.Equal(t, expected.Blob, actual.Blob)
 		assert.Equal(t, expected.BlobSize, actual.BlobSize)
 		assert.ElementsMatch(t, expected.Tags, actual.Tags)
 		assert.Equal(t, expected.OwnerId, actual.OwnerId)
@@ -199,7 +198,6 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 		StoreKey: storeKey,
 		Record: &pb.Record{
 			Key:      recordKey,
-			Blob:     testBlob,
 			BlobSize: int64(len(testBlob)),
 			Tags:     []string{"tag1", "tag2"},
 			OwnerId:  "owner",
@@ -283,7 +281,6 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 		StoreKey: storeKey,
 		Record: &pb.Record{
 			Key:      recordKey,
-			Blob:     testBlob,
 			BlobSize: int64(len(testBlob)),
 		},
 	}
@@ -294,7 +291,6 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	}
 	expected := &pb.Record{
 		Key:       recordKey,
-		Blob:      testBlob,
 		BlobSize:  int64(len(testBlob)),
 		CreatedAt: created.GetCreatedAt(),
 		UpdatedAt: timestamppb.Now(),
@@ -370,7 +366,6 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 		StoreKey: storeKey,
 		Record: &pb.Record{
 			Key:      recordKey,
-			Blob:     testBlob,
 			BlobSize: int64(len(testBlob)),
 			Tags:     []string{"tag1", "tag2"},
 			OwnerId:  "owner",
