@@ -19,6 +19,7 @@ import (
 	"reflect"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -44,7 +45,7 @@ type Record struct {
 	Key          string `datastore:"-"`
 	Blob         []byte `datastore:",noindex"`
 	BlobSize     int64
-	ExternalBlob string `datastore:",noindex"`
+	ExternalBlob uuid.UUID `datastore:"-"`
 	Properties   PropertyMap
 	OwnerID      string
 	Tags         []string
@@ -98,18 +99,32 @@ func NewPropertyValueFromProto(proto *pb.Property) *PropertyValue {
 // instead of the datastore package because Go doesn't permit to define
 // additional receivers in another package.
 
+const externalBlobPropertyName = "ExternalBlob"
+
 // Save and Load for Record replicate the default behaviors, however, they are
 // explicitly required to implement the KeyLoader interface.
 
 // Save implements the Datastore PropertyLoadSaver interface and converts struct fields
 // to Datastore properties.
 func (r *Record) Save() ([]datastore.Property, error) {
-	return datastore.SaveStruct(r)
+	properties, err := datastore.SaveStruct(r)
+	if err != nil {
+		return nil, err
+	}
+	properties = append(properties,
+		uuidToDatastoreProperty(externalBlobPropertyName, r.ExternalBlob, false))
+	return properties, nil
 }
 
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.
 func (r *Record) Load(ps []datastore.Property) error {
+	externalBlob, ps, err := datastoreLoadUUID(ps, externalBlobPropertyName)
+	if err != nil {
+		return err
+	}
+	r.ExternalBlob = externalBlob
+
 	// Initialize Properties because the default value is a nil map and there
 	// is no way to change it inside PropertyMap.Load().
 	r.Properties = make(PropertyMap)
