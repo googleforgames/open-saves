@@ -24,6 +24,8 @@ import (
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	mock_metadb "github.com/googleforgames/open-saves/internal/pkg/metadb/mock"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 func TestMetaDB_NewMetaDB(t *testing.T) {
@@ -93,13 +95,12 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	assert.True(t, timeEqualOrAfter(beforeInsert, insertedRecord.Timestamps.CreatedAt, timeThreshold))
 	assert.True(t, timeEqualOrAfter(beforeInsert, insertedRecord.Timestamps.UpdatedAt, timeThreshold))
 
-	createdAt := record.Timestamps.CreatedAt
-	mockDriver.EXPECT().UpdateRecord(ctx, key, record).Return(record, nil)
-	updatedRecord, err := metadb.UpdateRecord(ctx, key, record)
-	assert.NoError(t, err)
-	assert.NotNil(t, updatedRecord)
-	assert.True(t, createdAt.Equal(updatedRecord.Timestamps.CreatedAt))
-	assert.True(t, timeEqualOrAfter(createdAt, updatedRecord.Timestamps.UpdatedAt, timeThreshold))
+	// The mock driver cannot verify the function argument
+	// due to a technical limitation: https://github.com/golang/mock/issues/324
+	// We can only pass a nil and test the error case.
+	updatedRecord, err := metadb.UpdateRecord(ctx, key, key2, nil)
+	assert.Equal(t, codes.Internal, grpc.Code(err))
+	assert.Nil(t, updatedRecord)
 
 	mockDriver.EXPECT().GetRecord(ctx, key, key2).Return(record, nil)
 	actualrecord, err := metadb.GetRecord(ctx, key, key2)

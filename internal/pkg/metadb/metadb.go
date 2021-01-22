@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 // Driver interface defines common operations for the metadata server.
@@ -33,7 +35,7 @@ type Driver interface {
 	DeleteStore(ctx context.Context, key string) error
 
 	InsertRecord(ctx context.Context, storeKey string, record *Record) (*Record, error)
-	UpdateRecord(ctx context.Context, storeKey string, record *Record) (*Record, error)
+	UpdateRecord(ctx context.Context, storeKey string, key string, updater RecordUpdater) (*Record, error)
 	GetRecord(ctx context.Context, storeKey, key string) (*Record, error)
 	DeleteRecord(ctx context.Context, storeKey, key string) error
 
@@ -60,6 +62,10 @@ type Driver interface {
 type MetaDB struct {
 	driver Driver
 }
+
+// RecordUpdater is a callback function for record updates.
+// Returning a non-nil error aborts the transaction.
+type RecordUpdater func(record *Record) (*Record, error)
 
 // NewMetaDB creates a new MetaDB instance with an initialized database Driver.
 func NewMetaDB(driver Driver) *MetaDB {
@@ -109,10 +115,14 @@ func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *Reco
 }
 
 // UpdateRecord updates the record in the store specified with storeKey.
+// Pass a callback function to updater and change values there. The callback
+// will be protected by a transaction.
 // Returns error if the store doesn't have a record with the key provided.
-func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, record *Record) (*Record, error) {
-	record.Timestamps.UpdateTimestamps(m.driver.TimestampPrecision())
-	return m.driver.UpdateRecord(ctx, storeKey, record)
+func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, updater RecordUpdater) (*Record, error) {
+	if updater == nil {
+		return nil, grpc.Errorf(codes.Internal, "updater cannot be nil")
+	}
+	return m.driver.UpdateRecord(ctx, storeKey, key, updater)
 }
 
 // GetRecord fetches and returns a record with key in store storeKey.

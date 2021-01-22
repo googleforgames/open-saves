@@ -188,7 +188,15 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
 	record := metadb.NewRecordFromProto(req.GetRecord())
-	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record)
+	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record.Key,
+		func(r *metadb.Record) (*metadb.Record, error) {
+			r.OwnerID = record.OwnerID
+			r.Properties = record.Properties
+			r.Tags = record.Tags
+			r.Blob = record.Blob
+			r.BlobSize = record.BlobSize
+			return r, nil
+		})
 	if err != nil {
 		log.Warnf("UpdateRecord failed for store(%s), record (%s): %v",
 			req.GetStoreKey(), req.GetRecord().GetKey(), err)
