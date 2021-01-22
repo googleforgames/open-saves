@@ -17,6 +17,8 @@ package metadb
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Driver interface defines common operations for the metadata server.
@@ -35,11 +37,26 @@ type Driver interface {
 	GetRecord(ctx context.Context, storeKey, key string) (*Record, error)
 	DeleteRecord(ctx context.Context, storeKey, key string) error
 
+	InsertBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, error)
+	UpdateBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, error)
+	GetBlobRef(ctx context.Context, key uuid.UUID) (*BlobRef, error)
+	GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*BlobRef, error)
+	PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*Record, *BlobRef, error)
+	MarkBlobRefForDeletion(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error)
+	DeleteBlobRef(ctx context.Context, key uuid.UUID) error
+
 	TimestampPrecision() time.Duration
 }
 
 // MetaDB is a metadata database manager of Open Saves.
 // It performs operations through the Driver interface.
+// The methods return gRPC error codes. Here are some common error codes
+// returned. For additional details, please look at the method help.
+// Common errors:
+//	- NotFound: entity or object is not found
+//	- Aborted: transaction is aborted
+//	- InvalidArgument: key or value provided is not valid
+//	- Internal: internal unrecoverable error
 type MetaDB struct {
 	driver Driver
 }
@@ -108,4 +125,60 @@ func (m *MetaDB) GetRecord(ctx context.Context, storeKey, key string) (*Record, 
 // It doesn't return error even if the key is not found in the database.
 func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 	return m.driver.DeleteRecord(ctx, storeKey, key)
+}
+
+// InsertBlobRef inserts a new BlobRef object to the datastore.
+func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, error) {
+	blob.Timestamps.NewTimestamps(m.driver.TimestampPrecision())
+	return m.driver.InsertBlobRef(ctx, blob)
+}
+
+// UpdateBlobRef updates a BlobRef object with the new property values.
+// Returns a NotFound error if the key is not found.
+func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, error) {
+	blob.Timestamps.UpdateTimestamps(m.driver.TimestampPrecision())
+	return m.driver.UpdateBlobRef(ctx, blob)
+}
+
+// GetBlobRef returns a BlobRef object specified by the key.
+// Returns errors:
+//	- NotFound: the object is not found.
+func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*BlobRef, error) {
+	return m.driver.GetBlobRef(ctx, key)
+}
+
+// GetCurrentBlobRef gets a BlobRef object associated with a record.
+// Returned errors:
+// 	- NotFound: the record is not found.
+// 	- FailedPrecondition: the record doesn't have a blob.
+func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*BlobRef, error) {
+	return m.driver.GetCurrentBlobRef(ctx, storeKey, recordKey)
+}
+
+// PromoteBlobRefToCurrent promotes the provided BlobRef object as a current
+// external blob reference.
+// Returned errors:
+//	- NotFound: the specified record or the blobref was not found
+//  - Internal: BlobRef status transition error
+func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*Record, *BlobRef, error) {
+	return m.driver.PromoteBlobRefToCurrent(ctx, blob)
+}
+
+// MarkBlobRefForDeletion removes the ExternalBlob from the record specified by
+// storeKey and recordKey. It also changes the status of the blob object to
+// BlobRefStatusPendingDeletion.
+// Returned errors:
+//	- NotFound: the specified record or the blobref was not found
+//	- FailedPrecondition: the record doesn't have an external blob
+//  - Internal: BlobRef status transition error
+func (m *MetaDB) MarkBlobRefForDeletion(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error) {
+	return m.driver.MarkBlobRefForDeletion(ctx, storeKey, recordKey)
+}
+
+// DeleteBlobRef deletes the BlobRef object from the database.
+// Returned errors:
+//	- NotFound: the blobref object is not found
+//	- FailedPrecondition: the blobref status is Ready and can't be deleted
+func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
+	return m.driver.DeleteBlobRef(ctx, key)
 }
