@@ -23,6 +23,7 @@ import (
 )
 
 func assertTimestampsWithinDuration(t *testing.T, expected, actual *metadb.Timestamps, delta time.Duration, msgAndArgs ...interface{}) {
+	t.Helper()
 	assert.WithinDuration(t, expected.CreatedAt, actual.CreatedAt, delta, msgAndArgs...)
 	assert.WithinDuration(t, expected.UpdatedAt, actual.UpdatedAt, delta, msgAndArgs...)
 	assert.Equal(t, expected.Signature, actual.Signature, msgAndArgs...)
@@ -81,6 +82,7 @@ func AssertEqualRecordWithinDuration(t *testing.T, expected, actual *metadb.Reco
 // AssertEqualBlobRef is equivalent to
 // AssertEqualBlobRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 func AssertEqualBlobRef(t *testing.T, expected, actual *metadb.BlobRef, msgAndArgs ...interface{}) {
+	t.Helper()
 	AssertEqualBlobRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 }
 
