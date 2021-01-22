@@ -138,7 +138,7 @@ func TestRecord_Save(t *testing.T) {
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: "",
+		ExternalBlob: uuid.Nil,
 		Properties: m.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
@@ -156,7 +156,8 @@ func TestRecord_Save(t *testing.T) {
 		t.Fatalf("Save should not return err: %v", err)
 	}
 	if assert.Len(t, properties, 7, "Save didn't return the expected number of elements.") {
-		assert.Equal(t, properties[:3], []datastore.Property{
+		idx := 2
+		assert.Equal(t, properties[:idx], []datastore.Property{
 			{
 				Name:    "Blob",
 				Value:   testBlob,
@@ -166,16 +167,11 @@ func TestRecord_Save(t *testing.T) {
 				Name:  "BlobSize",
 				Value: int64(len(testBlob)),
 			},
-			{
-				Name:    "ExternalBlob",
-				Value:   "",
-				NoIndex: true,
-			},
 		})
-		assert.Equal(t, properties[3].Name, "Properties")
-		assert.False(t, properties[3].NoIndex)
-		if assert.IsType(t, properties[3].Value, &datastore.Entity{}) {
-			e := properties[3].Value.(*datastore.Entity)
+		assert.Equal(t, properties[idx].Name, "Properties")
+		assert.False(t, properties[idx].NoIndex)
+		if assert.IsType(t, properties[idx].Value, &datastore.Entity{}) {
+			e := properties[idx].Value.(*datastore.Entity)
 
 			assert.Nil(t, e.Key)
 			assert.ElementsMatch(t, e.Properties, []datastore.Property{
@@ -189,7 +185,8 @@ func TestRecord_Save(t *testing.T) {
 				},
 			})
 		}
-		assert.Equal(t, properties[4:], []datastore.Property{
+		idx++
+		assert.Equal(t, properties[idx:], []datastore.Property{
 			{
 				Name:  "OwnerID",
 				Value: "owner",
@@ -217,6 +214,10 @@ func TestRecord_Save(t *testing.T) {
 						},
 					},
 				},
+			},
+			{
+				Name:  "ExternalBlob",
+				Value: "",
 			},
 		})
 	}
@@ -291,7 +292,7 @@ func TestRecord_Load(t *testing.T) {
 		Key:          "",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: "",
+		ExternalBlob: uuid.Nil,
 		Properties: m.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
@@ -315,8 +316,8 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: "",
-		Properties: map[string]*m.PropertyValue{
+		ExternalBlob: uuid.Nil,
+		Properties: m.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -377,8 +378,8 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: "",
-		Properties: map[string]*m.PropertyValue{
+		ExternalBlob: uuid.Nil,
+		Properties: m.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -405,4 +406,23 @@ func TestRecord_LoadKey(t *testing.T) {
 	key := datastore.NameKey("kind", "testkey", nil)
 	assert.NoError(t, record.LoadKey(key))
 	assert.Equal(t, "testkey", record.Key)
+}
+
+func TestRecord_TestBlobUUID(t *testing.T) {
+	testUUID := uuid.MustParse("F7B0E446-EBBE-48A2-90BA-108C36B44F7C")
+	record := &m.Record{
+		ExternalBlob: testUUID,
+		Properties:   make(m.PropertyMap),
+	}
+	properties, err := record.Save()
+	assert.NoError(t, err, "Save should not return error")
+	idx := len(properties) - 1
+	assert.Equal(t, "ExternalBlob", properties[idx].Name)
+	assert.Equal(t, testUUID.String(), properties[idx].Value)
+	assert.Equal(t, false, properties[idx].NoIndex)
+
+	actual := new(m.Record)
+	err = actual.Load(properties)
+	assert.NoError(t, err, "Load should not return error")
+	assert.Equal(t, record, actual)
 }
