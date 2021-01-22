@@ -197,42 +197,41 @@ func (d *Driver) InsertRecord(ctx context.Context, storeKey string, record *m.Re
 // UpdateRecord updates the record in the store specified with storeKey.
 // Returns error if the store doesn't have a record with the key provided.
 func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, key string, updater m.RecordUpdater) (*m.Record, error) {
-	var newRecord *m.Record
+	var record *m.Record
 	_, err := d.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		rkey := d.createRecordKey(storeKey, key)
 
 		// TODO(yuryu): Consider supporting transactions in MetaDB and move
 		// this operation out of the Datastore specific code.
-		oldRecord := new(m.Record)
-		if err := tx.Get(rkey, oldRecord); err != nil {
+		record = new(m.Record)
+		if err := tx.Get(rkey, record); err != nil {
 			return err
 		}
-		var err error
-		newRecord, err = updater(oldRecord)
-		if err != nil {
-			return err
-		}
-		newRecord.Timestamps.CreatedAt = oldRecord.Timestamps.CreatedAt
-		newRecord.Timestamps.UpdateTimestamps(timestampPrecision)
-		if err := d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, newRecord)); err != nil {
-			return err
-		}
-		// Deassociate the old blob if an external blob is associated is a new inline blob is being added
-		if oldRecord.ExternalBlob != uuid.Nil {
-			oldBlob, err := d.getBlobRef(ctx, tx, oldRecord.ExternalBlob)
+
+		// Deassociate the old blob if an external blob is associated is a new inline blob is being added.
+		if record.ExternalBlob != uuid.Nil {
+			oldBlob, err := d.getBlobRef(ctx, tx, record.ExternalBlob)
 			if err != nil {
 				return err
 			}
-			if err := d.markBlobRefForDeletion(ctx, tx, storeKey, oldRecord, oldBlob, uuid.Nil); err != nil {
+			if err := d.markBlobRefForDeletion(ctx, tx, storeKey, record, oldBlob, uuid.Nil); err != nil {
 				return err
 			}
 		}
-		return nil
+
+		// Update the record entry by calling the updater callback.
+		var err error
+		record, err = updater(record)
+		if err != nil {
+			return err
+		}
+		record.Timestamps.UpdateTimestamps(timestampPrecision)
+		return d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
 	})
 	if err != nil {
 		return nil, err
 	}
-	return newRecord, nil
+	return record, nil
 }
 
 // GetRecord fetches and returns a record with key in store storeKey.
