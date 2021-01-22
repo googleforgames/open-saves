@@ -24,6 +24,7 @@ import (
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -316,4 +317,251 @@ func TestDriver_TimestampPrecision(t *testing.T) {
 	ctx := context.Background()
 	driver := newDriver(ctx, t)
 	assert.Equal(t, timestampPrecision, driver.TimestampPrecision())
+}
+
+func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	storeKey := newStoreKey()
+	store := &m.Store{
+		Key:  storeKey,
+		Name: "SimpleCreateGetDeleteBlobRef",
+	}
+
+	recordKey := newRecordKey()
+	createdAt := time.Unix(12345, 0)
+	record := &m.Record{
+		Key:        recordKey,
+		Properties: make(m.PropertyMap),
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+			Signature: uuid.New(),
+		},
+	}
+
+	setupTestStoreRecord(ctx, t, driver, store, record)
+	blobKey := uuid.New()
+	origSig := uuid.New()
+	blob := &m.BlobRef{
+		Key:        blobKey,
+		Size:       12345,
+		ObjectName: "test",
+		Status:     m.BlobRefStatusInitializing,
+		StoreKey:   storeKey,
+		RecordKey:  recordKey,
+		Timestamps: m.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+			Signature: origSig,
+		},
+	}
+
+	insertedBlob, err := driver.InsertBlobRef(ctx, blob)
+	if err != nil {
+		t.Fatalf("InsertBlobRef failed: %v", err)
+	}
+	metadbtest.AssertEqualBlobRef(t, blob, insertedBlob)
+
+	_, err = driver.GetCurrentBlobRef(ctx, storeKey, recordKey)
+	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+
+	blob2, err := driver.GetBlobRef(ctx, blobKey)
+	if err != nil {
+		t.Errorf("GetBlobRef failed: %v", err)
+	} else {
+		metadbtest.AssertEqualBlobRef(t, blob, blob2)
+	}
+
+	beforePromo := time.Now()
+	promoRecord, promoBlob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
+	if err != nil {
+		t.Errorf("PromoteBlobAsCurrent failed: %v", err)
+	} else {
+		if assert.NotNil(t, promoRecord) {
+			assert.Equal(t, blobKey, promoRecord.ExternalBlob)
+			assert.Equal(t, blob.Size, promoRecord.BlobSize)
+			assert.True(t, beforePromo.Before(promoRecord.Timestamps.UpdatedAt))
+			assert.NotEqual(t, record.Timestamps.Signature, promoRecord.Timestamps.Signature)
+		}
+		if assert.NotNil(t, promoRecord) {
+			assert.Equal(t, blobKey, promoBlob.Key)
+			assert.Equal(t, m.BlobRefStatusReady, promoBlob.Status)
+			assert.True(t, beforePromo.Before(promoBlob.Timestamps.UpdatedAt))
+			assert.NotEqual(t, origSig, promoBlob.Timestamps.Signature)
+		}
+	}
+
+	currentBlob, err := driver.GetCurrentBlobRef(ctx, storeKey, recordKey)
+	if err != nil {
+		t.Errorf("GetCurrentBlobRef failed: %v", err)
+	} else {
+		metadbtest.AssertEqualBlobRefWithinDuration(t, promoBlob, currentBlob, driver.TimestampPrecision())
+	}
+
+	if err := driver.DeleteBlobRef(ctx, blobKey); err == nil {
+		t.Errorf("DeleteBlobRef should fail on current blob: %v", err)
+	} else {
+		assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+	}
+
+	delPendRecord, delPendBlob, err := driver.MarkBlobRefForDeletion(ctx, storeKey, recordKey)
+	if err != nil {
+		t.Errorf("MarkBlobForDeletion failed: %v", err)
+	} else {
+		if assert.NotNil(t, delPendRecord) {
+			assert.Equal(t, uuid.Nil, delPendRecord.ExternalBlob)
+		}
+		if assert.NotNil(t, delPendBlob) {
+			assert.Equal(t, m.BlobRefStatusPendingDeletion, delPendBlob.Status)
+		}
+	}
+
+	assert.NoError(t, driver.DeleteBlobRef(ctx, blobKey))
+
+	deletedBlob, err := driver.GetBlobRef(ctx, blobKey)
+	assert.Nil(t, deletedBlob)
+	assert.Equal(t, codes.NotFound, grpc.Code(err), "GetBlobRef should return NotFound after deletion.")
+}
+
+func TestDriver_SwapBlobRefs(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	store := &m.Store{
+		Key:  newStoreKey(),
+		Name: "SwapBlobRefs",
+	}
+
+	record := &m.Record{
+		Key:        newRecordKey(),
+		Properties: make(m.PropertyMap),
+	}
+
+	setupTestStoreRecord(ctx, t, driver, store, record)
+	blob := &m.BlobRef{
+		Key:       uuid.New(),
+		Status:    m.BlobRefStatusInitializing,
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	}
+
+	if _, err := driver.InsertBlobRef(ctx, blob); err != nil {
+		t.Fatalf("InsertBlobRef failed: %v", err)
+	}
+	t.Cleanup(func() {
+		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
+	})
+
+	_, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
+	if err != nil {
+		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
+	}
+
+	newBlob := &m.BlobRef{
+		Key:       uuid.New(),
+		Status:    m.BlobRefStatusInitializing,
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	}
+	if _, err := driver.InsertBlobRef(ctx, newBlob); err != nil {
+		t.Fatalf("InsertBlobRef failed: %v", err)
+	}
+	t.Cleanup(func() {
+		assert.NoError(t, driver.DeleteBlobRef(ctx, newBlob.Key))
+	})
+
+	record, newCurrBlob, err := driver.PromoteBlobRefToCurrent(ctx, newBlob)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, record) {
+			assert.Equal(t, newBlob.Key, record.ExternalBlob)
+		}
+		if assert.NotNil(t, newCurrBlob) {
+			assert.Equal(t, newBlob.Key, newCurrBlob.Key)
+			assert.Equal(t, m.BlobRefStatusReady, newCurrBlob.Status)
+		}
+	}
+
+	oldBlob, err := driver.GetBlobRef(ctx, blob.Key)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, oldBlob) {
+			assert.Equal(t, blob.Key, oldBlob.Key)
+			assert.Equal(t, m.BlobRefStatusPendingDeletion, oldBlob.Status)
+		}
+	}
+
+	_, _, err = driver.MarkBlobRefForDeletion(ctx, store.Key, record.Key)
+	assert.NoError(t, err)
+}
+
+func TestDriver_UpdateBlobRef(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	store := &m.Store{
+		Key:  newStoreKey(),
+		Name: "SimpleCreateGetDeleteBlobRef",
+	}
+
+	record := &m.Record{
+		Key:        newRecordKey(),
+		Properties: make(m.PropertyMap),
+	}
+
+	setupTestStoreRecord(ctx, t, driver, store, record)
+	blob := &m.BlobRef{
+		Key:       uuid.New(),
+		Status:    m.BlobRefStatusInitializing,
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+		Timestamps: m.Timestamps{
+			CreatedAt: time.Unix(123, 0),
+			UpdatedAt: time.Unix(123, 0),
+		},
+	}
+
+	if _, err := driver.InsertBlobRef(ctx, blob); err != nil {
+		t.Fatalf("InsertBlobRef failed: %v", err)
+	}
+	t.Cleanup(func() {
+		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
+	})
+
+	assert.NoError(t, blob.Fail())
+	blob.Timestamps.UpdatedAt = time.Unix(234, 0)
+
+	updatedBlob, err := driver.UpdateBlobRef(ctx, blob)
+	if err != nil {
+		t.Errorf("UpdateBlobRef failed: %v", err)
+	} else {
+		if assert.NotNil(t, updatedBlob) {
+			assert.Equal(t, blob, updatedBlob)
+		}
+	}
+
+	receivedBlob, err := driver.GetBlobRef(ctx, blob.Key)
+	if err != nil {
+		t.Errorf("GetBlobRef failed: %v", err)
+	} else {
+		if assert.NotNil(t, receivedBlob) {
+			assert.Equal(t, blob, receivedBlob)
+		}
+	}
+}
+
+func TestDriver_BlobInsertShouldFailForNonexistentRecord(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+	blob := &m.BlobRef{
+		Key:       uuid.New(),
+		StoreKey:  "non-existent" + uuid.New().String(),
+		RecordKey: "non-existent" + uuid.New().String(),
+	}
+
+	insertedBlob, err := driver.InsertBlobRef(ctx, blob)
+	if err == nil {
+		t.Error("InsertBlob should fail for a non-existent record.")
+		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
+	} else {
+		assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+		assert.Nil(t, insertedBlob)
+	}
 }
