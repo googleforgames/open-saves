@@ -120,7 +120,6 @@ func TestBlobRef_Load(t *testing.T) {
 }
 
 func newInitBlob(t *testing.T) *m.BlobRef {
-	blob := new(m.BlobRef)
 	const (
 		size   = int64(4)
 		name   = "abc"
@@ -129,7 +128,10 @@ func newInitBlob(t *testing.T) *m.BlobRef {
 	)
 
 	// Initialize
-	assert.NoError(t, blob.Initialize(size, store, record, name))
+	blob := m.NewBlobRef(size, store, record, name)
+	if blob == nil {
+		t.Fatal("NewBlobRef returned nil.")
+	}
 	assert.NotEqual(t, uuid.Nil, blob.Key)
 	assert.Equal(t, size, blob.Size)
 	assert.Equal(t, name, blob.ObjectName)
@@ -145,9 +147,6 @@ func newInitBlob(t *testing.T) *m.BlobRef {
 func TestBlobRef_LifeCycle(t *testing.T) {
 	blob := newInitBlob(t)
 
-	// Invalid transition
-	assert.Error(t, blob.Initialize(0, "", "", ""))
-
 	// Mark for deletion
 	assert.NoError(t, blob.MarkForDeletion())
 	assert.Equal(t, m.BlobRefStatusPendingDeletion, blob.Status)
@@ -160,7 +159,6 @@ func TestBlobRef_LifeCycle(t *testing.T) {
 	assert.Equal(t, m.BlobRefStatusReady, blob.Status)
 
 	// Invalid transitions
-	assert.Error(t, blob.Initialize(0, "", "", ""))
 	assert.Error(t, blob.Ready())
 
 	// Mark for deletion
@@ -170,7 +168,6 @@ func TestBlobRef_LifeCycle(t *testing.T) {
 	// Invalid transitions
 	assert.Error(t, blob.MarkForDeletion())
 	assert.Error(t, blob.Ready())
-	assert.Error(t, blob.Initialize(0, "", "", ""))
 }
 
 func TestBlobRef_Fail(t *testing.T) {
