@@ -54,7 +54,7 @@ service OpenSaves {
   rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {}
 
   // CreateBlob creates an external blob object and adds it to a record.
-  rpc CreateBlob(stream CreateBlobRequest) returns (Record) {}
+  rpc CreateBlob(stream CreateBlobRequest) returns (BlobMetadata) {}
 
   // GetBlob retrieves an external blob object in a record.
   rpc GetBlob(GetBlobRequest) returns (stream GetBlobResponse) {}
