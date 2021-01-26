@@ -108,18 +108,13 @@ func (b *BlobRef) LoadKey(k *datastore.Key) error {
 	return err
 }
 
-// Initialize sets up the Blob as follows:
+// NewBlobRef creates a new BlobRef as follows:
 //	- Set a new UUID to Key
 //	- Initialize Size and ObjectName as specified
 //	- Set Status to BlobRefStatusInitializing
 //	- Set current time to Timestamps (both created and updated at)
-//
-// Initialize should be called once on a zero-initialized (empty) BlobRef whose
-// Status is set to BlobRefStatusUnknown, otherwise it returns an error.
-func (b *BlobRef) Initialize(size int64, storeKey, recordKey, objectName string) error {
-	if b.Status != BlobRefStatusUnknown {
-		return errors.New("cannot re-initialize a blob entry")
-	}
+func NewBlobRef(size int64, storeKey, recordKey, objectName string) *BlobRef {
+	b := new(BlobRef)
 	b.Key = uuid.New()
 	b.Size = size
 	b.ObjectName = objectName
@@ -128,7 +123,7 @@ func (b *BlobRef) Initialize(size int64, storeKey, recordKey, objectName string)
 	b.RecordKey = recordKey
 	// Nanosecond is fine as it will not be returned to clients.
 	b.Timestamps.NewTimestamps(time.Nanosecond)
-	return nil
+	return b
 }
 
 // Ready changes Status to BlobRefStatusReady and updates Timestamps.
