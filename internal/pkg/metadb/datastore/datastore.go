@@ -396,8 +396,8 @@ func (d *Driver) PromoteBlobRefToCurrent(ctx context.Context, blob *m.BlobRef) (
 	return record, blob, nil
 }
 
-// MarkBlobRefForDeletion implements Driver.MarkBlobRefForDeletion.
-func (d *Driver) MarkBlobRefForDeletion(ctx context.Context, storeKey string, recordKey string) (*m.Record, *m.BlobRef, error) {
+// RemoveBlobFromRecord implements Driver.RemoveBlobFromRecord.
+func (d *Driver) RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*m.Record, *m.BlobRef, error) {
 	rkey := d.createRecordKey(storeKey, recordKey)
 	blob := new(m.BlobRef)
 	record := new(m.Record)
@@ -407,7 +407,15 @@ func (d *Driver) MarkBlobRefForDeletion(ctx context.Context, storeKey string, re
 			return err
 		}
 
-		// Clear the association
+		if record.ExternalBlob == uuid.Nil && len(record.Blob) > 0 {
+			// Delete the inline blob
+			record.Blob = nil
+			record.BlobSize = 0
+			record.Timestamps.UpdateTimestamps(timestampPrecision)
+			return d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
+		}
+
+		// Otherwise, clear the association
 		blob, err = d.getBlobRef(ctx, tx, record.ExternalBlob)
 		if err != nil {
 			return err

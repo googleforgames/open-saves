@@ -44,7 +44,7 @@ type Driver interface {
 	GetBlobRef(ctx context.Context, key uuid.UUID) (*BlobRef, error)
 	GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*BlobRef, error)
 	PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*Record, *BlobRef, error)
-	MarkBlobRefForDeletion(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error)
+	RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error)
 	DeleteBlobRef(ctx context.Context, key uuid.UUID) error
 
 	TimestampPrecision() time.Duration
@@ -174,15 +174,15 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*R
 	return m.driver.PromoteBlobRefToCurrent(ctx, blob)
 }
 
-// MarkBlobRefForDeletion removes the ExternalBlob from the record specified by
+// RemoveBlobFromRecord removes the ExternalBlob from the record specified by
 // storeKey and recordKey. It also changes the status of the blob object to
 // BlobRefStatusPendingDeletion.
 // Returned errors:
 //	- NotFound: the specified record or the blobref was not found
 //	- FailedPrecondition: the record doesn't have an external blob
 //  - Internal: BlobRef status transition error
-func (m *MetaDB) MarkBlobRefForDeletion(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error) {
-	return m.driver.MarkBlobRefForDeletion(ctx, storeKey, recordKey)
+func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error) {
+	return m.driver.RemoveBlobFromRecord(ctx, storeKey, recordKey)
 }
 
 // DeleteBlobRef deletes the BlobRef object from the database.
