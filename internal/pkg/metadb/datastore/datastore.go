@@ -208,8 +208,20 @@ func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, key string, 
 			return err
 		}
 
-		// Deassociate the old blob if an external blob is associated is a new inline blob is being added.
-		if record.ExternalBlob != uuid.Nil {
+		oldExternalBlob := record.ExternalBlob
+
+		// Update the record entry by calling the updater callback.
+		var err error
+		record, err = updater(record)
+		if err != nil {
+			return err
+		}
+
+		if oldExternalBlob != record.ExternalBlob {
+			return status.Error(codes.Internal, "UpdateRecord: ExternalBlob must not be modified in UpdateRecord")
+		}
+		// Deassociate the old blob if an external blob is associated, and a new inline blob is being added.
+		if oldExternalBlob != uuid.Nil && len(record.Blob) > 0 {
 			oldBlob, err := d.getBlobRef(ctx, tx, record.ExternalBlob)
 			if err != nil {
 				return err
@@ -219,12 +231,6 @@ func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, key string, 
 			}
 		}
 
-		// Update the record entry by calling the updater callback.
-		var err error
-		record, err = updater(record)
-		if err != nil {
-			return err
-		}
 		record.Timestamps.UpdateTimestamps(timestampPrecision)
 		return d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
 	})

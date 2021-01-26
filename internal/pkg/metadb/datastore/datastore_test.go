@@ -327,11 +327,14 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		Key:  storeKey,
 		Name: "SimpleCreateGetDeleteBlobRef",
 	}
+	testBlob := []byte{1, 2, 3, 4, 5}
 
 	recordKey := newRecordKey()
 	createdAt := time.Unix(12345, 0)
 	record := &m.Record{
 		Key:        recordKey,
+		Blob:       testBlob,
+		BlobSize:   int64(len(testBlob)),
 		Properties: make(m.PropertyMap),
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
@@ -379,12 +382,13 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		t.Errorf("PromoteBlobAsCurrent failed: %v", err)
 	} else {
 		if assert.NotNil(t, promoRecord) {
+			assert.Nil(t, promoRecord.Blob)
 			assert.Equal(t, blobKey, promoRecord.ExternalBlob)
 			assert.Equal(t, blob.Size, promoRecord.BlobSize)
 			assert.True(t, beforePromo.Before(promoRecord.Timestamps.UpdatedAt))
 			assert.NotEqual(t, record.Timestamps.Signature, promoRecord.Timestamps.Signature)
 		}
-		if assert.NotNil(t, promoRecord) {
+		if assert.NotNil(t, promoBlob) {
 			assert.Equal(t, blobKey, promoBlob.Key)
 			assert.Equal(t, m.BlobRefStatusReady, promoBlob.Status)
 			assert.True(t, beforePromo.Before(promoBlob.Timestamps.UpdatedAt))
@@ -563,5 +567,105 @@ func TestDriver_BlobInsertShouldFailForNonexistentRecord(t *testing.T) {
 	} else {
 		assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
 		assert.Nil(t, insertedBlob)
+	}
+}
+
+func TestDriver_UpdateRecordWithExternalBlobs(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+
+	storeKey := newStoreKey()
+	store := &m.Store{
+		Key: storeKey,
+	}
+
+	recordKey := newRecordKey()
+	record := &m.Record{
+		Key:        recordKey,
+		Properties: make(m.PropertyMap),
+	}
+
+	setupTestStoreRecord(ctx, t, driver, store, record)
+
+	blobKey := uuid.New()
+	blob := &m.BlobRef{
+		Key:       blobKey,
+		Status:    m.BlobRefStatusInitializing,
+		StoreKey:  storeKey,
+		RecordKey: recordKey,
+		Timestamps: m.Timestamps{
+			CreatedAt: time.Unix(123, 0),
+			UpdatedAt: time.Unix(123, 0),
+		},
+	}
+
+	if _, err := driver.InsertBlobRef(ctx, blob); err != nil {
+		t.Fatalf("InsertBlobRef failed: %v", err)
+	}
+	t.Cleanup(func() {
+		assert.NoError(t, driver.DeleteBlobRef(ctx, blobKey))
+	})
+
+	record, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
+	if err != nil {
+		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
+	}
+
+	_, err = driver.UpdateRecord(ctx, storeKey, recordKey, func(record *m.Record) (*m.Record, error) {
+		record.ExternalBlob = uuid.New()
+		return record, nil
+	})
+	if assert.Error(t, err, "UpdateRecord should fail when ExternalBlob is modified") {
+		assert.Equal(t, codes.Internal, grpc.Code(err))
+	}
+
+	// Make sure ExternalBlob is preserved when not modified
+	newRecord, err := driver.UpdateRecord(ctx, storeKey, recordKey, func(record *m.Record) (*m.Record, error) {
+		// noop
+		return record, nil
+	})
+
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, newRecord) {
+			assert.Equal(t, blobKey, newRecord.ExternalBlob)
+		}
+	}
+
+	actual, err := driver.GetRecord(ctx, storeKey, recordKey)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, actual) {
+			assert.Equal(t, blobKey, actual.ExternalBlob)
+		}
+	}
+
+	// Check if ExternalBlob is marked for deletion
+	testBlob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
+	newRecord, err = driver.UpdateRecord(ctx, storeKey, recordKey, func(record *m.Record) (*m.Record, error) {
+		record.Blob = testBlob
+		record.BlobSize = int64(len(testBlob))
+		return record, nil
+	})
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, newRecord) {
+			assert.Equal(t, testBlob, newRecord.Blob)
+			assert.Equal(t, int64(len(testBlob)), newRecord.BlobSize)
+			assert.Equal(t, uuid.Nil, newRecord.ExternalBlob)
+		}
+	}
+
+	actual, err = driver.GetRecord(ctx, storeKey, recordKey)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, actual) {
+			assert.Equal(t, testBlob, actual.Blob)
+			assert.Equal(t, int64(len(testBlob)), actual.BlobSize)
+			assert.Equal(t, uuid.Nil, actual.ExternalBlob)
+		}
+	}
+
+	blob, err = driver.GetBlobRef(ctx, blob.Key)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, blob) {
+			assert.Equal(t, m.BlobRefStatusPendingDeletion, blob.Status)
+		}
 	}
 }
