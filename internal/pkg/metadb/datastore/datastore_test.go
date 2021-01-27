@@ -409,9 +409,9 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
 	}
 
-	delPendRecord, delPendBlob, err := driver.MarkBlobRefForDeletion(ctx, storeKey, recordKey)
+	delPendRecord, delPendBlob, err := driver.RemoveBlobFromRecord(ctx, storeKey, recordKey)
 	if err != nil {
-		t.Errorf("MarkBlobForDeletion failed: %v", err)
+		t.Errorf("RemoveBlobFromRecord failed: %v", err)
 	} else {
 		if assert.NotNil(t, delPendRecord) {
 			assert.Equal(t, uuid.Nil, delPendRecord.ExternalBlob)
@@ -493,7 +493,7 @@ func TestDriver_SwapBlobRefs(t *testing.T) {
 		}
 	}
 
-	_, _, err = driver.MarkBlobRefForDeletion(ctx, store.Key, record.Key)
+	_, _, err = driver.RemoveBlobFromRecord(ctx, store.Key, record.Key)
 	assert.NoError(t, err)
 }
 
