@@ -20,12 +20,14 @@ import (
 	"io"
 
 	"gocloud.dev/blob"
+
 	// Register the gocloud blob GCS driver
 	_ "gocloud.dev/blob/gcsblob"
 )
 
 type BlobGCP struct {
-	bucket *blob.Bucket
+	bucket    *blob.Bucket
+	bucketURL string
 }
 
 // Assert BlobGCP implements the Blob interface
@@ -40,7 +42,8 @@ func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
 	}
 
 	gcs := &BlobGCP{
-		bucket: bucket,
+		bucket:    bucket,
+		bucketURL: bucketURL,
 	}
 
 	return gcs, nil

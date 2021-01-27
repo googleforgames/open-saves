@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -31,10 +32,10 @@ import (
 )
 
 const (
-	testProject   = "triton-for-games-dev"
-	testBucket    = "gs://triton-integration"
-	bufferSize    = 1024 * 1024
-	testCacheAddr = "localhost:6379"
+	testProject    = "triton-for-games-dev"
+	testBucket     = "gs://triton-integration"
+	testBufferSize = 1024 * 1024
+	testCacheAddr  = "localhost:6379"
 	// The threshold of comparing times.
 	// Since the server will actually access the backend datastore,
 	// we need enough time to prevent flaky tests.
@@ -50,7 +51,7 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 
 	server := grpc.NewServer()
 	pb.RegisterOpenSavesServer(server, impl)
-	listener := bufconn.Listen(bufferSize)
+	listener := bufconn.Listen(testBufferSize)
 	go func() {
 		if err := server.Serve(listener); err != nil {
 			t.Errorf("Server exited with error: %v", err)
@@ -129,28 +130,69 @@ func getTestClient(ctx context.Context, t *testing.T, listener *bufconn.Listener
 	return conn, client
 }
 
+func setupTestStore(ctx context.Context, t *testing.T, client pb.OpenSavesClient, store *pb.Store) {
+	t.Helper()
+	req := &pb.CreateStoreRequest{
+		Store: store,
+	}
+	res, err := client.CreateStore(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateStore failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_, err := client.DeleteStore(ctx, &pb.DeleteStoreRequest{Key: store.Key})
+		assert.NoError(t, err, "DeleteStore returned err")
+	})
+	if assert.NotNil(t, res) {
+		store.CreatedAt = res.GetCreatedAt()
+		store.UpdatedAt = res.GetUpdatedAt()
+		assertEqualStore(t, store, res)
+		assert.True(t, res.GetCreatedAt().AsTime().Equal(res.GetUpdatedAt().AsTime()))
+	}
+}
+
+func setupTestRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClient, storeKey string, record *pb.Record) {
+	t.Helper()
+	req := &pb.CreateRecordRequest{
+		StoreKey: storeKey,
+		Record:   record,
+	}
+	res, err := client.CreateRecord(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateRecord failed: %v", err)
+	}
+
+	t.Cleanup(func() {
+		req := &pb.DeleteRecordRequest{
+			StoreKey: storeKey,
+			Key:      record.Key,
+		}
+		_, err = client.DeleteRecord(ctx, req)
+		if err != nil {
+			t.Errorf("DeleteRecord failed: %v", err)
+		}
+	})
+
+	if assert.NotNil(t, record) {
+		record.CreatedAt = res.GetCreatedAt()
+		record.UpdatedAt = res.GetUpdatedAt()
+		assertEqualRecord(t, record, res)
+		assert.True(t, res.GetCreatedAt().AsTime().Equal(res.GetUpdatedAt().AsTime()))
+	}
+}
+
 func TestOpenSaves_CreateGetDeleteStore(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
-	storeReq := &pb.CreateStoreRequest{
-		Store: &pb.Store{
-			Key:     storeKey,
-			Name:    "test-createGetDeleteStore-store",
-			Tags:    []string{"tag1"},
-			OwnerId: "owner",
-		},
+	store := &pb.Store{
+		Key:     storeKey,
+		Name:    "test-createGetDeleteStore-store",
+		Tags:    []string{"tag1"},
+		OwnerId: "owner",
 	}
-	expected := storeReq.Store
-	storeRes, err := client.CreateStore(ctx, storeReq)
-	if err != nil {
-		t.Fatalf("CreateStore failed: %v", err)
-	}
-	expected.CreatedAt = timestamppb.Now()
-	expected.UpdatedAt = expected.CreatedAt
-	assertEqualStore(t, expected, storeRes)
-	assert.Equal(t, storeRes.GetCreatedAt(), storeRes.GetUpdatedAt())
+	setupTestStore(ctx, t, client, store)
 
 	getReq := &pb.GetStoreRequest{
 		Key: storeKey,
@@ -159,17 +201,11 @@ func TestOpenSaves_CreateGetDeleteStore(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetStore failed: %v", err)
 	}
-	assertEqualStore(t, expected, store2)
+	assertEqualStore(t, store, store2)
 	// Additional time checks as assertEqualStore doesn't check
 	// exact timestamps.
-	assert.Equal(t, storeRes.GetCreatedAt(), store2.GetCreatedAt())
-	assert.Equal(t, storeRes.GetUpdatedAt(), store2.GetUpdatedAt())
-
-	deleteReq := &pb.DeleteStoreRequest{
-		Key: storeKey,
-	}
-	_, err = client.DeleteStore(ctx, deleteReq)
-	assert.NoError(t, err)
+	assert.Equal(t, store.GetCreatedAt(), store2.GetCreatedAt())
+	assert.Equal(t, store.GetUpdatedAt(), store2.GetUpdatedAt())
 }
 
 func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
@@ -177,65 +213,33 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
-	storeReq := &pb.CreateStoreRequest{
-		Store: &pb.Store{
-			Key: storeKey,
-		},
-	}
-	_, err := client.CreateStore(ctx, storeReq)
-	if err != nil {
-		t.Fatalf("CreateStore failed: %v", err)
-	}
-	t.Cleanup(func() {
-		req := &pb.DeleteStoreRequest{Key: storeKey}
-		_, err := client.DeleteStore(ctx, req)
-		assert.NoError(t, err)
-	})
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
 
 	recordKey := uuid.New().String()
-	testBlob := []byte{0x42, 0x24, 0x00}
-	createReq := &pb.CreateRecordRequest{
-		StoreKey: storeKey,
-		Record: &pb.Record{
-			Key:      recordKey,
-			BlobSize: int64(len(testBlob)),
-			Tags:     []string{"tag1", "tag2"},
-			OwnerId:  "owner",
-			Properties: map[string]*pb.Property{
-				"prop1": {
-					Type:  pb.Property_INTEGER,
-					Value: &pb.Property_IntegerValue{IntegerValue: -42},
-				},
+	const testBlobSize = int64(42)
+	record := &pb.Record{
+		Key:      recordKey,
+		BlobSize: testBlobSize,
+		Tags:     []string{"tag1", "tag2"},
+		OwnerId:  "owner",
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: &pb.Property_IntegerValue{IntegerValue: -42},
 			},
 		},
 	}
-	expected := createReq.Record
-	record, err := client.CreateRecord(ctx, createReq)
-	if err != nil {
-		t.Fatalf("CreateRecord failed: %v", err)
-	}
-	expected.CreatedAt = timestamppb.Now()
-	expected.UpdatedAt = expected.CreatedAt
-	assertEqualRecord(t, expected, record)
-	assert.Equal(t, record.GetCreatedAt(), record.GetUpdatedAt())
+	setupTestRecord(ctx, t, client, storeKey, record)
 
 	getReq := &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}
 	record2, err := client.GetRecord(ctx, getReq)
 	if err != nil {
 		t.Errorf("GetRecord failed: %v", err)
 	}
-	assertEqualRecord(t, expected, record2)
+	assertEqualRecord(t, record, record2)
 	assert.Equal(t, record.GetCreatedAt(), record2.GetCreatedAt())
 	assert.Equal(t, record.GetUpdatedAt(), record2.GetUpdatedAt())
-
-	deleteReq := &pb.DeleteRecordRequest{
-		StoreKey: storeKey,
-		Key:      recordKey,
-	}
-	_, err = client.DeleteRecord(ctx, deleteReq)
-	if err != nil {
-		t.Errorf("DeleteRecord failed: %v", err)
-	}
 }
 
 func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
@@ -243,20 +247,8 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
-	storeReq := &pb.CreateStoreRequest{
-		Store: &pb.Store{
-			Key: storeKey,
-		},
-	}
-	_, err := client.CreateStore(ctx, storeReq)
-	if err != nil {
-		t.Fatalf("CreateStore failed: %v", err)
-	}
-	t.Cleanup(func() {
-		req := &pb.DeleteStoreRequest{Key: storeKey}
-		_, err := client.DeleteStore(ctx, req)
-		assert.NoError(t, err)
-	})
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
 
 	recordKey := uuid.New().String()
 	createReq := &pb.CreateRecordRequest{
@@ -276,12 +268,12 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	testBlob := []byte{0x42, 0x24, 0x00}
+	const testBlobSize = int64(123)
 	updateReq := &pb.UpdateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
 			Key:      recordKey,
-			BlobSize: int64(len(testBlob)),
+			BlobSize: testBlobSize,
 		},
 	}
 	beforeUpdate := time.Now()
@@ -291,7 +283,7 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	}
 	expected := &pb.Record{
 		Key:       recordKey,
-		BlobSize:  int64(len(testBlob)),
+		BlobSize:  testBlobSize,
 		CreatedAt: created.GetCreatedAt(),
 		UpdatedAt: timestamppb.Now(),
 	}
@@ -307,21 +299,11 @@ func TestOpenSaves_ListStoresNamePerfectMatch(t *testing.T) {
 	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
 	storeName := "test store " + uuid.New().String()
-	storeReq := &pb.CreateStoreRequest{
-		Store: &pb.Store{
-			Key:  storeKey,
-			Name: storeName,
-		},
+	store := &pb.Store{
+		Key:  storeKey,
+		Name: storeName,
 	}
-	_, err := client.CreateStore(ctx, storeReq)
-	if err != nil {
-		t.Fatalf("CreateStore failed: %v", err)
-	}
-	t.Cleanup(func() {
-		req := &pb.DeleteStoreRequest{Key: storeKey}
-		_, err := client.DeleteStore(ctx, req)
-		assert.NoError(t, err)
-	})
+	setupTestStore(ctx, t, client, store)
 
 	listReq := &pb.ListStoresRequest{
 		Name: storeName,
@@ -345,28 +327,16 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	server, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
-	storeReq := &pb.CreateStoreRequest{
-		Store: &pb.Store{
-			Key: storeKey,
-		},
-	}
-	_, err := client.CreateStore(ctx, storeReq)
-	if err != nil {
-		t.Fatalf("CreateStore failed: %v", err)
-	}
-	t.Cleanup(func() {
-		req := &pb.DeleteStoreRequest{Key: storeKey}
-		_, err := client.DeleteStore(ctx, req)
-		assert.NoError(t, err)
-	})
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
 
 	recordKey := uuid.New().String()
-	testBlob := []byte{0x42, 0x24, 0x00}
+	const testBlobSize = int64(256)
 	createReq := &pb.CreateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
 			Key:      recordKey,
-			BlobSize: int64(len(testBlob)),
+			BlobSize: testBlobSize,
 			Tags:     []string{"tag1", "tag2"},
 			OwnerId:  "owner",
 			Properties: map[string]*pb.Property{
@@ -468,4 +438,194 @@ func TestOpenSaves_Ping(t *testing.T) {
 		t.Fatalf("Ping failed with a non-empty string: %v", err)
 	}
 	assert.Equal(t, testString, pong.GetPong())
+}
+
+func createBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
+	storeKey, recordKey string, content []byte) {
+	t.Helper()
+
+	cbc, err := client.CreateBlob(ctx)
+	if err != nil {
+		t.Errorf("CreateBlob returned error: %v", err)
+		return
+	}
+
+	err = cbc.Send(&pb.CreateBlobRequest{
+		Request: &pb.CreateBlobRequest_Metadata{
+			Metadata: &pb.BlobMetadata{
+				StoreKey:  storeKey,
+				RecordKey: recordKey,
+				Size:      int64(len(content)),
+			},
+		},
+	})
+	if err != nil {
+		t.Errorf("CreateBlobClient.Send failed on sending metadata: %v", err)
+		return
+	}
+
+	sent := 0
+	for {
+		if sent >= len(content) {
+			break
+		}
+		toSend := streamBufferSize
+		if toSend > len(content)-sent {
+			toSend = len(content) - sent
+		}
+		err = cbc.Send(&pb.CreateBlobRequest{
+			Request: &pb.CreateBlobRequest_Content{
+				Content: content[sent : sent+toSend],
+			},
+		})
+		if err != nil {
+			t.Errorf("CreateBlobClient.Send failed on sending content: %v", err)
+		}
+		sent += toSend
+	}
+	assert.Equal(t, len(content), sent)
+
+	meta, err := cbc.CloseAndRecv()
+	if err != nil {
+		t.Errorf("CreateBlobClient.CloseAndRecv failed: %v", err)
+		return
+	}
+	if assert.NotNil(t, meta) {
+		assert.Equal(t, storeKey, meta.StoreKey)
+		assert.Equal(t, recordKey, meta.RecordKey)
+		assert.Equal(t, int64(len(content)), meta.Size)
+	}
+
+	t.Cleanup(func() {
+		// Ignore error as this is just a cleanup
+		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{
+			StoreKey:  storeKey,
+			RecordKey: recordKey,
+		})
+	})
+}
+
+func verifyBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
+	storeKey, recordKey string, expectedContent []byte) {
+	t.Helper()
+	gbc, err := client.GetBlob(ctx, &pb.GetBlobRequest{
+		StoreKey:  storeKey,
+		RecordKey: recordKey,
+	})
+	if err != nil {
+		t.Errorf("GetBlob returned error: %v", err)
+		return
+	}
+	res, err := gbc.Recv()
+	if err != nil {
+		t.Errorf("GetBlobClient.Recv returned error: %v", err)
+		return
+	}
+	meta := res.GetMetadata()
+	if assert.NotNil(t, meta, "First returned message must be metadata") {
+		assert.Equal(t, storeKey, meta.StoreKey)
+		assert.Equal(t, recordKey, meta.RecordKey)
+		assert.Equal(t, int64(len(expectedContent)), meta.Size)
+	}
+
+	recvd := 0
+	for {
+		res, err = gbc.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("GetBlobClient.Recv returned error: %v", err)
+			return
+		}
+		content := res.GetContent()
+		if assert.NotNil(t, content, "Second returned message must be content") {
+			assert.Equal(t, expectedContent[recvd:recvd+len(content)], content)
+			recvd += len(content)
+		}
+	}
+	assert.Equal(t, int64(recvd), meta.Size, "Received bytes should match")
+}
+
+func TestOpenSaves_InlineBlobSimple(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.New().String()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.New().String()}
+	setupTestRecord(ctx, t, client, store.Key, record)
+
+	beforeCreateBlob := time.Now()
+	testBlob := []byte{0x42, 0x24, 0x00, 0x20, 0x20}
+	createBlob(ctx, t, client, store.Key, record.Key, testBlob)
+
+	// Check if the size is reflected to the record as well.
+	updatedRecord, err := client.GetRecord(ctx, &pb.GetRecordRequest{
+		StoreKey: store.Key, Key: record.Key,
+	})
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, updatedRecord) {
+			assert.Equal(t, int64(len(testBlob)), updatedRecord.BlobSize)
+			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
+			assert.True(t, beforeCreateBlob.Before(updatedRecord.GetUpdatedAt().AsTime()))
+		}
+	}
+
+	// Check the blob
+	verifyBlob(ctx, t, client, store.Key, record.Key, testBlob)
+
+	// Deletion test
+	_, err = client.DeleteBlob(ctx, &pb.DeleteBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	})
+	if err != nil {
+		t.Errorf("DeleteBlob failed: %v", err)
+	}
+	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+}
+
+func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.New().String()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.New().String()}
+	setupTestRecord(ctx, t, client, store.Key, record)
+
+	const blobSize = 4*1024*1024 + 13 // 4 Mi + 13 B
+	testBlob := make([]byte, blobSize)
+	for i := 0; i < blobSize; i++ {
+		testBlob[i] = byte(i % 256)
+	}
+
+	beforeCreateBlob := time.Now()
+	createBlob(ctx, t, client, store.Key, record.Key, testBlob)
+
+	// Check if the size is reflected to the record as well.
+	updatedRecord, err := client.GetRecord(ctx, &pb.GetRecordRequest{
+		StoreKey: store.Key, Key: record.Key,
+	})
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, updatedRecord) {
+			assert.Equal(t, int64(len(testBlob)), updatedRecord.BlobSize)
+			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
+			assert.True(t, beforeCreateBlob.Before(updatedRecord.GetUpdatedAt().AsTime()))
+		}
+	}
+
+	// Check the blob
+	verifyBlob(ctx, t, client, store.Key, record.Key, testBlob)
+
+	// Deletion test
+	_, err = client.DeleteBlob(ctx, &pb.DeleteBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	})
+	if err != nil {
+		t.Errorf("DeleteBlob failed: %v", err)
+	}
+	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
 }

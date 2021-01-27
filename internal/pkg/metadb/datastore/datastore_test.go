@@ -415,6 +415,8 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	} else {
 		if assert.NotNil(t, delPendRecord) {
 			assert.Equal(t, uuid.Nil, delPendRecord.ExternalBlob)
+			assert.Empty(t, delPendRecord.Blob)
+			assert.Zero(t, delPendRecord.BlobSize)
 		}
 		if assert.NotNil(t, delPendBlob) {
 			assert.Equal(t, m.BlobRefStatusPendingDeletion, delPendBlob.Status)
