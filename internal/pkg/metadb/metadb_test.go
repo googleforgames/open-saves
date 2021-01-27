@@ -138,8 +138,8 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 	assert.Same(t, blob, actualBlob)
 	assert.NoError(t, err)
 
-	mockDriver.EXPECT().MarkBlobRefForDeletion(ctx, key, key2).Return(record, blob, nil)
-	actualrecord, actualBlob, err = metadb.MarkBlobRefForDeletion(ctx, key, key2)
+	mockDriver.EXPECT().RemoveBlobFromRecord(ctx, key, key2).Return(record, blob, nil)
+	actualrecord, actualBlob, err = metadb.RemoveBlobFromRecord(ctx, key, key2)
 	assert.Same(t, record, actualrecord)
 	assert.Same(t, blob, actualBlob)
 	assert.NoError(t, err)
