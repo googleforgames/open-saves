@@ -347,12 +347,11 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	blobKey := uuid.New()
 	origSig := uuid.New()
 	blob := &m.BlobRef{
-		Key:        blobKey,
-		Size:       12345,
-		ObjectName: "test",
-		Status:     m.BlobRefStatusInitializing,
-		StoreKey:   storeKey,
-		RecordKey:  recordKey,
+		Key:       blobKey,
+		Size:      12345,
+		Status:    m.BlobRefStatusInitializing,
+		StoreKey:  storeKey,
+		RecordKey: recordKey,
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: createdAt,

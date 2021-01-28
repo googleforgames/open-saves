@@ -15,6 +15,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -225,8 +226,12 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, stream *pb.QueryReco
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	// Receive the blob
 	size := meta.GetSize()
-	blob := make([]byte, 0, size)
+	buffer := bytes.NewBuffer(make([]byte, 0, size))
+	recvd := 0
 	for {
+		if int64(recvd) > size {
+			break
+		}
 		req, err := stream.Recv()
 		if err == io.EOF {
 			break
@@ -238,16 +243,22 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 		if fragment == nil {
 			return status.Error(codes.InvalidArgument, "Subsequent input messages must contain blob content")
 		}
-		blob = append(blob, fragment...)
+		n, err := buffer.Write(fragment)
+		if err != nil {
+			return err
+		}
+		recvd += n
 	}
-	if int64(len(blob)) != size {
+
+	if int64(buffer.Len()) != size {
 		log.Errorf("Blob length didn't match the metadata: metadata = %v, actual = %v",
-			meta.GetSize(), len(blob))
+			meta.GetSize(), buffer.Len())
 		return status.Errorf(codes.InvalidArgument,
 			"Blob length didn't match the metadata: metadata = %v, actual = %v",
-			meta.GetSize(), len(blob),
+			meta.GetSize(), buffer.Len(),
 		)
 	}
+	blob := buffer.Bytes()
 	record, err := s.metaDB.UpdateRecord(ctx, meta.GetStoreKey(), meta.GetRecordKey(),
 		func(record *metadb.Record) (*metadb.Record, error) {
 			record.Blob = blob
@@ -258,27 +269,40 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 		return nil
 	}
 	cacheKey := cache.FormatKey(meta.GetStoreKey(), meta.GetRecordKey())
-	s.storeRecordInCache(ctx, cacheKey, record)
+	if shouldCache(meta.Hint) {
+		s.storeRecordInCache(ctx, cacheKey, record)
+	} else {
+		if err := s.cacheStore.Delete(ctx, cacheKey); err != nil {
+			log.Errorf("failed to purge cache for key (%s): %v", cacheKey, err)
+		}
+	}
 	return stream.SendAndClose(meta)
+}
+
+func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *metadb.BlobRef) {
+	blobref.Fail()
+	_, err := s.metaDB.UpdateBlobRef(ctx, blobref)
+	if err != nil {
+		log.Errorf("Failed to mark the blobref (%v) as Failed: %v", blobref.Key, err)
+	}
 }
 
 func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	// Create a blob reference based on the metadata.
-	// TODO: Either change NewBlobRef or how we generate object names
-	// There's no way to know the blob key before calling the NewBlobRef function.
-	blobref := metadb.NewBlobRef(meta.GetSize(), meta.GetStoreKey(), meta.GetRecordKey(), "")
-	blobref.ObjectName = blobref.Key.String()
+	blobref := metadb.NewBlobRef(meta.GetSize(), meta.GetStoreKey(), meta.GetRecordKey())
 	blobref, err := s.metaDB.InsertBlobRef(ctx, blobref)
 	if err != nil {
 		return err
 	}
-	writer, err := s.blobStore.NewWriter(ctx, blobref.ObjectName)
+	writer, err := s.blobStore.NewWriter(ctx, blobref.ObjectPath())
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if writer != nil {
 			writer.Close()
+			// This means an abnormal exit, so make sure to mark the blob as Fail.
+			s.blobRefFail(ctx, blobref)
 		}
 	}()
 
@@ -306,25 +330,34 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 	err = writer.Close()
 	writer = nil
 	if err != nil {
-		log.Errorf("writer.Close() failed on blob object %v: %v", blobref.ObjectName, err)
-		if derr := s.blobStore.Delete(ctx, blobref.ObjectName); derr != nil {
+		log.Errorf("writer.Close() failed on blob object %v: %v", blobref.ObjectPath(), err)
+		s.blobRefFail(ctx, blobref)
+		// The object can be deleted immediately.
+		if derr := s.blobStore.Delete(ctx, blobref.ObjectPath()); derr != nil {
 			log.Errorf("Delete blob failed after writer.Close() error in insertExternalBlob: %v", derr)
 		}
 		return err
 	}
 	if written != meta.GetSize() {
 		log.Errorf("Written byte length (%v) != blob length in metadata sent from client (%v)", written, meta.GetSize())
+		s.blobRefFail(ctx, blobref)
+		return status.Errorf(codes.DataLoss,
+			"Written byte length (%v) != blob length in metadata sent from client (%v)", written, meta.GetSize())
 	}
 	record, _, err := s.metaDB.PromoteBlobRefToCurrent(ctx, blobref)
 	if err != nil {
-		log.Errorf("PromoteBlobRefToCurrent failed for object %v: %v", blobref.ObjectName, err)
-		if derr := s.blobStore.Delete(ctx, blobref.ObjectName); derr != nil {
-			log.Errorf("Delete blob failed after PromoteBlobRefToCurrent() error in insertExternalBlob: %v", derr)
-		}
+		log.Errorf("PromoteBlobRefToCurrent failed for object %v: %v", blobref.ObjectPath(), err)
+		// Do not delete the blob object here. Leave it to the garbage collector.
 		return err
 	}
 	cacheKey := cache.FormatKey(meta.GetStoreKey(), meta.GetRecordKey())
-	s.storeRecordInCache(ctx, cacheKey, record)
+	if shouldCache(meta.Hint) {
+		s.storeRecordInCache(ctx, cacheKey, record)
+	} else {
+		if err := s.cacheStore.Delete(ctx, cacheKey); err != nil {
+			log.Errorf("failed to purge cache for key (%s): %v", cacheKey, err)
+		}
+	}
 	return stream.SendAndClose(meta)
 }
 
@@ -358,9 +391,9 @@ func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRe
 		return err
 	}
 
-	reader, err := s.blobStore.NewReader(ctx, blobref.ObjectName)
+	reader, err := s.blobStore.NewReader(ctx, blobref.ObjectPath())
 	if err != nil {
-		log.Errorf("BlobStore.NewReader returned error for object (%v): %v", blobref.ObjectName, err)
+		log.Errorf("BlobStore.NewReader returned error for object (%v): %v", blobref.ObjectPath(), err)
 		return err
 	}
 	defer reader.Close()
@@ -372,14 +405,14 @@ func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRe
 			break
 		}
 		if err != nil {
-			log.Errorf("GetBlob: BlobStore Reader returned error for object (%v): %v", blobref.ObjectName, err)
+			log.Errorf("GetBlob: BlobStore Reader returned error for object (%v): %v", blobref.ObjectPath(), err)
 			return err
 		}
 		err = stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Content{
 			Content: buf[:n],
 		}})
 		if err != nil {
-			log.Errorf("GetBlob: Stream send error for object (%v): %v", blobref.ObjectName, err)
+			log.Errorf("GetBlob: Stream send error for object (%v): %v", blobref.ObjectPath(), err)
 			return err
 		}
 		sent += int64(n)
@@ -395,11 +428,20 @@ func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRe
 func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_GetBlobServer) error {
 	ctx := stream.Context()
 
-	record, err := s.metaDB.GetRecord(ctx, req.GetStoreKey(), req.GetRecordKey())
-	if err != nil {
-		log.Errorf("GetBlob: GetRecord failed for store (%v), record (%v): %v",
-			req.GetStoreKey(), req.GetRecordKey(), err)
-
+	var record *metadb.Record
+	var err error
+	if shouldCheckCache(req.Hint) {
+		record, _ = s.getRecordFromCache(ctx, cache.FormatKey(req.GetStoreKey(), req.GetRecordKey()))
+	}
+	if record != nil {
+		record, err = s.metaDB.GetRecord(ctx, req.GetStoreKey(), req.GetRecordKey())
+		if err != nil {
+			log.Errorf("GetBlob: GetRecord failed for store (%v), record (%v): %v",
+				req.GetStoreKey(), req.GetRecordKey(), err)
+		}
+		if shouldCache(req.Hint) {
+			s.storeRecordInCache(ctx, cache.FormatKey(req.GetStoreKey(), req.GetRecordKey()), record)
+		}
 	}
 	meta := &pb.BlobMetadata{
 		StoreKey:  req.GetStoreKey(),
@@ -424,7 +466,13 @@ func (s *openSavesServer) DeleteBlob(ctx context.Context, req *pb.DeleteBlobRequ
 			req.GetStoreKey(), req.GetRecordKey(), err)
 	} else {
 		k := cache.FormatKey(req.GetStoreKey(), req.GetRecordKey())
-		s.storeRecordInCache(ctx, k, record)
+		if shouldCache(req.Hint) {
+			s.storeRecordInCache(ctx, k, record)
+		} else {
+			if err := s.cacheStore.Delete(ctx, k); err != nil {
+				log.Errorf("failed to purge cache for key (%s): %v", k, err)
+			}
+		}
 	}
 	return new(empty.Empty), err
 }

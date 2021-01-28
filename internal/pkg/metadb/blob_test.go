@@ -39,20 +39,15 @@ func TestBlobRef_Save(t *testing.T) {
 	)
 
 	blob := m.BlobRef{
-		Size:       size,
-		ObjectName: objectName,
-		Status:     m.BlobRefStatusInitializing,
-		StoreKey:   store,
-		RecordKey:  record,
+		Size:      size,
+		Status:    m.BlobRefStatusInitializing,
+		StoreKey:  store,
+		RecordKey: record,
 	}
 	expected := []datastore.Property{
 		{
 			Name:  "Size",
 			Value: size,
-		},
-		{
-			Name:  "ObjectName",
-			Value: objectName,
 		},
 		{
 			Name:  "Status",
@@ -71,8 +66,8 @@ func TestBlobRef_Save(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected, actual[:len(expected)])
-		assert.Equal(t, 6, len(actual))
-		assert.Equal(t, "Timestamps", actual[5].Name)
+		assert.Equal(t, 5, len(actual))
+		assert.Equal(t, "Timestamps", actual[4].Name)
 	}
 }
 
@@ -89,10 +84,6 @@ func TestBlobRef_Load(t *testing.T) {
 			Value: size,
 		},
 		{
-			Name:  "ObjectName",
-			Value: objectName,
-		},
-		{
 			Name:  "Status",
 			Value: int64(m.BlobRefStatusReady),
 		},
@@ -106,11 +97,10 @@ func TestBlobRef_Load(t *testing.T) {
 		},
 	}
 	expected := &m.BlobRef{
-		Size:       123,
-		ObjectName: "object name",
-		Status:     m.BlobRefStatusReady,
-		StoreKey:   store,
-		RecordKey:  record,
+		Size:      123,
+		Status:    m.BlobRefStatusReady,
+		StoreKey:  store,
+		RecordKey: record,
 	}
 	actual := new(m.BlobRef)
 	err := actual.Load(properties)
@@ -128,13 +118,12 @@ func newInitBlob(t *testing.T) *m.BlobRef {
 	)
 
 	// Initialize
-	blob := m.NewBlobRef(size, store, record, name)
+	blob := m.NewBlobRef(size, store, record)
 	if blob == nil {
 		t.Fatal("NewBlobRef returned nil.")
 	}
 	assert.NotEqual(t, uuid.Nil, blob.Key)
 	assert.Equal(t, size, blob.Size)
-	assert.Equal(t, name, blob.ObjectName)
 	assert.Equal(t, m.BlobRefStatusInitializing, blob.Status)
 	assert.Equal(t, store, blob.StoreKey)
 	assert.Equal(t, record, blob.RecordKey)
@@ -190,4 +179,10 @@ func TestBlobRef_Fail(t *testing.T) {
 
 	blob.Status = m.BlobRefStatusError
 	assert.NoError(t, blob.Fail())
+}
+
+func TestBlobRef_GetObjectPath(t *testing.T) {
+	blob := m.NewBlobRef(0, "", "")
+
+	assert.Equal(t, blob.Key.String(), blob.ObjectPath())
 }

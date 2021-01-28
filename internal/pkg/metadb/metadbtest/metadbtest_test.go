@@ -81,12 +81,11 @@ func TestMetaDBTest_TestAssertEqualRecord(t *testing.T) {
 
 func TestMetaDBTest_TestAssertEqualBlobRef(t *testing.T) {
 	blob := &metadb.BlobRef{
-		Key:        uuid.MustParse("35B7DABC-9523-45E1-995A-D76F3EF29F79"),
-		Size:       12345,
-		ObjectName: "test",
-		Status:     metadb.BlobRefStatusInitializing,
-		StoreKey:   "storeKey",
-		RecordKey:  "recordKey",
+		Key:       uuid.MustParse("35B7DABC-9523-45E1-995A-D76F3EF29F79"),
+		Size:      12345,
+		Status:    metadb.BlobRefStatusInitializing,
+		StoreKey:  "storeKey",
+		RecordKey: "recordKey",
 		Timestamps: metadb.Timestamps{
 			CreatedAt: time.Unix(100, 0),
 			UpdatedAt: time.Unix(200, 0),

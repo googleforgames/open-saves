@@ -62,8 +62,6 @@ type BlobRef struct {
 	Key uuid.UUID `datastore:"-"`
 	// Size is the byte size of the blob
 	Size int64
-	// ObjectName represents the object name stored in the blob store.
-	ObjectName string
 	// Status is the current status of the blob
 	Status BlobRefStatus
 	// StoreKey is the key of the store that the blob belongs to
@@ -113,11 +111,10 @@ func (b *BlobRef) LoadKey(k *datastore.Key) error {
 //	- Initialize Size and ObjectName as specified
 //	- Set Status to BlobRefStatusInitializing
 //	- Set current time to Timestamps (both created and updated at)
-func NewBlobRef(size int64, storeKey, recordKey, objectName string) *BlobRef {
+func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 	b := new(BlobRef)
 	b.Key = uuid.New()
 	b.Size = size
-	b.ObjectName = objectName
 	b.Status = BlobRefStatusInitializing
 	b.StoreKey = storeKey
 	b.RecordKey = recordKey
@@ -154,4 +151,9 @@ func (b *BlobRef) Fail() error {
 	b.Status = BlobRefStatusError
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
+}
+
+// ObjectPath returns an object path for the backend blob storage.
+func (b *BlobRef) ObjectPath() string {
+	return b.Key.String()
 }
