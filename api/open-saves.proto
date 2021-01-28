@@ -53,6 +53,15 @@ service OpenSaves {
   // DeleteRecord deletes a single record with the specified key.
   rpc DeleteRecord(DeleteRecordRequest) returns (google.protobuf.Empty) {}
 
+  // CreateBlob adds a new blob to a record.
+  rpc CreateBlob(stream CreateBlobRequest) returns (BlobMetadata) {}
+
+  // GetBlob retrieves a blob object in a record.
+  rpc GetBlob(GetBlobRequest) returns (stream GetBlobResponse) {}
+
+  // DeleteBlob removes an blob object from a record.
+  rpc DeleteBlob(DeleteBlobRequest) returns (google.protobuf.Empty) {}
+
   // Ping returns the same string provided by the client.
   // The string is optional and the server returns an empty string if omitted.
   rpc Ping(PingRequest) returns (PingResponse) {}
@@ -85,12 +94,7 @@ message Record {
   // https://cloud.google.com/datastore/docs/best-practices#keys for details.
   string key = 1;
 
-  // Arbitrary blob data associated to the record
-  // This is opaque to the server, and can contain anything.
-  // TODO(#69): Add a way to handle larger blobs that don't fit in a message
-  bytes blob = 2;
-
-  // Byte length of the blob
+  // Byte length of the blob (read-only)
   int64 blob_size = 3;
 
   // Typed values that are indexed and searchable.
@@ -307,4 +311,69 @@ message PingRequest {
 message PingResponse {
   // An optional string that is copied from PingRequest.
   string pong = 1;
+}
+
+// BlobMetadata contains necessary metadata
+// when creating (uploading) a new blob object.
+message BlobMetadata {
+  // store_key is the key of the store that the record belongs to.
+  string store_key = 1;
+
+  // record_key is the key of the record the new blob object belongs to.
+  string record_key = 2;
+
+  // size is the byte length of the object.
+  int64 size = 3;
+
+  // Performance hints (write only).
+  Hint hint = 4;
+}
+
+// CreateBlobRequest is used for CreateBlob, a client-streaming method.
+// The first message should contain metadata, and the subsequent messages
+// should contain content.
+message CreateBlobRequest {
+  oneof request {
+    // metadata is the metadata used to initialize the blob object with.
+    BlobMetadata metadata = 1;
+
+    // content is the binary content of the blob object.
+    bytes content = 2;
+  }
+}
+
+message GetBlobRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to get.
+  string record_key = 2;
+
+  // Performance hints.
+  Hint hint = 3;
+}
+
+// GetBlobResponse is a server-streaming response to return metadata and
+// content of a blob object. The first message contains blob_ref and the
+// subsequent messages contain the rest of the binary blob in the content
+// field.
+message GetBlobResponse {
+  oneof response {
+    // metadata is the metadata used to initialize the blob object with.
+    BlobMetadata metadata = 1;
+
+    // content is the binary content of the blob object.
+    bytes content = 2;
+  }
+}
+
+message DeleteBlobRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to delete a blob from.
+  string record_key = 2;
+
+  // Performance hints.
+  Hint hint = 3;
 }

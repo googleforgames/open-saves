@@ -331,7 +331,6 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 	}
 	expected := &pb.Record{
 		Key:      "key",
-		Blob:     testBlob,
 		BlobSize: int64(len(testBlob)),
 		Properties: map[string]*pb.Property{
 			"prop1": {
@@ -357,7 +356,6 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	proto := &pb.Record{
 		Key:      "key",
-		Blob:     testBlob,
 		BlobSize: int64(len(testBlob)),
 		Properties: map[string]*pb.Property{
 			"prop1": {
@@ -376,7 +374,6 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	}
 	expected := &m.Record{
 		Key:          "key",
-		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
 		Properties: m.PropertyMap{
