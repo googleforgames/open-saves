@@ -25,7 +25,7 @@ steps:
       ]
     id: init-build-docker
   - name: "build-docker"
-    args: ["bash", "scripts/run-open-saves-test.sh"]
+    args: ["bash", "scripts/run_open_saves_test.sh"]
     waitFor: ["init-build-docker"]
 
 options:
