@@ -96,7 +96,6 @@ func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *metadb.Blo
 	}
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected.Key, actual.Key, msgAndArgs...)
-		assert.Equal(t, expected.ObjectName, actual.ObjectName, msgAndArgs...)
 		assert.Equal(t, expected.RecordKey, actual.RecordKey, msgAndArgs...)
 		assert.Equal(t, expected.Size, actual.Size, msgAndArgs...)
 		assert.Equal(t, expected.Status, actual.Status, msgAndArgs...)

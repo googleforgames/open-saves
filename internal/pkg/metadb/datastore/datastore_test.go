@@ -347,12 +347,11 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	blobKey := uuid.New()
 	origSig := uuid.New()
 	blob := &m.BlobRef{
-		Key:        blobKey,
-		Size:       12345,
-		ObjectName: "test",
-		Status:     m.BlobRefStatusInitializing,
-		StoreKey:   storeKey,
-		RecordKey:  recordKey,
+		Key:       blobKey,
+		Size:      12345,
+		Status:    m.BlobRefStatusInitializing,
+		StoreKey:  storeKey,
+		RecordKey: recordKey,
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: createdAt,
@@ -415,6 +414,8 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	} else {
 		if assert.NotNil(t, delPendRecord) {
 			assert.Equal(t, uuid.Nil, delPendRecord.ExternalBlob)
+			assert.Empty(t, delPendRecord.Blob)
+			assert.Zero(t, delPendRecord.BlobSize)
 		}
 		if assert.NotNil(t, delPendBlob) {
 			assert.Equal(t, m.BlobRefStatusPendingDeletion, delPendBlob.Status)

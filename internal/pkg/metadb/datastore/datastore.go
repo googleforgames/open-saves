@@ -226,7 +226,8 @@ func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, key string, 
 			if err != nil {
 				return err
 			}
-			if err := d.markBlobRefForDeletion(ctx, tx, storeKey, record, oldBlob, uuid.Nil); err != nil {
+			record, err = d.markBlobRefForDeletion(ctx, tx, storeKey, record, oldBlob, uuid.Nil)
+			if err != nil {
 				return err
 			}
 		}
@@ -235,7 +236,7 @@ func (d *Driver) UpdateRecord(ctx context.Context, storeKey string, key string, 
 		return d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
 	})
 	if err != nil {
-		return nil, err
+		return nil, datastoreErrToGRPCStatus(err)
 	}
 	return record, nil
 }
@@ -369,21 +370,22 @@ func (d *Driver) PromoteBlobRefToCurrent(ctx context.Context, blob *m.BlobRef) (
 			// The MetaDB Driver interface currently doesn't support transactions
 			// but we need to put this part inside the transaction.
 			record.Blob = nil
-			record.BlobSize = blob.Size
-			record.ExternalBlob = blob.Key
 			record.Timestamps.UpdateTimestamps(timestampPrecision)
-			if _, err := tx.Mutate(ds.NewUpdate(rkey, record)); err != nil {
-				return err
-			}
 		} else {
 			// Mark previous blob for deletion
 			oldBlob, err := d.getBlobRef(ctx, tx, record.ExternalBlob)
 			if err != nil {
 				return err
 			}
-			if err := d.markBlobRefForDeletion(ctx, tx, blob.StoreKey, record, oldBlob, blob.Key); err != nil {
+			record, err = d.markBlobRefForDeletion(ctx, tx, blob.StoreKey, record, oldBlob, blob.Key)
+			if err != nil {
 				return err
 			}
+		}
+		record.BlobSize = blob.Size
+		record.ExternalBlob = blob.Key
+		if err := d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record)); err != nil {
+			return err
 		}
 
 		if blob.Status != m.BlobRefStatusReady {
@@ -413,10 +415,10 @@ func (d *Driver) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 			return err
 		}
 
+		record.BlobSize = 0
 		if record.ExternalBlob == uuid.Nil && len(record.Blob) > 0 {
 			// Delete the inline blob
 			record.Blob = nil
-			record.BlobSize = 0
 			record.Timestamps.UpdateTimestamps(timestampPrecision)
 			return d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
 		}
@@ -426,7 +428,11 @@ func (d *Driver) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 		if err != nil {
 			return err
 		}
-		return d.markBlobRefForDeletion(ctx, tx, storeKey, record, blob, uuid.Nil)
+		record, err = d.markBlobRefForDeletion(ctx, tx, storeKey, record, blob, uuid.Nil)
+		if err != nil {
+			return err
+		}
+		return d.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
 	})
 	if err != nil {
 		return nil, nil, datastoreErrToGRPCStatus(err)
@@ -434,22 +440,19 @@ func (d *Driver) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 	return record, blob, nil
 }
 
+// Returns a modified Record and the caller must commit the change.
 func (d *Driver) markBlobRefForDeletion(_ context.Context, tx *ds.Transaction,
-	storeKey string, record *m.Record, blob *m.BlobRef, newBlobKey uuid.UUID) error {
+	storeKey string, record *m.Record, blob *m.BlobRef, newBlobKey uuid.UUID) (*m.Record, error) {
 	if record.ExternalBlob == uuid.Nil {
-		return status.Error(codes.FailedPrecondition, "the record doesn't have an external blob associated")
+		return nil, status.Error(codes.FailedPrecondition, "the record doesn't have an external blob associated")
 	}
-	rkey := d.createRecordKey(storeKey, record.Key)
 	record.ExternalBlob = newBlobKey
 	record.Timestamps.UpdateTimestamps(timestampPrecision)
-	if _, err := tx.Mutate(ds.NewUpdate(rkey, record)); err != nil {
-		return err
-	}
 	if blob.MarkForDeletion() != nil && blob.Fail() != nil {
-		return status.Errorf(codes.Internal, "failed to transition the blob state for deletion: current = %v", blob.Status)
+		return nil, status.Errorf(codes.Internal, "failed to transition the blob state for deletion: current = %v", blob.Status)
 	}
 	_, err := tx.Mutate(ds.NewUpdate(d.createBlobKey(blob.Key), blob))
-	return err
+	return record, err
 }
 
 // DeleteBlobRef implements Driver.DeleteBlobRef.
