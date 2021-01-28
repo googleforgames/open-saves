@@ -17,5 +17,5 @@ set -e
 
 cd "$( dirname $( dirname "${BASH_SOURCE[0]}" ))"
 
-docker build . -f scripts/open-saves-builder-base.Dockerfile -t open-saves-builder-base:latest
+docker build . -f scripts/open_saves_builder_base.Dockerfile -t open-saves-builder-base:latest
 docker tag open-saves-builder-base:latest gcr.io/triton-for-games-dev/open-saves-builder-base:testing
