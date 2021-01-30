@@ -46,6 +46,7 @@ type Driver interface {
 	PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*Record, *BlobRef, error)
 	RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error)
 	DeleteBlobRef(ctx context.Context, key uuid.UUID) error
+	ListBlobRefsByStatus(ctx context.Context, status BlobRefStatus, olderThan time.Time) (BlobRefCursor, error)
 
 	TimestampPrecision() time.Duration
 }
@@ -191,4 +192,10 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 //	- FailedPrecondition: the blobref status is Ready and can't be deleted
 func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 	return m.driver.DeleteBlobRef(ctx, key)
+}
+
+// ListBlobRefsByStatus returns a cursor that iterates over BlobRefs
+// where Status = status and UpdatedAt < olderThan.
+func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status BlobRefStatus, olderThan time.Time) (BlobRefCursor, error) {
+	return m.driver.ListBlobRefsByStatus(ctx, status, olderThan)
 }
