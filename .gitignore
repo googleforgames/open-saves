@@ -107,6 +107,7 @@ tmp/
 # Terraform context
 .terraform
 *.tfstate.backup
+.terraform.lock.hcl
 
 # Credential Files
 creds.json
