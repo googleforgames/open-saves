@@ -469,3 +469,11 @@ func (d *Driver) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 	})
 	return datastoreErrToGRPCStatus(err)
 }
+
+// ListBlobRefsByStatus implements Driver.ListBlobRefsByStatus.
+func (d *Driver) ListBlobRefsByStatus(ctx context.Context, status m.BlobRefStatus, olderThan time.Time) (m.BlobRefCursor, error) {
+	query := d.newQuery(blobKind).Filter("Status = ", int(status)).
+		Filter("Timestamps.UpdatedAt <", olderThan)
+	iter := &blobRefCursor{d.client.Run(ctx, query)}
+	return iter, nil
+}

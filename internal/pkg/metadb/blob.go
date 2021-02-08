@@ -157,3 +157,10 @@ func (b *BlobRef) Fail() error {
 func (b *BlobRef) ObjectPath() string {
 	return b.Key.String()
 }
+
+// BlobRefCursor is a database cursor for BlobRef.
+type BlobRefCursor interface {
+	// Next advances the iterator and returns the next value.
+	// Returns nil and an iterator.Done at the end of the iterator.
+	Next() (*BlobRef, error)
+}

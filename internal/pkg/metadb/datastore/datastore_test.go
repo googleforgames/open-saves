@@ -24,6 +24,7 @@ import (
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -91,6 +92,18 @@ func setupTestStoreRecord(ctx context.Context, t *testing.T, driver *Driver, sto
 		metadbtest.AssertEqualRecord(t, record, newRecord, "GetRecord should return the exact same record.")
 	}
 	return newStore, newRecord
+}
+
+func setupTestBlobRef(ctx context.Context, t *testing.T, driver *Driver, blob *m.BlobRef) *m.BlobRef {
+	newBlob, err := driver.InsertBlobRef(ctx, blob)
+	if err != nil {
+		t.Fatalf("InsertBlobRef failed: %v", err)
+	}
+	metadbtest.AssertEqualBlobRef(t, blob, newBlob)
+	t.Cleanup(func() {
+		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
+	})
+	return newBlob
 }
 
 func TestDriver_ConnectDisconnect(t *testing.T) {
@@ -441,21 +454,15 @@ func TestDriver_SwapBlobRefs(t *testing.T) {
 		Key:        newRecordKey(),
 		Properties: make(m.PropertyMap),
 	}
-
 	setupTestStoreRecord(ctx, t, driver, store, record)
+
 	blob := &m.BlobRef{
 		Key:       uuid.New(),
 		Status:    m.BlobRefStatusInitializing,
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
 	}
-
-	if _, err := driver.InsertBlobRef(ctx, blob); err != nil {
-		t.Fatalf("InsertBlobRef failed: %v", err)
-	}
-	t.Cleanup(func() {
-		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
-	})
+	setupTestBlobRef(ctx, t, driver, blob)
 
 	_, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
@@ -523,12 +530,7 @@ func TestDriver_UpdateBlobRef(t *testing.T) {
 		},
 	}
 
-	if _, err := driver.InsertBlobRef(ctx, blob); err != nil {
-		t.Fatalf("InsertBlobRef failed: %v", err)
-	}
-	t.Cleanup(func() {
-		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
-	})
+	setupTestBlobRef(ctx, t, driver, blob)
 
 	assert.NoError(t, blob.Fail())
 	blob.Timestamps.UpdatedAt = time.Unix(234, 0)
@@ -585,7 +587,6 @@ func TestDriver_UpdateRecordWithExternalBlobs(t *testing.T) {
 		Key:        recordKey,
 		Properties: make(m.PropertyMap),
 	}
-
 	setupTestStoreRecord(ctx, t, driver, store, record)
 
 	blobKey := uuid.New()
@@ -599,13 +600,7 @@ func TestDriver_UpdateRecordWithExternalBlobs(t *testing.T) {
 			UpdatedAt: time.Unix(123, 0),
 		},
 	}
-
-	if _, err := driver.InsertBlobRef(ctx, blob); err != nil {
-		t.Fatalf("InsertBlobRef failed: %v", err)
-	}
-	t.Cleanup(func() {
-		assert.NoError(t, driver.DeleteBlobRef(ctx, blobKey))
-	})
+	setupTestBlobRef(ctx, t, driver, blob)
 
 	record, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
@@ -668,5 +663,66 @@ func TestDriver_UpdateRecordWithExternalBlobs(t *testing.T) {
 		if assert.NotNil(t, blob) {
 			assert.Equal(t, m.BlobRefStatusPendingDeletion, blob.Status)
 		}
+	}
+}
+
+func TestDriver_ListBlobsByStatus(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+
+	storeKey := newStoreKey()
+	store := &m.Store{
+		Key: storeKey,
+	}
+
+	recordKey := newRecordKey()
+	record := &m.Record{
+		Key:        recordKey,
+		Properties: make(m.PropertyMap),
+	}
+	setupTestStoreRecord(ctx, t, driver, store, record)
+
+	statuses := []m.BlobRefStatus{m.BlobRefStatusError, m.BlobRefStatusInitializing, m.BlobRefStatusPendingDeletion, m.BlobRefStatusPendingDeletion}
+	blobs := []*m.BlobRef{}
+	for i, s := range statuses {
+		blob := &m.BlobRef{
+			Key:       uuid.New(),
+			Status:    s,
+			StoreKey:  storeKey,
+			RecordKey: recordKey,
+			Timestamps: m.Timestamps{
+				UpdatedAt: time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC),
+			},
+		}
+		blobs = append(blobs, blob)
+		setupTestBlobRef(ctx, t, driver, blob)
+	}
+
+	// Should return iterator.Done and nil when not found
+	iter, err := driver.ListBlobRefsByStatus(ctx, m.BlobRefStatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
+	assert.NoError(t, err)
+	if assert.NotNil(t, iter) {
+		b, err := iter.Next()
+		assert.Equal(t, iterator.Done, err)
+		assert.Nil(t, b)
+	}
+
+	iter, err = driver.ListBlobRefsByStatus(ctx, m.BlobRefStatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
+	assert.NoError(t, err)
+	if assert.NotNil(t, iter) {
+		// Should return both of the PendingDeletion entries
+		b, err := iter.Next()
+		assert.NoError(t, err)
+		if assert.NotNil(t, b) {
+			metadbtest.AssertEqualBlobRef(t, blobs[2], b)
+		}
+		b, err = iter.Next()
+		assert.NoError(t, err)
+		if assert.NotNil(t, b) {
+			metadbtest.AssertEqualBlobRef(t, blobs[3], b)
+		}
+		b, err = iter.Next()
+		assert.Equal(t, iterator.Done, err)
+		assert.Nil(t, b)
 	}
 }

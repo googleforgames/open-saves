@@ -146,4 +146,10 @@ func TestMetaDB_DriverCalls(t *testing.T) {
 
 	mockDriver.EXPECT().DeleteBlobRef(ctx, aUUID)
 	assert.NoError(t, metadb.DeleteBlobRef(ctx, aUUID))
+
+	olderThan := time.Unix(123456, 0)
+	mockDriver.EXPECT().ListBlobRefsByStatus(ctx, m.BlobRefStatusPendingDeletion, olderThan).Return(nil, nil)
+	iter, err := metadb.ListBlobRefsByStatus(ctx, m.BlobRefStatusPendingDeletion, olderThan)
+	assert.Nil(t, iter)
+	assert.NoError(t, err)
 }
