@@ -189,7 +189,7 @@ Registry (GCR) will be used for this example. Please replace `$TAG` with a
 registry that you have permissions to write to.
 
 ```bash
-export TAG=gcr.io/open-saves-for-games-dev/open-saves-server:testing
+export TAG=gcr.io/triton-for-games-dev/open-saves-server:testing
 docker build -t $TAG .
 docker push $TAG
 ```
@@ -203,7 +203,7 @@ Datastore, and Storage. For more information, see
 export GCP_REGION=us-central1
 gcloud run deploy --platform=managed \
                   --region=$GCP_REGION \
-                  --image=$TAG \
+                  --image=$TAG 
 ```
 
 Finally, to test this you can run the following commands.

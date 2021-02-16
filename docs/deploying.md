@@ -17,9 +17,12 @@ layout: default
 
 # Deployment Guide
 
-This page explains how to quickly deploy an Open Saves server.
+This page explains how to quickly deploy an Open Saves server to Cloud Run on MacOS/Linux.
 
 ## Before you begin
+
+You may want to create a new project for this quickstart, as we create a Datastore instance
+and it can only be done once per project.
 
 To build and deploy the Open Saves servers, you need to
 install and configure the following:
@@ -29,45 +32,53 @@ install and configure the following:
     For more information on installation and to set up, see the
     [Cloud SDK Quickstarts](https://cloud.google.com/sdk/docs/quickstarts).
 
+1. Install [Go](https://golang.org/doc/install)
+
 ## Setting up backend services on Google Cloud
 
-You need to set up Memorystore, Cloud Firestore in Datastore mode (Datastore), and
+You need to set up Memorystore, Cloud Firestore in [Datastore mode (Datastore)](https://cloud.google.com/datastore/docs/firestore-or-datastore), and
 Cloud Storage to run the current version of Open Saves.
 
 First, start by exporting a few environment variables
 
 ```bash
-export GCP_PROJECT=<your-project-here>
+export GCP_PROJECT=$(gcloud config get-value project)
 export GCP_REGION=us-central1
-export REDIS_NAME=open-saves-redis
-export BUCKET_PATH=gs://<your-new-bucket>
+export REDIS_ID=open-saves-redis
+export REDIS_PORT="6379"
 ```
 
 ### Starting the cache store
 
 Create a Redis instance by using [Memorystore](https://cloud.google.com/memorystore). This
-will give you an instance with a private IP, which you will need to pass in to Triton.
+will give you an instance with a private IP, which you will need to pass in to Open Saves.
 
 ```bash
-gcloud redis instances create --region=$GCP_REGION $REDIS_NAME
+gcloud redis instances create --region=$GCP_REGION $REDIS_ID
 ```
 
 This may take a while. After this has been created, run the following commands to find
 the private IP address of this instance.
 
 ```bash
-gcloud redis instances describe --region=$GCP_REGION $REDIS_NAME | grep "host:"
+gcloud redis instances describe --region=$GCP_REGION $REDIS_ID | grep "host:"
 ```
 
 Then, save this to another environment variable.
 
 ```bash
-export REDIS_IP=<your ip here>:6379
+export REDIS_IP=<your ip here>
 ```
 
 ### Set up Serverless VPC Access
 
-Follow [these instructions](https://cloud.google.com/memorystore/docs/redis/connect-redis-instance-cloud-run) to set up a VPC connector. Then, export the name of the VPC connector as an environment variable.
+By default, because our Redis instance in Memorystore only has a private IP, we need to create a VPC connector
+so that Cloud Run can talk to Memorystore properly.
+
+Follow [these instructions](https://cloud.google.com/memorystore/docs/redis/connect-redis-instance-cloud-run) to
+set up a VPC connector.
+
+Finally, export the name of the VPC connector as an environment variable.
 
 ```bash
 export CONNECTOR_NAME=<your-connnector-name>
@@ -89,13 +100,19 @@ would need to create a new project to change the database location.
 
 Cloud Storage is used to store large blobs that don't fit in Datastore.
 
-Let's create a simple bucket to hold our resources.
+Let's create a simple bucket to hold our resources. This bucket has to be globally
+unique.
 
 ```bash
+export BUCKET_PATH=gs://<your-unique-bucket-name>
 gsutil mb $BUCKET_PATH
 ```
 
 ### Deploying
+
+The following command deploys a Cloud Run instances with the backend services
+we configured in the previous steps. This uses the beta version of the Cloud Run
+service because we are using the VPC connector feature.
 
 ```bash
 export TAG=gcr.io/triton-for-games-dev/triton-server:testing
@@ -106,7 +123,7 @@ gcloud beta run deploy $SERVICE_NAME \
                   --image=$TAG \
                   --set-env-vars="OPEN_SAVES_BUCKET="$BUCKET_PATH \
                   --set-env-vars="OPEN_SAVES_PROJECT="$GCP_PROJECT \
-                  --set-env-vars="OPEN_SAVES_CACHE"=$REDIS_IP \
+                  --set-env-vars="OPEN_SAVES_CACHE"=$REDIS_IP":"$REDIS_PORT \
                   --allow-unauthenticated \
                   --vpc-connector $CONNECTOR_NAME
 ```
@@ -124,10 +141,12 @@ gcloud run services list \
 
 ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
 
-go run examples/grpc-all/main.go -address=$ENDPOINT:443
 ```
 
+```bash
+$ go run examples/grpc-all/main.go -address=$ENDPOINT:443
+```
 
 ## Configuring the server
 
-The basic Open Saves server **does not have authentication / authorization**. We recommend following this guide on [Authenticating service-to-service](https://cloud.google.com/run/docs/authenticating/service-to-service) to add proper authenticationn before deploying to production.
+The basic Open Saves server **does not have authentication / authorization**. We recommend following this guide on [Authenticating service-to-service](https://cloud.google.com/run/docs/authenticating/service-to-service) to add proper authentication before deploying to production.
