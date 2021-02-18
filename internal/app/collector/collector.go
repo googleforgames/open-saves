@@ -32,6 +32,7 @@ type Config struct {
 	Bucket  string
 	Cache   string
 	Project string
+	Before  time.Time
 }
 
 // Collector is a garbage collector of unused resources in Datastore.
@@ -39,6 +40,7 @@ type Collector struct {
 	cache  cache.Cache
 	metaDB *metadb.MetaDB
 	blob   blob.BlobStore
+	cfg    *Config
 }
 
 func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
@@ -63,6 +65,7 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 			blob:   gcs,
 			metaDB: metadb,
 			cache:  redis,
+			cfg:    cfg,
 		}
 		return c, nil
 	default:
@@ -81,15 +84,13 @@ func Run(ctx context.Context, cfg *Config) {
 }
 
 func (c *Collector) run(ctx context.Context) {
-	// TODO(yuryu): Make these configurable
-	const day = 24 * time.Hour
 	var statuses = []metadb.BlobRefStatus{
 		metadb.BlobRefStatusPendingDeletion,
 		metadb.BlobRefStatusError,
 		metadb.BlobRefStatusInitializing,
 	}
 	for _, s := range statuses {
-		c.deleteMatchingBlobRefs(ctx, s, time.Now().Add(-day))
+		c.deleteMatchingBlobRefs(ctx, s, c.cfg.Before)
 	}
 }
 
