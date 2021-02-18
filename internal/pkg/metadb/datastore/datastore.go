@@ -471,7 +471,6 @@ func (d *Driver) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 }
 
 // ListBlobRefsByStatus implements Driver.ListBlobRefsByStatus.
-// Returns a key-only cursor.
 func (d *Driver) ListBlobRefsByStatus(ctx context.Context, status m.BlobRefStatus, olderThan time.Time) (m.BlobRefCursor, error) {
 	query := d.newQuery(blobKind).Filter("Status = ", int(status)).
 		Filter("Timestamps.UpdatedAt <", olderThan)
