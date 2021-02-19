@@ -101,9 +101,13 @@ func setupTestBlobRef(ctx context.Context, t *testing.T, driver *Driver, blob *m
 		t.Fatalf("InsertBlobRef failed: %v", err)
 	}
 	metadbtest.AssertEqualBlobRef(t, blob, newBlob)
+	// save the current namespace as it might change between now and when we delete
+	namespace := driver.Namespace
 	t.Cleanup(func() {
 		// Call the Datastore method directly to avoid Status checking
-		driver.client.Delete(ctx, datastore.NameKey(blobKind, blob.Key.String(), nil))
+		key := datastore.NameKey(blobKind, blob.Key.String(), nil)
+		key.Namespace = namespace
+		driver.client.Delete(ctx, key)
 	})
 	return newBlob
 }
