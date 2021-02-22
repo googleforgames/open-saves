@@ -11,6 +11,7 @@ layout: default
     - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
     - [Cloud Storage](#cloud-storage)
     - [Deploying](#deploying)
+  - [Check to see everything worked](#check-to-see-everything-worked)
   - [Configuring the server](#configuring-the-server)
 
 <!-- /TOC -->
@@ -29,17 +30,17 @@ install and configure the following:
 
 1. Download and install the [Google Cloud SDK](https://cloud.google.com/sdk/install).
 
-    For more information on installation and to set up, see the
+    For more information on installation and set up, see the
     [Cloud SDK Quickstarts](https://cloud.google.com/sdk/docs/quickstarts).
 
-1. Install [Go](https://golang.org/doc/install)
+1. Create a new Google Cloud project using the [Google Cloud Console](https://console.cloud.google.com/) or the Google Cloud SDK. See [Creating and managing projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects) for additional information.
 
 ## Setting up backend services on Google Cloud
 
 You need to set up Memorystore, Cloud Firestore in [Datastore mode (Datastore)](https://cloud.google.com/datastore/docs/firestore-or-datastore), and
 Cloud Storage to run the current version of Open Saves.
 
-First, start by exporting a few environment variables
+First, start by exporting the following environment variables:
 
 ```bash
 export GCP_PROJECT=$(gcloud config get-value project)
@@ -50,21 +51,21 @@ export REDIS_PORT="6379"
 
 ### Starting the cache store
 
-Create a Redis instance by using [Memorystore](https://cloud.google.com/memorystore). This
-will give you an instance with a private IP, which you will need to pass in to Open Saves.
+Run the following command to create a Redis instance by using [Memorystore](https://cloud.google.com/memorystore). This
+will give you an instance with a private IP, which you pass into Open Saves.
 
 ```bash
 gcloud redis instances create --region=$GCP_REGION $REDIS_ID
 ```
 
-This may take a while. After this has been created, run the following commands to find
-the private IP address of this instance.
+This may take a while. After this has been created, run the following command to find
+the private IP address of this instance:
 
 ```bash
 gcloud redis instances describe --region=$GCP_REGION $REDIS_ID | grep "host:"
 ```
 
-Then, save this to another environment variable.
+Then, save this private IP address to another environment variable:
 
 ```bash
 export REDIS_IP=<your ip here>
@@ -90,9 +91,9 @@ Cloud Firestore in Datastore mode (Datastore) is primarily used to manage
 metadata of Open Saves. Smaller blob data (usually up to a few kilobytes) could
 also be stored in Datastore.
 
-Please follow the [quick start guide](https://cloud.google.com/datastore/docs/quickstart)
+Follow the [quickstart guide](https://cloud.google.com/datastore/docs/quickstart)
 to set up a database in Datastore mode. You may choose whichever region you
-like, however, it can only be specified one and cannot be undone. Google Cloud
+like, however, it can only be specified once and cannot be undone. Google Cloud
 Platform currently allows only one Datastore database per project, so you
 would need to create a new project to change the database location.
 
@@ -100,7 +101,7 @@ would need to create a new project to change the database location.
 
 Cloud Storage is used to store large blobs that don't fit in Datastore.
 
-Let's create a simple bucket to hold our resources. This bucket has to be globally
+Create a simple bucket to hold all open saves blobs. This bucket has to be globally
 unique.
 
 ```bash
@@ -110,9 +111,9 @@ gsutil mb $BUCKET_PATH
 
 ### Deploying
 
-The following command deploys a Cloud Run instances with the backend services
-we configured in the previous steps. This uses the beta version of the Cloud Run
-service because we are using the VPC connector feature.
+Run the following commands to deploy the containerized application to Cloud Run:
+This uses the beta version of the Cloud Run service because we are using the
+VPC connector feature.
 
 ```bash
 export TAG=gcr.io/triton-for-games-dev/triton-server:testing
@@ -146,6 +147,12 @@ ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
 ```bash
 $ go run examples/grpc-all/main.go -address=$ENDPOINT:443
 ```
+
+## Check to see everything worked
+
+Go look at Datastore
+Go look at Cloud Storage
+Go look at Memorystore
 
 ## Configuring the server
 
