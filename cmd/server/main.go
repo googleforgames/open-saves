@@ -29,8 +29,8 @@ import (
 func main() {
 	defaultPort := getEnvVarUInt("OPEN_SAVES_PORT", 6000)
 	defaultCloud := getEnvVarString("OPEN_SAVES_CLOUD", "gcp")
-	defaultBucket := getEnvVarString("OPEN_SAVES_BUCKET", "gs://triton-dev-store")
-	defaultProject := getEnvVarString("OPEN_SAVES_PROJECT", "triton-for-games-dev")
+	defaultBucket := getEnvVarString("OPEN_SAVES_BUCKET", "")
+	defaultProject := getEnvVarString("OPEN_SAVES_PROJECT", "")
 	defaultCache := getEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
 
 	var (
