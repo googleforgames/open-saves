@@ -12,7 +12,7 @@ layout: default
     - [Cloud Storage](#cloud-storage)
     - [Deploying](#deploying)
   - [Check to see everything worked](#check-to-see-everything-worked)
-  - [Configuring the server](#configuring-the-server)
+  - [Next steps](#next-steps)
 
 <!-- /TOC -->
 
@@ -186,7 +186,7 @@ to make sure it works. You will need Go1.15 or later for this to work.
 
 ```bash
 git clone https://github.com/googleforgames/open-saves.git
-go run examples/grpc-all/main.go -address=$ENDPOINT:443
+go run examples/grpc-client/main.go -address=$ENDPOINT:443
 ```
 
 ## Check to see everything worked
@@ -205,6 +205,6 @@ Lastly, use the `gsutil` to list items in your bucket. You should see one large 
 gsutil ls $BUCKET_NAME
 ```
 
-## Configuring the server
+## Next steps
 
 The basic Open Saves server **does not have authentication / authorization**. We recommend following this guide on [Authenticating service-to-service](https://cloud.google.com/run/docs/authenticating/service-to-service) to add proper authentication before deploying to production.
