@@ -28,11 +28,11 @@ import (
 )
 
 func main() {
-	defaultPort := getEnvVarUInt("OPEN_SAVES_PORT", 6000)
-	defaultCloud := getEnvVarString("OPEN_SAVES_CLOUD", "gcp")
-	defaultBucket := getEnvVarString("OPEN_SAVES_BUCKET", "")
-	defaultProject := getEnvVarString("OPEN_SAVES_PROJECT", "")
-	defaultCache := getEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
+	defaultPort := cmd.GetEnvVarUInt("OPEN_SAVES_PORT", 6000)
+	defaultCloud := cmd.GetEnvVarString("OPEN_SAVES_CLOUD", "gcp")
+	defaultBucket := cmd.GetEnvVarString("OPEN_SAVES_BUCKET", "")
+	defaultProject := cmd.GetEnvVarString("OPEN_SAVES_PROJECT", "")
+	defaultCache := cmd.GetEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
 
 	var (
 		port    = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
