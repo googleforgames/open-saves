@@ -35,6 +35,9 @@ func (i *blobRefCursor) Next() (*metadb.BlobRef, error) {
 	if i == nil {
 		return nil, errors.New("BlobRefIterator.Next was called on nil")
 	}
+	if i.iter == nil {
+		return nil, errors.New("Iterator is nil")
+	}
 	var blob metadb.BlobRef
 	_, err := i.iter.Next(&blob)
 	if err != nil {
