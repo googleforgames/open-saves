@@ -189,11 +189,15 @@ git clone https://github.com/googleforgames/open-saves.git
 go run examples/grpc-client/main.go -address=$ENDPOINT:443
 ```
 
+This sample code creates a new store, a new record with inline properties,
+fetches that record, and creates a new record with a large blob attached.
+
 ## Check to see everything worked
 
 Navigate to the [Datastore Dashboard](https://console.cloud.google.com/datastore).
 You should see the entities that you created with properties like "RecordKey",
-"Size", "Status", "StoreKey", and "Timestamps".
+"Size", "Status", "StoreKey", and "Timestamps". Try filtering by "record",
+"blob", and "store" in the "Kind" search bar.
 
 Next, navigate to [Memorystore](https://console.cloud.google.com/memorystore/redis/instances).
 Select your instance, and under the graph type, select "Keys in database".
