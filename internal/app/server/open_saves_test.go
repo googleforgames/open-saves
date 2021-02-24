@@ -21,11 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -40,6 +43,7 @@ const (
 	// Since the server will actually access the backend datastore,
 	// we need enough time to prevent flaky tests.
 	timestampDelta = 10 * time.Second
+	blobKind       = "blob"
 )
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
@@ -151,6 +155,40 @@ func setupTestStore(ctx context.Context, t *testing.T, client pb.OpenSavesClient
 	}
 }
 
+func cleanupBlobs(ctx context.Context, t *testing.T, storeKey, recordkey string) {
+	t.Helper()
+	client, err := datastore.NewClient(ctx, testProject)
+	if err != nil {
+		t.Errorf("datastore.NewClient failed during cleanup: %v", err)
+		return
+	}
+	blobClient, err := blob.NewBlobGCP(testBucket)
+	if err != nil {
+		t.Errorf("NewBlobGCP returned error: %v", err)
+		blobClient = nil
+	}
+	query := datastore.NewQuery(blobKind).Filter("StoreKey =", storeKey).Filter("RecordKey =", recordkey)
+	iter := client.Run(ctx, query)
+
+	for {
+		var blobRef metadb.BlobRef
+		key, err := iter.Next(&blobRef)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			t.Errorf("iterator.Next returned error: %v", err)
+			break
+		}
+		if blobClient != nil {
+			blobClient.Delete(ctx, blobRef.ObjectPath())
+		}
+		if err := client.Delete(ctx, key); err != nil {
+			t.Errorf("Delete for key (%v) returned error: %v", key.String(), err)
+		}
+	}
+}
+
 func setupTestRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClient, storeKey string, record *pb.Record) {
 	t.Helper()
 	req := &pb.CreateRecordRequest{
@@ -163,6 +201,7 @@ func setupTestRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClien
 	}
 
 	t.Cleanup(func() {
+		cleanupBlobs(ctx, t, storeKey, record.Key)
 		req := &pb.DeleteRecordRequest{
 			StoreKey: storeKey,
 			Key:      record.Key,
