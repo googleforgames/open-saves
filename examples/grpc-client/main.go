@@ -60,8 +60,8 @@ func main() {
 
 	store := &pb.Store{
 		Key:     uuid.New().String(),
-		Name:    "test",
-		OwnerId: "test-user",
+		Name:    "user-store",
+		OwnerId: "admin1",
 	}
 	req := &pb.CreateStoreRequest{
 		Store: store,
@@ -74,15 +74,16 @@ func main() {
 	log.Printf("successfully created store: %v", s)
 
 	record := &pb.Record{
-		Key:     "some-key",
-		OwnerId: "some-id",
+		Key:     "user-1234",
+		OwnerId: "admin1",
 		Properties: map[string]*pb.Property{
-			"some-string": {
+			"username": {
 				Type: pb.Property_STRING,
 				Value: &pb.Property_StringValue{
-					StringValue: string(bytes.Repeat([]byte{'A'}, 128)),
+					StringValue: "",
 				},
 			},
+			""
 		},
 	}
 	rec, err := c.CreateRecord(ctx, &pb.CreateRecordRequest{
@@ -103,7 +104,7 @@ func main() {
 	}
 	log.Printf("got record: %v", got)
 
-	record.Key = "some-key2"
+	record.Key = "inventory-data-1234"
 	record.Properties = nil
 	rec2, err := c.CreateRecord(ctx, &pb.CreateRecordRequest{
 		StoreKey: s.Key,
@@ -123,25 +124,31 @@ func main() {
 	}
 	log.Printf("got record: %v", got)
 
+	video := bytes.Repeat([]byte{'A'}, 64*1000*1000)
+	err := createBlob(ctx, c, s.Key rec2.Key, &video)
+	if err != nil {
+		log.Fatalf("got error creating blob: %v", err)
+	}
+}
+
+
+func createBlob(ctx context.Context, c *pb.OpenSavesClient, storeKey, recordKey string, blob *byte[]) error {
 	cbc, err := c.CreateBlob(ctx)
 	if err != nil {
-		log.Fatalf("CreateBlob returned error: %v", err)
-		return
+		return err
 	}
 
-	content := bytes.Repeat([]byte{'A'}, 64*1000*1000)
 	err = cbc.Send(&pb.CreateBlobRequest{
 		Request: &pb.CreateBlobRequest_Metadata{
 			Metadata: &pb.BlobMetadata{
 				StoreKey:  s.Key,
 				RecordKey: rec2.Key,
-				Size:      int64(len(content)),
+				Size:      int64(len(video)),
 			},
 		},
 	})
 	if err != nil {
-		log.Fatalf("CreateBlobClient.Send failed on sending metadata: %v", err)
-		return
+		return fmt.Errorf("CreateBlobClient.Send failed on sending metadata: %w", err)
 	}
 
 	sent := 0
@@ -162,7 +169,7 @@ func main() {
 			},
 		})
 		if err != nil {
-			log.Fatalf("CreateBlobClient.Send failed on sending content: %v", err)
+			return fmt.Errorf("CreateBlobClient.Send failed on sending content: %w", err)
 		}
 		sent += toSend
 	}

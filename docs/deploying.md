@@ -164,7 +164,8 @@ gcloud beta run deploy $SERVICE_NAME \
                   --set-env-vars="OPEN_SAVES_PROJECT="$GCP_PROJECT \
                   --set-env-vars="OPEN_SAVES_CACHE"=$REDIS_IP":"$REDIS_PORT \
                   --allow-unauthenticated \
-                  --vpc-connector $VPC_CONNECTOR
+                  --vpc-connector $VPC_CONNECTOR \
+                  --use-http2
 ```
 
 Grab the endpoint and save it to an environment variable. 
