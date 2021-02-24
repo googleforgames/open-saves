@@ -81,7 +81,7 @@ func main() {
 			"username": {
 				Type: pb.Property_STRING,
 				Value: &pb.Property_StringValue{
-					StringValue: "",
+					StringValue: "tryndamere",
 				},
 			},
 		},
@@ -104,7 +104,7 @@ func main() {
 	}
 	log.Printf("got record: %v", got)
 
-	record.Key = "inventory-data-1234"
+	record.Key = "game-1-replay-1234"
 	record.Properties = nil
 	rec2, err := c.CreateRecord(ctx, &pb.CreateRecordRequest{
 		StoreKey: s.Key,
@@ -115,16 +115,7 @@ func main() {
 	}
 	log.Printf("created record: %v", rec2)
 
-	got, err = c.GetRecord(ctx, &pb.GetRecordRequest{
-		StoreKey: s.Key,
-		Key:      rec2.Key,
-	})
-	if err != nil {
-		log.Fatalf("err get record: %v", err)
-	}
-	log.Printf("got record: %v", got)
-
-	video := bytes.Repeat([]byte{'A'}, 64*1000*1000)
+	video := bytes.Repeat([]byte{'A'}, 64*10*1000)
 	err = createBlob(ctx, c, s.Key, rec2.Key, video)
 	if err != nil {
 		log.Fatalf("got error creating blob: %v", err)
@@ -155,7 +146,7 @@ func createBlob(ctx context.Context, c pb.OpenSavesClient, storeKey, recordKey s
 	for {
 		if sent >= len(content) {
 			log.Printf("finished sending blob\n")
-			cbc.CloseSend()
+			cbc.CloseAndRecv()
 			break
 		}
 		toSend := streamBufferSize
