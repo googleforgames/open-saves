@@ -29,9 +29,10 @@ import (
 func main() {
 	defaultPort := getEnvVarUInt("OPEN_SAVES_PORT", 6000)
 	defaultCloud := getEnvVarString("OPEN_SAVES_CLOUD", "gcp")
-	defaultBucket := getEnvVarString("OPEN_SAVES_BUCKET", "gs://triton-dev-store")
-	defaultProject := getEnvVarString("OPEN_SAVES_PROJECT", "triton-for-games-dev")
+	defaultBucket := getEnvVarString("OPEN_SAVES_BUCKET", "")
+	defaultProject := getEnvVarString("OPEN_SAVES_PROJECT", "")
 	defaultCache := getEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
+	defaultLogLevel := getEnvVarString("LOG_LEVEL", "warn")
 
 	var (
 		port    = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
@@ -40,6 +41,12 @@ func main() {
 		project = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
 		cache   = flag.String("cache", defaultCache, "The address of the cache store instance")
 	)
+
+	ll, err := log.ParseLevel(defaultLogLevel)
+	if err != nil {
+		ll = log.DebugLevel
+	}
+	log.SetLevel(ll)
 
 	flag.Parse()
 	if *cloud == "" {
