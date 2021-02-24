@@ -21,9 +21,8 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/googleforgames/open-saves/internal/app/server"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -47,7 +46,7 @@ func main() {
 		ll = log.DebugLevel
 	}
 	log.SetLevel(ll)
-
+	log.SetOutput(os.Stdout)
 	flag.Parse()
 	if *cloud == "" {
 		log.Fatal("missing -cloud argument for cloud provider")

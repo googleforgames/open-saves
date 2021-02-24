@@ -224,6 +224,7 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, stream *pb.QueryReco
 }
 
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
+	log.Debugf("Inserting inline blob: %v\n", meta)
 	// Receive the blob
 	size := meta.GetSize()
 	buffer := bytes.NewBuffer(make([]byte, 0, size))
@@ -288,6 +289,7 @@ func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *metadb.BlobR
 }
 
 func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
+	log.Debugf("Inserting external blob: %v\n", meta)
 	// Create a blob reference based on the metadata.
 	blobref := metadb.NewBlobRef(meta.GetSize(), meta.GetStoreKey(), meta.GetRecordKey())
 	blobref, err := s.metaDB.InsertBlobRef(ctx, blobref)
@@ -362,6 +364,7 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 }
 
 func (s *openSavesServer) CreateBlob(stream pb.OpenSaves_CreateBlobServer) error {
+	log.Debug("Creating blob stream\n")
 	ctx := stream.Context()
 
 	// The first message must be metadata.
