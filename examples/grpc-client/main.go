@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -83,7 +84,6 @@ func main() {
 					StringValue: "",
 				},
 			},
-			""
 		},
 	}
 	rec, err := c.CreateRecord(ctx, &pb.CreateRecordRequest{
@@ -125,14 +125,13 @@ func main() {
 	log.Printf("got record: %v", got)
 
 	video := bytes.Repeat([]byte{'A'}, 64*1000*1000)
-	err := createBlob(ctx, c, s.Key rec2.Key, &video)
+	err = createBlob(ctx, c, s.Key, rec2.Key, video)
 	if err != nil {
 		log.Fatalf("got error creating blob: %v", err)
 	}
 }
 
-
-func createBlob(ctx context.Context, c *pb.OpenSavesClient, storeKey, recordKey string, blob *byte[]) error {
+func createBlob(ctx context.Context, c pb.OpenSavesClient, storeKey, recordKey string, content []byte) error {
 	cbc, err := c.CreateBlob(ctx)
 	if err != nil {
 		return err
@@ -141,9 +140,9 @@ func createBlob(ctx context.Context, c *pb.OpenSavesClient, storeKey, recordKey 
 	err = cbc.Send(&pb.CreateBlobRequest{
 		Request: &pb.CreateBlobRequest_Metadata{
 			Metadata: &pb.BlobMetadata{
-				StoreKey:  s.Key,
-				RecordKey: rec2.Key,
-				Size:      int64(len(video)),
+				StoreKey:  storeKey,
+				RecordKey: recordKey,
+				Size:      int64(len(content)),
 			},
 		},
 	})
@@ -174,4 +173,5 @@ func createBlob(ctx context.Context, c *pb.OpenSavesClient, storeKey, recordKey 
 		sent += toSend
 	}
 	log.Printf("sent %d bytes for blob on stream\n", sent)
+	return nil
 }

@@ -168,7 +168,7 @@ gcloud beta run deploy $SERVICE_NAME \
                   --use-http2
 ```
 
-Grab the endpoint and save it to an environment variable. 
+Grab the endpoint and save it to an environment variable.
 
 ```bash
 ENDPOINT=$(\
