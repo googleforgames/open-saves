@@ -44,8 +44,7 @@ internal/pkg/metadb/mock/mock_metadb.go: internal/pkg/metadb/metadb.go
 
 ${API_DIR}/open_saves.pb.go: ${API_DIR}/open_saves.proto
 	$(PROTOC) -I. \
-		--go_out=. --go_opt=paths=source_relative \
-		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+		--go_out=plugins=grpc:. --go_opt=paths=source_relative \
   		$<
 
 FORCE:
