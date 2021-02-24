@@ -23,7 +23,8 @@ This page explains how to quickly deploy an Open Saves server to Cloud Run on Ma
 ## Before you begin
 
 You may want to create a new project for this quickstart, as we create a Datastore instance
-and it can only be done once per project.
+and it can only be done once per project. This also allows you to easily delete
+the project after you are done with it.
 
 To build and deploy the Open Saves servers, you need to
 install and configure the following:
@@ -40,6 +41,13 @@ install and configure the following:
 You need to set up Memorystore, Cloud Firestore in [Datastore mode (Datastore)](https://cloud.google.com/datastore/docs/firestore-or-datastore), and
 Cloud Storage to run the current version of Open Saves.
 
+Memorystore is used for caching records for faster lookups.
+Cloud Firestore in Datastore mode (Datastore) is primarily used to manage
+metadata of Open Saves. Smaller blob data (usually up to a few kilobytes) could
+also be stored in Datastore.
+Lastly, Cloud Storage is used to store all large blob data that cannot fit
+into Datastore. By default, blobs larger than 64 KiB are stored in Cloud Storage.
+
 First, start by exporting the following environment variables:
 
 ```bash
@@ -47,6 +55,7 @@ export GCP_PROJECT=$(gcloud config get-value project)
 export GCP_REGION=us-central1
 export REDIS_ID=open-saves-redis
 export REDIS_PORT="6379"
+export VPC_CONNECTOR=open-saves-vpc
 ```
 
 ### Starting the cache store
@@ -76,26 +85,55 @@ export REDIS_IP=<your ip here>
 By default, because our Redis instance in Memorystore only has a private IP, we need to create a VPC connector
 so that Cloud Run can talk to Memorystore properly.
 
-Follow [these instructions](https://cloud.google.com/memorystore/docs/redis/connect-redis-instance-cloud-run) to
+We will be loosely following [these instructions](https://cloud.google.com/memorystore/docs/redis/connect-redis-instance-cloud-run) to
 set up a VPC connector.
 
-Finally, export the name of the VPC connector as an environment variable.
+First, export your network name.
 
 ```bash
-export CONNECTOR_NAME=<your-connnector-name>
+export VPC_NETWORK="projects/$GCP_PROJECT/global/networks/default"
 ```
+
+Ensure the previous value matches the output of the following command.
+
+```bash
+gcloud redis instances describe $REDIS_ID --region $GCP_REGION --format "value(authorizedNetwork)"
+```
+
+Next, enable the Serverless VPC Access API for your project.
+
+```bash
+gcloud services enable vpcaccess.googleapis.com
+```
+
+Create the VPC connector. This step may take some time.
+
+```bash
+gcloud compute networks vpc-access connectors create $VPC_CONNECTOR \
+--network $VPC_NETWORK \
+--region $GCP_REGION \
+--range 10.8.0.0/28
+```
+
+Verify that your connector is in the READY state before using it:
+
+```bash
+gcloud compute networks vpc-access connectors describe $VPC_CONNECTOR --region $GCP_REGION
+```
+
+The output should contain the line state: READY.
 
 ### Cloud Firestore in Datastore mode
 
-Cloud Firestore in Datastore mode (Datastore) is primarily used to manage
-metadata of Open Saves. Smaller blob data (usually up to a few kilobytes) could
-also be stored in Datastore.
-
 Follow the [quickstart guide](https://cloud.google.com/datastore/docs/quickstart)
-to set up a database in Datastore mode. You may choose whichever region you
-like, however, it can only be specified once and cannot be undone. Google Cloud
-Platform currently allows only one Datastore database per project, so you
-would need to create a new project to change the database location.
+to set up a database in **Datastore** mode.
+
+![datastore_mode](images/datastore.png)
+
+You may choose whichever region you like, however, it can only be specified once
+and cannot be undone. Google Cloud Platform currently allows only one Datastore
+database per project, so you would need to create a new project to change the
+database location.
 
 ### Cloud Storage
 
@@ -105,7 +143,7 @@ Create a simple bucket to hold all open saves blobs. This bucket has to be globa
 unique.
 
 ```bash
-export BUCKET_PATH=gs://<your-unique-bucket-name>
+export BUCKET_PATH=gs://<your-unique-bucket>
 gsutil mb $BUCKET_PATH
 ```
 
@@ -126,10 +164,10 @@ gcloud beta run deploy $SERVICE_NAME \
                   --set-env-vars="OPEN_SAVES_PROJECT="$GCP_PROJECT \
                   --set-env-vars="OPEN_SAVES_CACHE"=$REDIS_IP":"$REDIS_PORT \
                   --allow-unauthenticated \
-                  --vpc-connector $CONNECTOR_NAME
+                  --vpc-connector $VPC_CONNECTOR
 ```
 
-Grab the endpoint and try the example code to make sure it works
+Grab the endpoint and save it to an environment variable. 
 
 ```bash
 ENDPOINT=$(\
@@ -141,18 +179,31 @@ gcloud run services list \
   --filter="metadata.name="$SERVICE_NAME)
 
 ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
-
 ```
 
+Finally, clone this repository and try the example code
+to make sure it works. You will need Go1.15 or later for this to work.
+
 ```bash
-$ go run examples/grpc-all/main.go -address=$ENDPOINT:443
+git clone https://github.com/googleforgames/open-saves.git
+go run examples/grpc-all/main.go -address=$ENDPOINT:443
 ```
 
 ## Check to see everything worked
 
-Go look at Datastore
-Go look at Cloud Storage
-Go look at Memorystore
+Navigate to the [Datastore Dashboard](https://console.cloud.google.com/datastore).
+You should see the entities that you created with properties like "RecordKey",
+"Size", "Status", "StoreKey", and "Timestamps".
+
+Next, navigate to [Memorystore](https://console.cloud.google.com/memorystore/redis/instances).
+Select your instance, and under the graph type, select "Keys in database".
+You should see keys in this part, indicating that some of the records have been cached properly.
+
+Lastly, use the `gsutil` to list items in your bucket. You should see one large item there.
+
+```bash
+gsutil ls $BUCKET_NAME
+```
 
 ## Configuring the server
 

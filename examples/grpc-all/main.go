@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"log"
@@ -75,6 +76,14 @@ func main() {
 	record := &pb.Record{
 		Key:     "some-key",
 		OwnerId: "some-id",
+		Properties: map[string]*pb.Property{
+			"some-string": {
+				Type: pb.Property_STRING,
+				Value: &pb.Property_StringValue{
+					StringValue: string(bytes.Repeat([]byte{'A'}, 128)),
+				},
+			},
+		},
 	}
 	rec, err := c.CreateRecord(ctx, &pb.CreateRecordRequest{
 		StoreKey: s.Key,
@@ -93,4 +102,59 @@ func main() {
 		log.Fatalf("err get record: %v", err)
 	}
 	log.Printf("got record: %v", got)
+
+	record.Key = "some-key2"
+	rec2, err := c.CreateRecord(ctx, &pb.CreateRecordRequest{
+		StoreKey: s.Key,
+		Record:   record,
+	})
+	if err != nil {
+		log.Fatalf("err creating record2: %v", err)
+	}
+	log.Printf("created record: %v", rec2)
+
+	cbc, err := c.CreateBlob(ctx)
+	if err != nil {
+		log.Fatalf("CreateBlob returned error: %v", err)
+		return
+	}
+
+	content := bytes.Repeat([]byte{'A'}, 64*1000*1000)
+	err = cbc.Send(&pb.CreateBlobRequest{
+		Request: &pb.CreateBlobRequest_Metadata{
+			Metadata: &pb.BlobMetadata{
+				StoreKey:  s.Key,
+				RecordKey: rec2.Key,
+				Size:      int64(len(content)),
+			},
+		},
+	})
+	if err != nil {
+		log.Fatalf("CreateBlobClient.Send failed on sending metadata: %v", err)
+		return
+	}
+
+	sent := 0
+	streamBufferSize := 1 * 1024 // 1 KiB
+	for {
+		if sent >= len(content) {
+			log.Printf("finished sending blob\n")
+			cbc.CloseSend()
+			break
+		}
+		toSend := streamBufferSize
+		if toSend > len(content)-sent {
+			toSend = len(content) - sent
+		}
+		err = cbc.Send(&pb.CreateBlobRequest{
+			Request: &pb.CreateBlobRequest_Content{
+				Content: content[sent : sent+toSend],
+			},
+		})
+		if err != nil {
+			log.Fatalf("CreateBlobClient.Send failed on sending content: %v", err)
+		}
+		sent += toSend
+	}
+	log.Printf("sent %d bytes for blob on stream\n", sent)
 }
