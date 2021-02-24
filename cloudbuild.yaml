@@ -27,6 +27,9 @@ steps:
   - name: "build-docker"
     args: ["bash", "scripts/run_open_saves_test.sh"]
     waitFor: ["init-build-docker"]
+    env:
+      - "OPEN_SAVES_BUCKET=gs://triton-dev-store"
+      - "OPEN_SAVES_PROJECT=triton-for-games-dev"
 
 options:
   machineType: "N1_HIGHCPU_8"
