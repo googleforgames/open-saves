@@ -12,7 +12,7 @@ layout: default
     - [Cloud Storage](#cloud-storage)
     - [Deploying](#deploying)
   - [Check to see everything worked](#check-to-see-everything-worked)
-  - [Next steps](#next-steps)
+  - [Configuring the server](#configuring-the-server)
 
 <!-- /TOC -->
 
@@ -46,7 +46,7 @@ Cloud Firestore in Datastore mode (Datastore) is primarily used to manage
 metadata of Open Saves. Smaller blob data (usually up to a few kilobytes) could
 also be stored in Datastore.
 Lastly, Cloud Storage is used to store all large blob data that cannot fit
-into Datastore. By default, blobs larger than 64 KiB are stored in Cloud Storage.
+into Datastore.
 
 First, start by exporting the following environment variables:
 
@@ -143,7 +143,7 @@ Create a simple bucket to hold all open saves blobs. This bucket has to be globa
 unique.
 
 ```bash
-export BUCKET_PATH=gs://<your-unique-bucket>
+export BUCKET_PATH=gs://<your-unique-bucket-name>
 gsutil mb $BUCKET_PATH
 ```
 
@@ -164,11 +164,10 @@ gcloud beta run deploy $SERVICE_NAME \
                   --set-env-vars="OPEN_SAVES_PROJECT="$GCP_PROJECT \
                   --set-env-vars="OPEN_SAVES_CACHE"=$REDIS_IP":"$REDIS_PORT \
                   --allow-unauthenticated \
-                  --vpc-connector $VPC_CONNECTOR \
-                  --use-http2
+                  --vpc-connector $CONNECTOR_NAME
 ```
 
-Grab the endpoint and save it to an environment variable.
+Grab the endpoint and try the example code to make sure it works
 
 ```bash
 ENDPOINT=$(\
@@ -180,36 +179,19 @@ gcloud run services list \
   --filter="metadata.name="$SERVICE_NAME)
 
 ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
-```
 
-Finally, clone this repository and try the example code
-to make sure it works. You will need Go1.15 or later for this to work.
+```
 
 ```bash
-git clone https://github.com/googleforgames/open-saves.git
-go run examples/grpc-client/main.go -address=$ENDPOINT:443
+$ go run examples/grpc-all/main.go -address=$ENDPOINT:443
 ```
-
-This sample code creates a new store, a new record with inline properties,
-fetches that record, and creates a new record with a large blob attached.
 
 ## Check to see everything worked
 
-Navigate to the [Datastore Dashboard](https://console.cloud.google.com/datastore).
-You should see the entities that you created with properties like "RecordKey",
-"Size", "Status", "StoreKey", and "Timestamps". Try filtering by "record",
-"blob", and "store" in the "Kind" search bar.
+Go look at Datastore
+Go look at Cloud Storage
+Go look at Memorystore
 
-Next, navigate to [Memorystore](https://console.cloud.google.com/memorystore/redis/instances).
-Select your instance, and under the graph type, select "Keys in database".
-You should see keys in this part, indicating that some of the records have been cached properly.
-
-Lastly, use the `gsutil` to list items in your bucket. You should see one large item there.
-
-```bash
-gsutil ls $BUCKET_NAME
-```
-
-## Next steps
+## Configuring the server
 
 The basic Open Saves server **does not have authentication / authorization**. We recommend following this guide on [Authenticating service-to-service](https://cloud.google.com/run/docs/authenticating/service-to-service) to add proper authentication before deploying to production.
