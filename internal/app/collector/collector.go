@@ -46,7 +46,7 @@ type Collector struct {
 func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 	switch cfg.Cloud {
 	case "gcp":
-		log.Infoln("Instantiating Open Saves server on GCP")
+		log.Infoln("Starting Open Saves garbage collector on GCP")
 		gcs, err := blob.NewBlobGCP(cfg.Bucket)
 		if err != nil {
 			return nil, err

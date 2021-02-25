@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -15,14 +29,14 @@ func main() {
 	defaultBucket := cmd.GetEnvVarString("OPEN_SAVES_BUCKET", "gs://triton-dev-store")
 	defaultProject := cmd.GetEnvVarString("OPEN_SAVES_PROJECT", "triton-for-games-dev")
 	defaultCache := cmd.GetEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
-	defaultBefore := cmd.GetEnvVarDuration("OPEN_SAVES_COLLECT_BEFORE", 24*time.Hour)
+	defaultExpiration := cmd.GetEnvVarDuration("OPEN_SAVES_GARBAGE_EXPIRATION", 24*time.Hour)
 
 	var (
-		cloud   = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
-		bucket  = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
-		project = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
-		cache   = flag.String("cache", defaultCache, "The address of the cache store instance")
-		before  = flag.Duration("collect-before", defaultBefore, "Collector deletes entries older than this time.Duration value (e.g. \"24h\")")
+		cloud      = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
+		bucket     = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
+		project    = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
+		cache      = flag.String("cache", defaultCache, "The address of the cache store instance")
+		expiration = flag.Duration("garbage-expiration", defaultExpiration, "Collector deletes entries older than this time.Duration value (e.g. \"24h\")")
 	)
 
 	flag.Parse()
@@ -44,7 +58,7 @@ func main() {
 		Bucket:  *bucket,
 		Project: *project,
 		Cache:   *cache,
-		Before:  time.Now().Add(-*before),
+		Before:  time.Now().Add(-*expiration),
 	}
 
 	ctx := context.Background()
