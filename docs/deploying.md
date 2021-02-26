@@ -3,6 +3,8 @@ layout: default
 ---
 <!-- TOC depthFrom:2 depthTo:6 orderedList:false updateOnSave:true withLinks:true -->
 
+# Deployment Guide
+
 - [Deployment Guide](#deployment-guide)
   - [Before you begin](#before-you-begin)
   - [Setting up backend services on Google Cloud](#setting-up-backend-services-on-google-cloud)
@@ -12,11 +14,12 @@ layout: default
     - [Cloud Storage](#cloud-storage)
     - [Deploying](#deploying)
   - [Check to see everything worked](#check-to-see-everything-worked)
-  - [Configuring the server](#configuring-the-server)
+    - [Check Datastore](#check-datastore)
+    - [Check Memorystore](#check-memorystore)
+    - [Check Cloud Storage](#check-cloud-storage)
+  - [Next steps](#next-steps)
 
 <!-- /TOC -->
-
-# Deployment Guide
 
 This page explains how to quickly deploy an Open Saves server to Cloud Run on MacOS/Linux.
 
@@ -151,7 +154,7 @@ gsutil mb $BUCKET_PATH
 
 Run the following commands to deploy the containerized application to Cloud Run:
 This uses the beta version of the Cloud Run service because we are using the
-VPC connector feature.
+VPC connector and http2 features.
 
 ```bash
 export TAG=gcr.io/triton-for-games-dev/triton-server:testing
@@ -164,10 +167,11 @@ gcloud beta run deploy $SERVICE_NAME \
                   --set-env-vars="OPEN_SAVES_PROJECT="$GCP_PROJECT \
                   --set-env-vars="OPEN_SAVES_CACHE"=$REDIS_IP":"$REDIS_PORT \
                   --allow-unauthenticated \
-                  --vpc-connector $CONNECTOR_NAME
+                  --vpc-connector $VPC_CONNECTOR \
+                  --use-http2
 ```
 
-Grab the endpoint and try the example code to make sure it works
+Grab the endpoint and save it to an environment variable.
 
 ```bash
 ENDPOINT=$(\
@@ -179,19 +183,44 @@ gcloud run services list \
   --filter="metadata.name="$SERVICE_NAME)
 
 ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
-
 ```
 
+Next, run the example client application to make sure everything worked.
+Make sure you have Go v1.14 or later installed.
+
 ```bash
-$ go run examples/grpc-all/main.go -address=$ENDPOINT:443
+git clone https://github.com/googleforgames/open-saves
+go run examples/grpc-all/main.go -address=$ENDPOINT:443
 ```
 
 ## Check to see everything worked
 
-Go look at Datastore
-Go look at Cloud Storage
-Go look at Memorystore
+### Check Datastore
 
-## Configuring the server
+In your browser, navigate to the [Datastore dashboard](https://console.cloud.google.com/datastore).
+You should see several entities here, from running the example code. Try looking for different
+kinds in the search bar at the top, specifically "Store", "Record", "Blob".
+
+### Check Memorystore
+
+While you can't see individual keys directly, navigate to the [Memorystore dashboard](https://console.cloud.google.com/memorystore)
+Select the instance that you created, and then select the "Keys in database" graph.
+
+![memorystore][images/memorystore.png]
+
+### Check Cloud Storage
+
+Lastly, navigate to the bucket you created in [the Console](https://console.cloud.google.com/storage). You should
+see one object created.
+
+Alternatively, you can use `gsutil` to list the object via command line.
+
+```bash
+gsutil ls $BUCKET_PATH
+```
+
+## Next steps
+
+You have successfully deployed an Open Saves server on Cloud Run and saved and read data from it.
 
 The basic Open Saves server **does not have authentication / authorization**. We recommend following this guide on [Authenticating service-to-service](https://cloud.google.com/run/docs/authenticating/service-to-service) to add proper authentication before deploying to production.
