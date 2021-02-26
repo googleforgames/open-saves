@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
@@ -100,8 +101,13 @@ func setupTestBlobRef(ctx context.Context, t *testing.T, driver *Driver, blob *m
 		t.Fatalf("InsertBlobRef failed: %v", err)
 	}
 	metadbtest.AssertEqualBlobRef(t, blob, newBlob)
+	// save the current namespace as it might change between now and when we delete
+	namespace := driver.Namespace
 	t.Cleanup(func() {
-		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
+		// Call the Datastore method directly to avoid Status checking
+		key := datastore.NameKey(blobKind, blob.Key.String(), nil)
+		key.Namespace = namespace
+		driver.client.Delete(ctx, key)
 	})
 	return newBlob
 }
@@ -372,13 +378,9 @@ func TestDriver_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		},
 	}
 
-	insertedBlob, err := driver.InsertBlobRef(ctx, blob)
-	if err != nil {
-		t.Fatalf("InsertBlobRef failed: %v", err)
-	}
-	metadbtest.AssertEqualBlobRef(t, blob, insertedBlob)
+	setupTestBlobRef(ctx, t, driver, blob)
 
-	_, err = driver.GetCurrentBlobRef(ctx, storeKey, recordKey)
+	_, err := driver.GetCurrentBlobRef(ctx, storeKey, recordKey)
 	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
 
 	blob2, err := driver.GetBlobRef(ctx, blobKey)
@@ -475,12 +477,7 @@ func TestDriver_SwapBlobRefs(t *testing.T) {
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
 	}
-	if _, err := driver.InsertBlobRef(ctx, newBlob); err != nil {
-		t.Fatalf("InsertBlobRef failed: %v", err)
-	}
-	t.Cleanup(func() {
-		assert.NoError(t, driver.DeleteBlobRef(ctx, newBlob.Key))
-	})
+	setupTestBlobRef(ctx, t, driver, newBlob)
 
 	record, newCurrBlob, err := driver.PromoteBlobRefToCurrent(ctx, newBlob)
 	if assert.NoError(t, err) {
@@ -565,7 +562,7 @@ func TestDriver_BlobInsertShouldFailForNonexistentRecord(t *testing.T) {
 
 	insertedBlob, err := driver.InsertBlobRef(ctx, blob)
 	if err == nil {
-		t.Error("InsertBlob should fail for a non-existent record.")
+		t.Error("InsertBlobRef should fail for a non-existent record.")
 		assert.NoError(t, driver.DeleteBlobRef(ctx, blob.Key))
 	} else {
 		assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))

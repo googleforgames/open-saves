@@ -15,33 +15,14 @@
 package datastore
 
 import (
-	"errors"
+	"testing"
 
-	ds "cloud.google.com/go/datastore"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/stretchr/testify/assert"
 )
 
-var _ metadb.BlobRefCursor = new(blobRefCursor)
-
-type blobRefCursor struct {
-	iter *ds.Iterator
-}
-
-func newBlobRefIterator(i *ds.Iterator) *blobRefCursor {
-	return &blobRefCursor{iter: i}
-}
-
-func (i *blobRefCursor) Next() (*metadb.BlobRef, error) {
-	if i == nil {
-		return nil, errors.New("BlobRefIterator.Next was called on nil")
-	}
-	if i.iter == nil {
-		return nil, errors.New("Iterator is nil")
-	}
-	var blob metadb.BlobRef
-	_, err := i.iter.Next(&blob)
-	if err != nil {
-		return nil, err
-	}
-	return &blob, nil
+func TestCursor_NextOnNil(t *testing.T) {
+	var c blobRefCursor
+	b, err := c.Next()
+	assert.Nil(t, b)
+	assert.Error(t, err)
 }
