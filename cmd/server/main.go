@@ -22,31 +22,27 @@ import (
 	"strconv"
 
 	"github.com/googleforgames/open-saves/internal/app/server"
+	"github.com/googleforgames/open-saves/internal/pkg/cmd"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	defaultPort := getEnvVarUInt("OPEN_SAVES_PORT", 6000)
-	defaultCloud := getEnvVarString("OPEN_SAVES_CLOUD", "gcp")
-	defaultBucket := getEnvVarString("OPEN_SAVES_BUCKET", "")
-	defaultProject := getEnvVarString("OPEN_SAVES_PROJECT", "")
-	defaultCache := getEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
-	defaultLogLevel := getEnvVarString("LOG_LEVEL", "warn")
+	defaultPort := cmd.GetEnvVarUInt("OPEN_SAVES_PORT", 6000)
+	defaultCloud := cmd.GetEnvVarString("OPEN_SAVES_CLOUD", "gcp")
+	defaultBucket := cmd.GetEnvVarString("OPEN_SAVES_BUCKET", "")
+	defaultProject := cmd.GetEnvVarString("OPEN_SAVES_PROJECT", "")
+	defaultCache := cmd.GetEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
+	defaultLogLevel := cmd.GetEnvVarString("LOG_LEVEL", "info")
 
 	var (
-		port    = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
-		cloud   = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
-		bucket  = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
-		project = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
-		cache   = flag.String("cache", defaultCache, "The address of the cache store instance")
+		port     = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
+		cloud    = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
+		bucket   = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
+		project  = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
+		cache    = flag.String("cache", defaultCache, "The address of the cache store instance")
+		logLevel = flag.String("log", defaultLogLevel, "The level to log messages at")
 	)
 
-	ll, err := log.ParseLevel(defaultLogLevel)
-	if err != nil {
-		ll = log.DebugLevel
-	}
-	log.SetLevel(ll)
-	log.SetOutput(os.Stdout)
 	flag.Parse()
 	if *cloud == "" {
 		log.Fatal("missing -cloud argument for cloud provider")
@@ -60,6 +56,13 @@ func main() {
 	if *cache == "" {
 		log.Fatal("missing -cache argument for cache store")
 	}
+
+	ll, err := log.ParseLevel(*logLevel)
+	if err != nil {
+		ll = log.InfoLevel
+	}
+	log.SetLevel(ll)
+	log.Infoln("Log level is: %s", ll.String())
 
 	cfg := &server.Config{
 		Address: fmt.Sprintf(":%d", *port),
@@ -82,23 +85,4 @@ func main() {
 	if err := server.Run(ctx, "tcp", cfg); err != nil {
 		log.Fatalf("got error starting server: %v", err)
 	}
-}
-
-func getEnvVarString(name string, defValue string) string {
-	if value := os.Getenv(name); value != "" {
-		return value
-	}
-	return defValue
-}
-
-func getEnvVarUInt(name string, defValue uint64) uint64 {
-	if value := os.Getenv(name); value != "" {
-		uval, err := strconv.ParseUint(value, 10, 64)
-		if err != nil {
-			log.Warningf("failed to parse %s env variable, default to %v", name, defValue)
-			uval = defValue
-		}
-		return uval
-	}
-	return defValue
 }
