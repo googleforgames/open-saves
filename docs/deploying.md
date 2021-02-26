@@ -20,7 +20,7 @@ This page explains how to quickly deploy an Open Saves server to Cloud Run on Ma
 
 ## Before you begin
 
-You may want to create a new project for this quickstart, as we create a Datastore instance
+You may want to create a new Google Cloud project for this quickstart, as we create a Datastore instance
 and it can only be done once per project. This also allows you to easily delete
 the project after you are done with it.
 
@@ -33,6 +33,16 @@ install and configure the following:
     [Cloud SDK Quickstarts](https://cloud.google.com/sdk/docs/quickstarts).
 
 1. Create a new Google Cloud project using the [Google Cloud Console](https://console.cloud.google.com/) or the Google Cloud SDK. See [Creating and managing projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects) for additional information.
+
+1. Enable Google Cloud APIs needed for running Open Saves.
+
+```bash
+gcloud services enable  datastore.googleapis.com \
+                        redis.googleapis.com \
+                        run.googleapis.com \
+                        storage-component.googleapis.com\
+                        vpcaccess.googleapis.com
+```
 
 ## Setting up backend services on Google Cloud
 
@@ -89,7 +99,7 @@ set up a VPC connector.
 First, export your network name.
 
 ```bash
-export VPC_NETWORK="projects/$GCP_PROJECT/global/networks/default"
+export VPC_NETWORK="default"
 ```
 
 Ensure the previous value matches the output of the following command.
@@ -119,7 +129,7 @@ Verify that your connector is in the READY state before using it:
 gcloud compute networks vpc-access connectors describe $VPC_CONNECTOR --region $GCP_REGION
 ```
 
-The output should contain the line state: READY.
+The output should contain the line state: `READY`.
 
 ### Cloud Firestore in Datastore mode
 
@@ -137,8 +147,8 @@ database location.
 
 Cloud Storage is used to store large blobs that don't fit in Datastore.
 
-Create a simple bucket to hold all open saves blobs. This bucket has to be globally
-unique.
+Create a simple bucket to hold all Open Saves blobs. The bucket needs to have
+a globally unique bucket name.
 
 ```bash
 export BUCKET_PATH=gs://<your-unique-bucket-name>
@@ -147,7 +157,7 @@ gsutil mb $BUCKET_PATH
 
 ### Deploying
 
-Run the following commands to deploy the containerized application to Cloud Run:
+Run the following commands to deploy the containerized application to Cloud Run.
 This uses the beta version of the Cloud Run service because we are using the
 VPC connector and http2 features.
 
@@ -185,7 +195,8 @@ Make sure you have Go v1.14 or later installed.
 
 ```bash
 git clone https://github.com/googleforgames/open-saves
-go run examples/grpc-all/main.go -address=$ENDPOINT:443
+cd open-saves
+go run examples/grpc-client/main.go -address=$ENDPOINT:443
 ```
 
 If you succesfully ran the above client code, you should see some info logged to the command line.
@@ -207,15 +218,16 @@ kinds in the search bar at the top, specifically "Store", "Record", "Blob".
 
 ### Check Memorystore
 
-While you can't see individual keys directly, navigate to the [Memorystore dashboard](https://console.cloud.google.com/memorystore)
-Select the instance that you created, and then select the "Keys in database" graph.
+While you can't see individual keys directly, navigate to the [Memorystore dashboard](https://console.cloud.google.com/memorystore),
+select the instance that you created, and then select the "Keys in database" graph. You should
+see a few keys like in the screenshot below. It might take a few minutes before the graph is updated.
 
 ![memorystore](images/memorystore.png)
 
 ### Check Cloud Storage
 
-Lastly, navigate to the bucket you created in [the Console](https://console.cloud.google.com/storage). You should
-see one object created.
+Lastly, navigate to the bucket you created in [the Console](https://console.cloud.google.com/storage).
+You should see one object created.
 
 Alternatively, you can use `gsutil` to list the object via command line.
 
@@ -225,6 +237,6 @@ gsutil ls $BUCKET_PATH
 
 ## Next steps
 
-You have successfully deployed an Open Saves server on Cloud Run and saved and read data from it.
+You have successfully deployed an Open Saves server on Cloud Run, saved data to it, and then read that data back from it.
 
 The basic Open Saves server **does not have authentication / authorization**. We recommend following this guide on [Authenticating service-to-service](https://cloud.google.com/run/docs/authenticating/service-to-service) to add proper authentication before deploying to production.
