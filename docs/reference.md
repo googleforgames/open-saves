@@ -1,21 +1,18 @@
-# Reference documentation
-
-<!---
-To regenerate this documentation:
-$ protoc  --plugin=protoc-gen-doc=/Users/nickcook/go/bin/protoc-gen-doc \
-          --doc_opt=markdown,reference.md  --doc_out=docs api/*.proto
-See also: https://github.com/pseudomuto/protoc-gen-doc
--->
-
+# Reference
 <a name="top"></a>
 
 ## Table of Contents
 
-- [api/open-saves.proto](#api/open-saves.proto)
+- [api/open_saves.proto](../api/open_saves.proto)
+    - [BlobMetadata](#opensaves.BlobMetadata)
+    - [CreateBlobRequest](#opensaves.CreateBlobRequest)
     - [CreateRecordRequest](#opensaves.CreateRecordRequest)
     - [CreateStoreRequest](#opensaves.CreateStoreRequest)
+    - [DeleteBlobRequest](#opensaves.DeleteBlobRequest)
     - [DeleteRecordRequest](#opensaves.DeleteRecordRequest)
     - [DeleteStoreRequest](#opensaves.DeleteStoreRequest)
+    - [GetBlobRequest](#opensaves.GetBlobRequest)
+    - [GetBlobResponse](#opensaves.GetBlobResponse)
     - [GetRecordRequest](#opensaves.GetRecordRequest)
     - [GetStoreRequest](#opensaves.GetStoreRequest)
     - [Hint](#opensaves.Hint)
@@ -41,10 +38,47 @@ See also: https://github.com/pseudomuto/protoc-gen-doc
 
 
 
-<a name="api/open-saves.proto"></a>
+<a name="api/open_saves.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## api/open-saves.proto
+## api/open_saves.proto
+
+
+
+<a name="opensaves.BlobMetadata"></a>
+
+### BlobMetadata
+BlobMetadata contains necessary metadata
+when creating (uploading) a new blob object.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| store_key | [string](#string) |  | store_key is the key of the store that the record belongs to. |
+| record_key | [string](#string) |  | record_key is the key of the record the new blob object belongs to. |
+| size | [int64](#int64) |  | size is the byte length of the object. |
+| hint | [Hint](#opensaves.Hint) |  | Performance hints (write only). |
+
+
+
+
+
+
+<a name="opensaves.CreateBlobRequest"></a>
+
+### CreateBlobRequest
+CreateBlobRequest is used for CreateBlob, a client-streaming method.
+The first message should contain metadata, and the subsequent messages
+should contain content.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| metadata | [BlobMetadata](#opensaves.BlobMetadata) |  | metadata is the metadata used to initialize the blob object with. |
+| content | [bytes](#bytes) |  | content is the binary content of the blob object. |
+
+
+
 
 
 
@@ -80,6 +114,23 @@ See also: https://github.com/pseudomuto/protoc-gen-doc
 
 
 
+<a name="opensaves.DeleteBlobRequest"></a>
+
+### DeleteBlobRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| store_key | [string](#string) |  | The key of the store that the record belongs to. |
+| record_key | [string](#string) |  | The key of the record to delete a blob from. |
+| hint | [Hint](#opensaves.Hint) |  | Performance hints. |
+
+
+
+
+
+
 <a name="opensaves.DeleteRecordRequest"></a>
 
 ### DeleteRecordRequest
@@ -105,6 +156,42 @@ See also: https://github.com/pseudomuto/protoc-gen-doc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  | The key of the store to delete. |
+
+
+
+
+
+
+<a name="opensaves.GetBlobRequest"></a>
+
+### GetBlobRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| store_key | [string](#string) |  | The key of the store that the record belongs to. |
+| record_key | [string](#string) |  | The key of the record to get. |
+| hint | [Hint](#opensaves.Hint) |  | Performance hints. |
+
+
+
+
+
+
+<a name="opensaves.GetBlobResponse"></a>
+
+### GetBlobResponse
+GetBlobResponse is a server-streaming response to return metadata and
+content of a blob object. The first message contains blob_ref and the
+subsequent messages contain the rest of the binary blob in the content
+field.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| metadata | [BlobMetadata](#opensaves.BlobMetadata) |  | metadata is the metadata used to initialize the blob object with. |
+| content | [bytes](#bytes) |  | content is the binary content of the blob object. |
 
 
 
@@ -306,8 +393,7 @@ Record represents each entity in the Open Saves database.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  | key is the user defined primary key. It is recommended to use uniformally distributed key (e.g. UUID) rather than monotonically increasing values for performance reasons. See https://cloud.google.com/datastore/docs/best-practices#keys for details. |
-| blob | [bytes](#bytes) |  | Arbitrary blob data associated to the record This is opaque to the server, and can contain anything. TODO(#69): Add a way to handle larger blobs that don&#39;t fit in a message |
-| blob_size | [int64](#int64) |  | Byte length of the blob |
+| blob_size | [int64](#int64) |  | Byte length of the blob (read-only) |
 | properties | [Record.PropertiesEntry](#opensaves.Record.PropertiesEntry) | repeated | Typed values that are indexed and searchable. The number of properties allowed in a record is backend dependent. |
 | owner_id | [string](#string) |  | owner_id is the owner of the record, represented as an external user ID. Open Saves doesn&#39;t maintain list of valid users and it is the responsibility of the client to keep track of user IDs. |
 | tags | [string](#string) | repeated | tags are queryable strings to categorize records Examples: &#34;player:1&#34;, &#34;system&#34;, &#34;inventory:xxx&#34; |
@@ -424,6 +510,9 @@ TODO(#69): Add streaming endpoints to transfer large blobs.
 | QueryRecords | [QueryRecordsRequest](#opensaves.QueryRecordsRequest) | [QueryRecordsResponse](#opensaves.QueryRecordsResponse) | QueryRecords performs a query and returns matching records. |
 | UpdateRecord | [UpdateRecordRequest](#opensaves.UpdateRecordRequest) | [Record](#opensaves.Record) | UpdateRecord updates an existing record. This returns an error and does not create a new record if the key doesn&#39;t exist. |
 | DeleteRecord | [DeleteRecordRequest](#opensaves.DeleteRecordRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | DeleteRecord deletes a single record with the specified key. |
+| CreateBlob | [CreateBlobRequest](#opensaves.CreateBlobRequest) stream | [BlobMetadata](#opensaves.BlobMetadata) | CreateBlob adds a new blob to a record. |
+| GetBlob | [GetBlobRequest](#opensaves.GetBlobRequest) | [GetBlobResponse](#opensaves.GetBlobResponse) stream | GetBlob retrieves a blob object in a record. |
+| DeleteBlob | [DeleteBlobRequest](#opensaves.DeleteBlobRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | DeleteBlob removes an blob object from a record. |
 | Ping | [PingRequest](#opensaves.PingRequest) | [PingResponse](#opensaves.PingResponse) | Ping returns the same string provided by the client. The string is optional and the server returns an empty string if omitted. |
 
  
