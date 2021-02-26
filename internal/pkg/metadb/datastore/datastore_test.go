@@ -539,7 +539,7 @@ func TestDriver_UpdateBlobRef(t *testing.T) {
 		t.Errorf("UpdateBlobRef failed: %v", err)
 	} else {
 		if assert.NotNil(t, updatedBlob) {
-			assert.Equal(t, blob, updatedBlob)
+			metadbtest.AssertEqualBlobRef(t, blob, updatedBlob)
 		}
 	}
 
@@ -548,7 +548,7 @@ func TestDriver_UpdateBlobRef(t *testing.T) {
 		t.Errorf("GetBlobRef failed: %v", err)
 	} else {
 		if assert.NotNil(t, receivedBlob) {
-			assert.Equal(t, blob, receivedBlob)
+			metadbtest.AssertEqualBlobRef(t, blob, receivedBlob)
 		}
 	}
 }
