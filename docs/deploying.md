@@ -193,6 +193,15 @@ git clone https://github.com/googleforgames/open-saves
 go run examples/grpc-all/main.go -address=$ENDPOINT:443
 ```
 
+If you succesfully ran the above client code, you should see some info logged to the command line.
+The client code does the following:
+
+1. Creates a store to hold all of our data.
+2. Creates a record inside the store.
+3. Accesses the record via a `GetRecord` request
+4. Creates another record to store our blob.
+5. Uploads a blob via the stream in `CreateBlob`.
+
 ## Check to see everything worked
 
 ### Check Datastore
@@ -206,7 +215,7 @@ kinds in the search bar at the top, specifically "Store", "Record", "Blob".
 While you can't see individual keys directly, navigate to the [Memorystore dashboard](https://console.cloud.google.com/memorystore)
 Select the instance that you created, and then select the "Keys in database" graph.
 
-![memorystore][images/memorystore.png]
+![memorystore](images/memorystore.png)
 
 ### Check Cloud Storage
 
