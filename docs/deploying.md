@@ -1,8 +1,3 @@
----
-layout: default
----
-<!-- TOC depthFrom:2 depthTo:6 orderedList:false updateOnSave:true withLinks:true -->
-
 # Deployment Guide
 
 - [Deployment Guide](#deployment-guide)
