@@ -48,7 +48,7 @@ cd open-saves
 
 _Typically for contributing you'll want to
 [create a fork](https://help.github.com/en/articles/fork-a-repo) and use that
-but for purpose of this guide we'll be using the upstream/master._
+but for purpose of this guide we'll be using the upstream/main._
 
 ## Building
 
@@ -173,7 +173,7 @@ $ gcloud builds submit .
 in the top directory, and make sure the tests still pass.
 
 After verifying, you can revert the change in cloudbuild.Dockerfile, merge the
-changes to the master branch on GitHub, and tag and push the new image as latest
+changes to the main branch on GitHub, and tag and push the new image as latest
 by running
 
 ```
