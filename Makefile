@@ -17,7 +17,7 @@ API_DIR = api
 PROTOC = protoc
 
 SERVER_BIN = ${BIN_DIR}/server
-OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.go
+OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.go ${API_DIR}/open_saves_grpc.pb.go
 ALL_TARGETS = ${SERVER_BIN} ${OPENSAVES_GO_PROTOS} internal/pkg/metadb/mock/mock_metadb.go
 
 .PHONY: all clean test server protos swagger mock FORCE
@@ -42,10 +42,10 @@ mock: internal/pkg/metadb/mock/mock_metadb.go
 internal/pkg/metadb/mock/mock_metadb.go: internal/pkg/metadb/metadb.go
 	mockgen -source "$<" -destination "$@"
 
-${API_DIR}/open_saves.pb.go: ${API_DIR}/open_saves.proto
+${OPENSAVES_GO_PROTOS}: ${API_DIR}/open_saves.proto
 	$(PROTOC) -I. \
 		--go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
-		$<
+  		$<
 
 FORCE:
