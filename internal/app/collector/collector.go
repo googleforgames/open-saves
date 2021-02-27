@@ -98,7 +98,7 @@ func (c *Collector) run(ctx context.Context) {
 }
 
 func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status metadb.BlobRefStatus, olderThan time.Time) error {
-	log.Info("Garbage collecting BlobRef objects with status = %v, and older than %v", status, olderThan)
+	log.Infof("Garbage collecting BlobRef objects with status = %v, and older than %v", status, olderThan)
 	cursor, err := c.metaDB.ListBlobRefsByStatus(ctx, status, olderThan)
 	if err != nil {
 		log.Fatalf("ListBlobRefsByStatus returned error: %v", err)
