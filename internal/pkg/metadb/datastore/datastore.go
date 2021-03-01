@@ -23,6 +23,7 @@ import (
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -256,8 +257,29 @@ func (d *Driver) GetRecord(ctx context.Context, storeKey, key string) (*m.Record
 // It doesn't return error even if the key is not found in the database.
 func (d *Driver) DeleteRecord(ctx context.Context, storeKey, key string) error {
 	rkey := d.createRecordKey(storeKey, key)
-	// TODO: mark all blobs for deletion?
-	return datastoreErrToGRPCStatus(d.client.Delete(ctx, rkey))
+	_, err := d.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		record := new(m.Record)
+		if err := tx.Get(rkey, record); err != nil {
+			if err == ds.ErrNoSuchEntity {
+				// Exit the transaction as DeleteRecord should ignore a not found error.
+				return nil
+			}
+			return err
+		}
+		if record.ExternalBlob != uuid.Nil {
+			blob, err := d.getBlobRef(ctx, tx, record.ExternalBlob)
+			if err == nil {
+				_, err = d.markBlobRefForDeletion(ctx, tx, storeKey, record, blob, uuid.Nil)
+				if err != nil {
+					return err
+				}
+			} else if grpc.Code(err) != codes.NotFound {
+				return err
+			}
+		}
+		return d.mutateSingleInTransaction(tx, ds.NewDelete(rkey))
+	})
+	return datastoreErrToGRPCStatus(err)
 }
 
 // TimestampPrecision returns the precision of timestamps stored in
