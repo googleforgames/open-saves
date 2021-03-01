@@ -62,7 +62,7 @@ func main() {
 		ll = log.InfoLevel
 	}
 	log.SetLevel(ll)
-	log.Infoln("Log level is: %s", ll.String())
+	log.Infof("Log level is: %s", ll.String())
 
 	cfg := &server.Config{
 		Address: fmt.Sprintf(":%d", *port),
