@@ -105,7 +105,6 @@ tmp/
 .terraform*
 *.tfstate.backup
 
-
 # Credential Files
 creds.json
 
