@@ -725,3 +725,81 @@ func TestDriver_ListBlobsByStatus(t *testing.T) {
 		assert.Nil(t, b)
 	}
 }
+
+func TestDriver_DeleteRecordWithExternalBlob(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+
+	storeKey := newStoreKey()
+	store := &m.Store{
+		Key:  storeKey,
+		Name: t.Name(),
+	}
+
+	recordKey := newRecordKey()
+	record := &m.Record{
+		Key:        recordKey,
+		Tags:       []string{t.Name()},
+		Properties: make(m.PropertyMap),
+	}
+	setupTestStoreRecord(ctx, t, driver, store, record)
+
+	blob := m.NewBlobRef(0, storeKey, recordKey)
+	setupTestBlobRef(ctx, t, driver, blob)
+
+	record, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
+	if err != nil {
+		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
+	}
+
+	if err := driver.DeleteRecord(ctx, storeKey, recordKey); err != nil {
+		t.Errorf("DeleteRecord failed: %v", err)
+	}
+
+	actual, err := driver.GetBlobRef(ctx, blob.Key)
+	assert.NoError(t, err, "GetBlobRef should not return error")
+	if assert.NotNil(t, actual) {
+		assert.Equal(t, m.BlobRefStatusPendingDeletion, actual.Status)
+	}
+}
+
+// This case tests if DeleteRecord deletes a record anyway when
+// the associated BlobRef does not exist and the database is inconsistent.
+func TestDriver_DeleteRecordWithNonExistentBlobRef(t *testing.T) {
+	ctx := context.Background()
+	driver := newDriver(ctx, t)
+
+	storeKey := newStoreKey()
+	store := &m.Store{
+		Key:  storeKey,
+		Name: t.Name(),
+	}
+
+	recordKey := newRecordKey()
+	record := &m.Record{
+		Key:          recordKey,
+		ExternalBlob: uuid.New(),
+		Tags:         []string{t.Name()},
+		Properties:   make(m.PropertyMap),
+	}
+
+	setupTestStoreRecord(ctx, t, driver, store, record)
+
+	actualBlob, err := driver.GetBlobRef(ctx, record.ExternalBlob)
+	assert.Nil(t, actualBlob)
+	if assert.Error(t, err, "GetBlobRef should return error when BlobRef doesn't exist.") {
+		assert.Equal(t, codes.NotFound, grpc.Code(err),
+			"GetBlobRef should return NotFound when BlobRef doesn't exist.")
+	}
+
+	assert.NotEqual(t, uuid.Nil, record.ExternalBlob)
+	assert.NoError(t, driver.DeleteRecord(ctx, storeKey, recordKey),
+		"DeleteRecord should succeed even if ExternalBlob doesn't exist.")
+
+	actualRecord, err := driver.GetRecord(ctx, storeKey, recordKey)
+	assert.Nil(t, actualRecord)
+	if assert.Error(t, err, "GetRecord should return error after DeleteRecord") {
+		assert.Equal(t, codes.NotFound, grpc.Code(err),
+			"GetRecord should return NotFound after DeleteRecord")
+	}
+}
