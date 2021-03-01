@@ -44,6 +44,9 @@ type Collector struct {
 }
 
 func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
+	log.Infof("Creating a new Open Saves garbage collector: cloud = %v, project = %v, bucket = %v, cache address = %v",
+		cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
+
 	switch cfg.Cloud {
 	case "gcp":
 		log.Infoln("Starting Open Saves garbage collector on GCP")
@@ -95,6 +98,7 @@ func (c *Collector) run(ctx context.Context) {
 }
 
 func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status metadb.BlobRefStatus, olderThan time.Time) error {
+	log.Infof("Garbage collecting BlobRef objects with status = %v, and older than %v", status, olderThan)
 	cursor, err := c.metaDB.ListBlobRefsByStatus(ctx, status, olderThan)
 	if err != nil {
 		log.Fatalf("ListBlobRefsByStatus returned error: %v", err)
