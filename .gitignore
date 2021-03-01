@@ -102,8 +102,9 @@ install/yaml/
 tmp/
 
 # Terraform context
-.terraform
+.terraform*
 *.tfstate.backup
+
 
 # Credential Files
 creds.json
