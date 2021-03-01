@@ -36,6 +36,8 @@ type Config struct {
 
 // Run starts the Open Saves gRPC service.
 func Run(ctx context.Context, network string, cfg *Config) error {
+	log.Infof("starting server on %s %s", network, cfg.Address)
+
 	lis, err := net.Listen(network, cfg.Address)
 	if err != nil {
 		return err
@@ -54,6 +56,5 @@ func Run(ctx context.Context, network string, cfg *Config) error {
 	pb.RegisterOpenSavesServer(s, server)
 	reflection.Register(s)
 
-	log.Infof("starting server on %s %s", network, cfg.Address)
 	return s.Serve(lis)
 }
