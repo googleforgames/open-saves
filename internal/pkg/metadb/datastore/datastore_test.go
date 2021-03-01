@@ -34,6 +34,7 @@ import (
 const testTimestampThreshold = 30 * time.Second
 
 func newDriver(ctx context.Context, t *testing.T) *Driver {
+	t.Helper()
 	driver, err := NewDriver(ctx, "triton-for-games-dev")
 	if err != nil {
 		t.Fatalf("Initializing Datastore driver: %v", err)
@@ -72,13 +73,13 @@ func cloneRecord(r *m.Record) *m.Record {
 // cleanup functions to delete these test store and record.
 // Passing a nil to record will skip the record insertion.
 func setupTestStoreRecord(ctx context.Context, t *testing.T, driver *Driver, store *m.Store, record *m.Record) (*m.Store, *m.Record) {
+	t.Helper()
 	newStore, err := driver.CreateStore(ctx, store)
 	if err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
 	t.Cleanup(func() {
 		driver.DeleteStore(ctx, newStore.Key)
-		assert.NoError(t, driver.DeleteStore(ctx, newStore.Key))
 	})
 	metadbtest.AssertEqualStore(t, store, newStore, "CreateStore should return the created store.")
 	var newRecord *m.Record
@@ -88,7 +89,7 @@ func setupTestStoreRecord(ctx context.Context, t *testing.T, driver *Driver, sto
 			t.Fatalf("Could not create a new record: %v", err)
 		}
 		t.Cleanup(func() {
-			assert.NoError(t, driver.DeleteRecord(ctx, newStore.Key, newRecord.Key))
+			driver.DeleteRecord(ctx, newStore.Key, newRecord.Key)
 		})
 		metadbtest.AssertEqualRecord(t, record, newRecord, "GetRecord should return the exact same record.")
 	}
@@ -96,6 +97,7 @@ func setupTestStoreRecord(ctx context.Context, t *testing.T, driver *Driver, sto
 }
 
 func setupTestBlobRef(ctx context.Context, t *testing.T, driver *Driver, blob *m.BlobRef) *m.BlobRef {
+	t.Helper()
 	newBlob, err := driver.InsertBlobRef(ctx, blob)
 	if err != nil {
 		t.Fatalf("InsertBlobRef failed: %v", err)
@@ -537,7 +539,7 @@ func TestDriver_UpdateBlobRef(t *testing.T) {
 		t.Errorf("UpdateBlobRef failed: %v", err)
 	} else {
 		if assert.NotNil(t, updatedBlob) {
-			assert.Equal(t, blob, updatedBlob)
+			metadbtest.AssertEqualBlobRef(t, blob, updatedBlob)
 		}
 	}
 
@@ -546,7 +548,7 @@ func TestDriver_UpdateBlobRef(t *testing.T) {
 		t.Errorf("GetBlobRef failed: %v", err)
 	} else {
 		if assert.NotNil(t, receivedBlob) {
-			assert.Equal(t, blob, receivedBlob)
+			metadbtest.AssertEqualBlobRef(t, blob, receivedBlob)
 		}
 	}
 }
