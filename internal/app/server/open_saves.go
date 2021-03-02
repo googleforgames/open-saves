@@ -53,6 +53,9 @@ var _ pb.OpenSavesServer = new(openSavesServer)
 
 // newOpenSavesServer creates a new instance of the Open Saves server.
 func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (*openSavesServer, error) {
+	log.Infof("Creating a new Open Saves server instance: cloud = %v, project = %v, bucket = %v, cache address = %v",
+		cloud, project, bucket, cacheAddr)
+
 	switch cloud {
 	case "gcp":
 		log.Infoln("Instantiating Open Saves server on GCP")
