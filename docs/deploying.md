@@ -61,6 +61,7 @@ First, start by exporting the following environment variables:
 ```bash
 export GCP_PROJECT=$(gcloud config get-value project)
 export GCP_REGION=us-central1
+export GCP_ZONE=us-central1-c
 export REDIS_ID=open-saves-redis
 export REDIS_PORT="6379"
 export VPC_CONNECTOR=open-saves-vpc
@@ -233,6 +234,69 @@ Alternatively, you can use `gsutil` to list the object via command line.
 
 ```bash
 gsutil ls $BUCKET_PATH
+```
+
+## Set up the garbage collector
+
+Open Saves doesn't delete blob objects immediately when the DeleteBlob or DeleteRecord methods are invoked. Instead, it marks associated objects for future deletion.
+You need to run the garbage collector program periodically to remove unused records and objects in Datastore and Cloud Storage.
+
+First, you need to create a virtual machine on [Compute Engine](https://cloud.google.com/compute).
+We use the `us-central1-c` zone in this guide, however, you may choose to use another zone. We recommend using
+one of the zones in the region that you have the Datastore database. Please refer to [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones)
+for more information.
+
+Run the following commands to create a new virtual machine using the same service account you created earlier in this guide.
+
+```bash
+export GC_VM_NAME=collector-vm
+
+gcloud compute instances create $GC_VM_NAME \
+    --service-account=$OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com 
+    --scopes=https://www.googleapis.com/auth/cloud-platform --machine-type=e2-micro \
+    --image-family=cos-85-lts --image-project=cos-cloud --zone=$GCP_ZONE
+```
+
+Wait for the virtual machine to start. It may take a few minutes.
+
+Next, log in to the virtual machine by running:
+
+```bash
+gcloud compute ssh $GC_VM_NAME --zone=$GCP_ZONE
+```
+
+You can run the garbage collector with the following command after logging into the machine:
+
+```bash
+docker run gcr.io/triton-for-games-dev/open-saves-collector:testing
+```
+
+You may want to automate the execution. In this guide, we will use systemd to run the
+garbage collector once an hour.
+
+First, copy [open-saves-gc.service](../deploy/systemd/open-saves-gc.service) and
+[open-saves-gc.timer](../deploy/systemd/open-saves-gc.timer) to the `/etc/systemd/system`
+directory of the virtual machine.
+
+``` bash
+curl https://raw.githubusercontent.com/googleforgames/open-saves/main/deploy/systemd/open-saves-gc.service | sudo tee /etc/systemd/system/open-saves-gc.service
+curl https://raw.githubusercontent.com/googleforgames/open-saves/main/deploy/systemd/open-saves-gc.timer | sudo tee /etc/systemd/system/open-saves-gc.timer
+```
+
+Next, enable the units with the `systemctl` command.
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable open-saves-gc.service open-saves-gc.timer
+sudo systemctl start open-saves-gc
+```
+
+Now the garbage collector runs automatically every hour as long as the virtual machine is running.
+You can check the current status by running `systemctl status`, for example:
+
+```bash
+sudo systemctl status open-saves-gc.service
+sudo systemctl status open-saves-gc.timer
 ```
 
 ## Next steps
