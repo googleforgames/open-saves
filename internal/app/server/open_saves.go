@@ -381,7 +381,7 @@ func (s *openSavesServer) CreateBlob(stream pb.OpenSaves_CreateBlobServer) error
 		log.Error("CreateBlob: first message was not metadata")
 		return status.Error(codes.InvalidArgument, "The first message must be metadata.")
 	}
-	log.Debugf("Got metadata from stream: store(%s), record(%s), blob size(%s)\n",
+	log.Debugf("Got metadata from stream: store(%s), record(%s), blob size(%d)\n",
 		meta.GetStoreKey(), meta.GetRecordKey(), meta.GetSize())
 
 	// TODO(yuryu): Make the threshold configurable
