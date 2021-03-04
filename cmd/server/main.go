@@ -21,10 +21,9 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/googleforgames/open-saves/internal/app/server"
 	"github.com/googleforgames/open-saves/internal/pkg/cmd"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -33,13 +32,15 @@ func main() {
 	defaultBucket := cmd.GetEnvVarString("OPEN_SAVES_BUCKET", "")
 	defaultProject := cmd.GetEnvVarString("OPEN_SAVES_PROJECT", "")
 	defaultCache := cmd.GetEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
+	defaultLogLevel := cmd.GetEnvVarString("LOG_LEVEL", "info")
 
 	var (
-		port    = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
-		cloud   = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
-		bucket  = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
-		project = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
-		cache   = flag.String("cache", defaultCache, "The address of the cache store instance")
+		port     = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
+		cloud    = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
+		bucket   = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
+		project  = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
+		cache    = flag.String("cache", defaultCache, "The address of the cache store instance")
+		logLevel = flag.String("log", defaultLogLevel, "The level to log messages at")
 	)
 
 	flag.Parse()
@@ -55,6 +56,13 @@ func main() {
 	if *cache == "" {
 		log.Fatal("missing -cache argument for cache store")
 	}
+
+	ll, err := log.ParseLevel(*logLevel)
+	if err != nil {
+		ll = log.InfoLevel
+	}
+	log.SetLevel(ll)
+	log.Infof("Log level is: %s", ll.String())
 
 	cfg := &server.Config{
 		Address: fmt.Sprintf(":%d", *port),
