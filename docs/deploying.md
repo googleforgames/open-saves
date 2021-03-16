@@ -7,7 +7,7 @@
     - [Set up Serverless VPC Access](#set-up-serverless-vpc-access)
     - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
     - [Cloud Storage](#cloud-storage)
-    - [Deploying to Cloud Run](#deploying) (recommended)
+    - [Deploying to Cloud Run](#deploying-to-cloud-run-recommended) (recommended)
     - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
   - [Check to see everything worked](#check-to-see-everything-worked)
     - [Check Datastore](#check-datastore)
