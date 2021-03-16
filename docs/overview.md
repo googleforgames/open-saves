@@ -32,5 +32,5 @@ The following data flow diagram is for a sample implementation of Open Saves usi
 
 ## Get started
 
-To get started with deploying Open Saves, check out the [deployment guide](deployment.md).
+To get started with deploying Open Saves, check out the [deployment guide](deploying.md).
 
