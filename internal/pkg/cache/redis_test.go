@@ -33,6 +33,8 @@ func TestRedis_All(t *testing.T) {
 	// invocation.
 	r := NewRedis("localhost:6379")
 
+	assert.NoError(t, r.FlushAll(ctx))
+
 	keys, err := r.ListKeys(ctx)
 	assert.NoError(t, err)
 	assert.Empty(t, keys)
