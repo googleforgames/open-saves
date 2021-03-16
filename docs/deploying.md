@@ -7,7 +7,8 @@
     - [Set up Serverless VPC Access](#set-up-serverless-vpc-access)
     - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
     - [Cloud Storage](#cloud-storage)
-    - [Deploying](#deploying)
+    - [Deploying to Cloud Run](#deploying) (recommended)
+    - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
   - [Check to see everything worked](#check-to-see-everything-worked)
     - [Check Datastore](#check-datastore)
     - [Check Memorystore](#check-memorystore)
@@ -156,7 +157,7 @@ export BUCKET_PATH=gs://<your-unique-bucket-name>
 gsutil mb $BUCKET_PATH
 ```
 
-### Deploying
+### Deploying to Cloud Run (recommended)
 
 Run the following commands to deploy the containerized application to Cloud Run.
 This uses the beta version of the Cloud Run service because we are using the
@@ -208,6 +209,10 @@ The client code does the following:
 3. Accesses the record via a `GetRecord` request
 4. Creates another record to store our blob.
 5. Uploads a blob via the stream in `CreateBlob`.
+
+### Deploying to Google Kubernetes Engine (GKE)
+
+See [Deploying to Google Kubernetes Engine](deploying-to-gke.md) for this procedure.
 
 ## Check to see everything worked
 
