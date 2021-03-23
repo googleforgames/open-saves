@@ -72,7 +72,7 @@ In order to run the test, use
 make test
 ```
 
-### Running simple gRPC server/client
+### Running a simple gRPC server/client
 
 To stand up the gRPC server, there's a lightweight wrapper around the server code
 that lives in `cmd/server/main.go`. To start this, run
