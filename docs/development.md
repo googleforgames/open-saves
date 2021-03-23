@@ -29,7 +29,7 @@ Optional Software
 
 - [Google Cloud Platform](cloud.google.com)
 - [VirtualBox](https://www.virtualbox.org/wiki/Downloads) or
-  Hyperkit[https://minikube.sigs.k8s.io/docs/reference/drivers/hyperkit/] for
+  [Hyperkit](https://minikube.sigs.k8s.io/docs/reference/drivers/hyperkit/) for
   [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
 
 _It's recommended that you install Go using their instructions because package
