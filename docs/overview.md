@@ -1,4 +1,6 @@
-# Overview of Open Saves
+<img src="images/Full-Color-Logo.svg" width="50%" />
+
+# Overview
 
 Open Saves is a platform-agnostic cloud storage and save solution that supports the following:
 
