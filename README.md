@@ -1,4 +1,4 @@
-# Open Saves
+<img src="docs/images/Full-Color-Logo_Vertical.svg" width="400" />
 
 Open Saves is an open-source, purpose-built single interface for multiple storage backends on Google Cloud. 
 
