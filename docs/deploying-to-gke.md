@@ -1,5 +1,11 @@
 # Deploying to Google Kubernetes Engine (GKE)
 
+## Prerequisites
+
+Follow the steps in the [Deployment Guide](deploying.md) before running the commands on this page.
+
+## Steps
+
 This step requires `kubectl` to be installed.
 
 Similar to Cloud Run, GKE depends on an image that we can build and push to GCR.
