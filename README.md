@@ -1,6 +1,6 @@
 # Open Saves
 
-![Open Saves]("https://github.com/googleforgames/open-saves/blob/main/docs/images/Full-Color-Logo_Vertical.svg")
+<img src="docs/images/Full-Color-Logo_Vertical.svg" width="400" />
 
 [![GoPkg Widget](https://pkg.go.dev/badge/github.com/googleforgames/open-saves)](https://pkg.go.dev/github.com/googleforgames/open-saves)
 [![Go Report Card](https://goreportcard.com/badge/github.com/googleforgames/open-saves)](https://goreportcard.com/report/github.com/googleforgames/open-saves)
