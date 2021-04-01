@@ -1,5 +1,11 @@
 # Deploying to Google Kubernetes Engine (GKE)
 
+## Prerequisites
+
+Follow the steps in the [Deployment Guide](deploying.md) before running the commands on this page.
+
+## Steps
+
 This step requires `kubectl` to be installed.
 
 Similar to Cloud Run, GKE depends on an image that we can build and push to GCR.
@@ -100,7 +106,7 @@ kubectl apply -f deployment.yaml
 kubectl get deployment -n $OPEN_SAVES_NAMESPACE
 ```
 
-Deploy the load balancer service and wait for the external IP to become available
+Deploy the load balancer service and wait for the external IP to become available.
 
 ```bash
 kubectl apply -f service.yaml
@@ -115,7 +121,7 @@ export ENDPOINT="12.34.56.78:6000" # your endpoint from previous step
 go run examples/grpc-client/main.go -address=$ENDPOINT -insecure=true
 ```
 
-Alternatively, if you have `grpc_cli` installed, test you can see the functions using:
+Alternatively, if you have `grpc_cli` installed, test you can see the functions using the following:
 
 ```bash
 $ grpc_cli ls $ENDPOINT opensaves.OpenSaves
