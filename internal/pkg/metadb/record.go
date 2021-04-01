@@ -224,7 +224,7 @@ func (m *PropertyMap) Save() ([]datastore.Property, error) {
 		default:
 			return nil,
 				fmt.Errorf(
-					"Error storeing property, unkown type: name=[%s], type=[%s]",
+					"error storing property, unknown type: name=[%s], type=[%s]",
 					name, value.Type.String())
 		}
 	}
