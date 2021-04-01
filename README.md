@@ -1,5 +1,10 @@
 <img src="docs/images/Full-Color-Logo_Vertical.svg" width="400" />
 
+[![GoPkg Widget](https://pkg.go.dev/badge/github.com/googleforgames/open-saves)](https://pkg.go.dev/github.com/googleforgames/open-saves)
+[![Go Report Card](https://goreportcard.com/badge/github.com/googleforgames/open-saves)](https://goreportcard.com/report/github.com/googleforgames/open-saves)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/googleforgames/open-saves/blob/master/LICENSE)
+[![GitHub release](https://img.shields.io/github/release-pre/googleforgames/open-saves.svg)](https://github.com/googleforgames/open-saves/releases)
+
 Open Saves is an open-source, purpose-built single interface for multiple storage backends on Google Cloud. 
 
 With Open Saves, game developers can run a cloud-native storage system that is:
