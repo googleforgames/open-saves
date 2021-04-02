@@ -56,14 +56,35 @@ service OpenSaves {
   // CreateBlob adds a new blob to a record.
   rpc CreateBlob(stream CreateBlobRequest) returns (BlobMetadata) {}
 
+  // Will start a new chunked upload session
+  rpc CreateChunkedBlob(CreateChunkedBlobRequest)
+      returns (CreateChunkedBlobResponse) {}
+
+  // Upload each chunk
+  rpc UploadChunk(stream UploadChunkRequest)
+      returns (stream UploadChunkResponse) {}
+
+  // Finish and commit a chunked blob upload session
+  rpc CommitChunkedUpload(CommitChunkedUploadRequest) returns (BlobMetadata) {}
+
+  // Abort a chunked blob upload session
+  rpc AbortChunkedUpload(AbortChunkedUploadRequest)
+      returns (google.protobuf.Empty) {}
+
   // GetBlob retrieves a blob object in a record.
   rpc GetBlob(GetBlobRequest) returns (stream GetBlobResponse) {}
+
+  // TODO(yuryu): separate chunked download because you might want to
+  // download everything at once with the other api?
+  // related: should this be bi-directional stream?
+  rpc GetBlobChunk(GetBlobChunkRequest) returns (stream GetBlobChunkResponse) {}
 
   // DeleteBlob removes an blob object from a record.
   rpc DeleteBlob(DeleteBlobRequest) returns (google.protobuf.Empty) {}
 
   // Ping returns the same string provided by the client.
-  // The string is optional and the server returns an empty string if omitted.
+  // The string is optional and the server returns an empty string if
+  // omitted.
   rpc Ping(PingRequest) returns (PingResponse) {}
 }
 
@@ -118,6 +139,12 @@ message Record {
   // on the Open Saves server. It is managed by the server and updated every
   // time the Record is updated.
   google.protobuf.Timestamp updated_at = 8;
+
+  // chunked is set true if the attached blob is chunked, otherwise false.
+  bool chunked = 9;
+
+  // Number of chunks.
+  int64 number_of_chunks = 10;
 }
 
 // Performance optimization hints for the server.
@@ -342,6 +369,49 @@ message CreateBlobRequest {
   }
 }
 
+message CreateChunkedBlobRequest {
+  // store_key is the key of the store that the record belongs to.
+  string store_key = 1;
+
+  // record_key is the key of the record the new blob object belongs to.
+  string record_key = 2;
+
+  // Size of each chunk
+  int64 chunk_size = 3;
+}
+
+message CreateChunkedBlobResponse {
+  string session_id = 1;
+}
+
+message UploadChunkRequest {
+  oneof request {
+    ChunkMetadata metadata = 1;
+    bytes content = 2;
+  }
+}
+
+message UploadChunkResponse {
+  // TODO(yuryu): what do we need?
+}
+
+message ChunkMetadata {
+  bytes session_id = 1;
+  int64 number = 2;
+  int64 size = 3;
+  // Performance hints (write only).
+  Hint hint = 4;
+  // TODO(yuryu): Add checksum
+}
+
+message CommitChunkedUploadRequest {
+  string session_id = 1;
+}
+
+message AbortChunkedUploadRequest {
+  string session_id = 1;
+}
+
 message GetBlobRequest {
   // The key of the store that the record belongs to.
   string store_key = 1;
@@ -351,6 +421,26 @@ message GetBlobRequest {
 
   // Performance hints.
   Hint hint = 3;
+}
+
+message GetBlobChunkRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to get.
+  string record_key = 2;
+
+  int64 chunk_number = 3;
+
+  // Performance hints.
+  Hint hint = 4;
+}
+
+message GetBlobChunkResponse {
+  oneof response {
+    ChunkMetadata metadata = 1;
+    bytes content = 2;
+  }
 }
 
 // GetBlobResponse is a server-streaming response to return metadata and
