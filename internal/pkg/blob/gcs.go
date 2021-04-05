@@ -24,6 +24,7 @@ import (
 	_ "gocloud.dev/blob/gcsblob"
 )
 
+// BlobGCP is the GCP implementation of blob.BlobStore using Cloud Storage.
 type BlobGCP struct {
 	bucket *blob.Bucket
 }
@@ -31,6 +32,7 @@ type BlobGCP struct {
 // Assert BlobGCP implements the Blob interface
 var _ BlobStore = new(BlobGCP)
 
+// NewBlobGCP returns a new BlobGCP instance.
 func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
 	ctx := context.Background()
 	// blob.OpenBucket creates a *blob.Bucket from url.
@@ -46,6 +48,7 @@ func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
 	return gcs, nil
 }
 
+// Put inserts a blob at the given path.
 func (b *BlobGCP) Put(ctx context.Context, path string, data []byte) error {
 	if b.bucket == nil {
 		return fmt.Errorf("could not find bucket for storage provider")
@@ -63,6 +66,7 @@ func (b *BlobGCP) NewWriter(ctx context.Context, path string) (io.WriteCloser, e
 	return b.bucket.NewWriter(ctx, path, nil)
 }
 
+// Get retrives the data given a blob path.
 func (b *BlobGCP) Get(ctx context.Context, path string) ([]byte, error) {
 	if b.bucket == nil {
 		return []byte{}, fmt.Errorf("could not find bucket for storage provider")
@@ -86,6 +90,7 @@ func (b *BlobGCP) NewRangeReader(ctx context.Context, path string, offset, lengt
 	return b.bucket.NewRangeReader(ctx, path, offset, length, nil)
 }
 
+// Delete deletes the blob at the given path.
 func (b *BlobGCP) Delete(ctx context.Context, path string) error {
 	if b.bucket == nil {
 		return fmt.Errorf("could not find bucket for storage provider")
@@ -93,6 +98,7 @@ func (b *BlobGCP) Delete(ctx context.Context, path string) error {
 	return b.bucket.Delete(ctx, path)
 }
 
+// Close releases any resources used by the instance.
 func (b *BlobGCP) Close() error {
 	if b.bucket != nil {
 		return b.bucket.Close()

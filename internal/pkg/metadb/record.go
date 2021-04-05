@@ -224,7 +224,7 @@ func (m *PropertyMap) Save() ([]datastore.Property, error) {
 		default:
 			return nil,
 				fmt.Errorf(
-					"Error storeing property, unkown type: name=[%s], type=[%s]",
+					"error storing property, unknown type: name=[%s], type=[%s]",
 					name, value.Type.String())
 		}
 	}
@@ -259,7 +259,7 @@ func (m *PropertyMap) Load(ps []datastore.Property) error {
 			newValue.StringValue = v.Value.(string)
 		default:
 			return fmt.Errorf(
-				"Error loading property, unknown type: name=[%s], type=[%s]",
+				"error loading property, unknown type: name=[%s], type=[%s]",
 				v.Name, t.Name())
 		}
 		(*m)[v.Name] = newValue

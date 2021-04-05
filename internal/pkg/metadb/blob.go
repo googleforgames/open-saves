@@ -138,7 +138,7 @@ func (b *BlobRef) Ready() error {
 // Returns an error if the current Status is not BlobRefStatusReady.
 func (b *BlobRef) MarkForDeletion() error {
 	if b.Status != BlobRefStatusInitializing && b.Status != BlobRefStatusReady {
-		return errors.New("Retire was called when Status is not either Initializing or Ready")
+		return errors.New("MarkForDeletion was called when Status is not either Initializing or Ready")
 	}
 	b.Status = BlobRefStatusPendingDeletion
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)

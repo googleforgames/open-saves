@@ -20,10 +20,12 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+// Redis is an implementation of the cache.Cache interface.
 type Redis struct {
 	redisPool *redis.Pool
 }
 
+// NewRedis creates a new Redis instance.
 func NewRedis(address string, opts ...redis.DialOption) *Redis {
 	rp := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
@@ -37,6 +39,7 @@ func NewRedis(address string, opts ...redis.DialOption) *Redis {
 	}
 }
 
+// Set adds a key-value pair to the redis instance.
 func (r *Redis) Set(ctx context.Context, key string, value []byte) error {
 	conn := r.redisPool.Get()
 	defer conn.Close()
@@ -48,6 +51,7 @@ func (r *Redis) Set(ctx context.Context, key string, value []byte) error {
 	return nil
 }
 
+// Get retrieves the value for a given key.
 func (r *Redis) Get(ctx context.Context, key string) ([]byte, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
@@ -59,6 +63,7 @@ func (r *Redis) Get(ctx context.Context, key string) ([]byte, error) {
 	return val, nil
 }
 
+// Delete deletes the key from the redis instance.
 func (r *Redis) Delete(ctx context.Context, key string) error {
 	conn := r.redisPool.Get()
 	defer conn.Close()
@@ -70,6 +75,7 @@ func (r *Redis) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
+// FlushAll removes all key-value pairs from the redis instance.
 func (r *Redis) FlushAll(ctx context.Context) error {
 	conn := r.redisPool.Get()
 	defer conn.Close()
@@ -81,6 +87,7 @@ func (r *Redis) FlushAll(ctx context.Context) error {
 	return nil
 }
 
+// ListKeys lists all the keys in the redis instance.
 func (r *Redis) ListKeys(ctx context.Context) ([]string, error) {
 	conn := r.redisPool.Get()
 	defer conn.Close()
