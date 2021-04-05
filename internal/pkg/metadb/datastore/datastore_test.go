@@ -601,7 +601,7 @@ func TestDriver_UpdateRecordWithExternalBlobs(t *testing.T) {
 	}
 	setupTestBlobRef(ctx, t, driver, blob)
 
-	record, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
+	_, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
 		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
 	}
@@ -747,7 +747,7 @@ func TestDriver_DeleteRecordWithExternalBlob(t *testing.T) {
 	blob := m.NewBlobRef(0, storeKey, recordKey)
 	setupTestBlobRef(ctx, t, driver, blob)
 
-	record, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
+	_, blob, err := driver.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
 		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
 	}

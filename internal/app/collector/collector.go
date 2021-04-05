@@ -27,6 +27,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+// Config defines common fields needed to start the garbage collector.
 type Config struct {
 	Cloud   string
 	Bucket  string
