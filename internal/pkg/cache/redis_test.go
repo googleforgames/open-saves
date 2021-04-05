@@ -118,8 +118,10 @@ func TestRedis_SerializeRecord(t *testing.T) {
 
 		red.Set(ctx, r.Key, e)
 		record, err := red.Get(ctx, r.Key)
+		assert.NoError(t, err)
 		assert.Equal(t, e, record)
 		decodedRecord, err := DecodeRecord(record)
+		assert.NoError(t, err)
 		metadbtest.AssertEqualRecord(t, r, decodedRecord)
 
 		assert.NoError(t, red.FlushAll(ctx))
