@@ -23,6 +23,7 @@ import (
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 )
 
+// Cache interface defines common operations for the cache store.
 type Cache interface {
 	Set(ctx context.Context, key string, value []byte) error
 	Get(ctx context.Context, key string) ([]byte, error)
