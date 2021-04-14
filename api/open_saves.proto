@@ -22,7 +22,6 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/googleforgames/open-saves;opensaves";
 
 // Public interface of the Open Saves service.
-// TODO(#69): Add streaming endpoints to transfer large blobs.
 service OpenSaves {
   // CreateStore creates and returns a new store.
   rpc CreateStore(CreateStoreRequest) returns (Store) {}
@@ -56,27 +55,31 @@ service OpenSaves {
   // CreateBlob adds a new blob to a record.
   rpc CreateBlob(stream CreateBlobRequest) returns (BlobMetadata) {}
 
-  // Will start a new chunked upload session
+  // CreateChunkedBlob starts a new chunked blob upload session.
   rpc CreateChunkedBlob(CreateChunkedBlobRequest)
       returns (CreateChunkedBlobResponse) {}
 
-  // Upload each chunk
-  rpc UploadChunk(stream UploadChunkRequest)
-      returns (stream UploadChunkResponse) {}
+  // UploadChunk uploads and stores each each chunk.
+  rpc UploadChunk(stream UploadChunkRequest) returns (ChunkMetadata) {}
 
-  // Finish and commit a chunked blob upload session
+  // CommitChunkedUpload commits a chunked blob upload session and
+  // makes the blob available for reads.
   rpc CommitChunkedUpload(CommitChunkedUploadRequest) returns (BlobMetadata) {}
 
-  // Abort a chunked blob upload session
+  // AbortChunkedUploads aborts a chunked blob upload session and
+  // discards temporary objects.
   rpc AbortChunkedUpload(AbortChunkedUploadRequest)
       returns (google.protobuf.Empty) {}
 
   // GetBlob retrieves a blob object in a record.
+  // Currently this method does not support chunked blobs and
+  // returns an UNIMPLEMENTED error if called for chunked blobs.
+  // TODO(yuryu): Support chunked blobs and return such objects entirely.
   rpc GetBlob(GetBlobRequest) returns (stream GetBlobResponse) {}
 
-  // TODO(yuryu): separate chunked download because you might want to
-  // download everything at once with the other api?
-  // related: should this be bi-directional stream?
+  // GetBlobChunk returns a chunk of a blob object uploaded using
+  // CreateChunkedBlob. It returns an INVALID_ARGUMENT error if the blob is not
+  // a chunked object.
   rpc GetBlobChunk(GetBlobChunkRequest) returns (stream GetBlobChunkResponse) {}
 
   // DeleteBlob removes an blob object from a record.
@@ -381,34 +384,46 @@ message CreateChunkedBlobRequest {
 }
 
 message CreateChunkedBlobResponse {
+  // session_id is a chunked
   string session_id = 1;
 }
 
+// UploadChunkRequest is used by UploadChunk, which is a client-streaming
+// method. The first message should contain the metadata, and the subsequent
+// messages should contain the content field until EOF.
 message UploadChunkRequest {
   oneof request {
+    // metadata is the metadata to associate the chunk to.
     ChunkMetadata metadata = 1;
+
+    // content is the binary content of the chunk.
     bytes content = 2;
   }
 }
 
-message UploadChunkResponse {
-  // TODO(yuryu): what do we need?
-}
-
 message ChunkMetadata {
-  bytes session_id = 1;
+  // session_id is the ID of a chunk upload session. Not used for downloads.
+  string session_id = 1;
+
+  // number is the number
   int64 number = 2;
+
+  // size is a byte size of the chunk.
   int64 size = 3;
+
   // Performance hints (write only).
   Hint hint = 4;
+
   // TODO(yuryu): Add checksum
 }
 
 message CommitChunkedUploadRequest {
+  // session_id is the ID of a chunked upload session to commit.
   string session_id = 1;
 }
 
 message AbortChunkedUploadRequest {
+  // session_id is the ID of a chunked upload session to abort.
   string session_id = 1;
 }
 
@@ -430,21 +445,15 @@ message GetBlobChunkRequest {
   // The key of the record to get.
   string record_key = 2;
 
+  // chunk_number is the number of the chunk to get.
   int64 chunk_number = 3;
 
   // Performance hints.
   Hint hint = 4;
 }
 
-message GetBlobChunkResponse {
-  oneof response {
-    ChunkMetadata metadata = 1;
-    bytes content = 2;
-  }
-}
-
 // GetBlobResponse is a server-streaming response to return metadata and
-// content of a blob object. The first message contains blob_ref and the
+// content of a blob object. The first message contains metadata and the
 // subsequent messages contain the rest of the binary blob in the content
 // field.
 message GetBlobResponse {
@@ -453,6 +462,16 @@ message GetBlobResponse {
     BlobMetadata metadata = 1;
 
     // content is the binary content of the blob object.
+    bytes content = 2;
+  }
+}
+
+// GetBlobChunkResponse is a server-streaming response to return metadata and
+// content of a chunked blob object. The first message contains metadata and the
+// subsequent messages contain the binary data of the chunk inthe content field.
+message GetBlobChunkResponse {
+  oneof response {
+    ChunkMetadata metadata = 1;
     bytes content = 2;
   }
 }
