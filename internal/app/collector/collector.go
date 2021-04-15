@@ -22,7 +22,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/datastore"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 )
@@ -55,13 +54,9 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 		if err != nil {
 			return nil, err
 		}
-		datastore, err := datastore.NewDriver(ctx, cfg.Project)
+		metadb, err := metadb.NewMetaDB(ctx, cfg.Project)
 		if err != nil {
-			return nil, err
-		}
-		metadb := metadb.NewMetaDB(datastore)
-		if err := metadb.Connect(ctx); err != nil {
-			log.Fatalf("Failed to connect to the metadata server: %v", err)
+			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
 		redis := cache.NewRedis(cfg.Cache)
