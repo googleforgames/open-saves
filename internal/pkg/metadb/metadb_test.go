@@ -36,11 +36,14 @@ const (
 	recordKind         = "record"
 	blobKind           = "blob"
 	timestampPrecision = 1 * time.Microsecond
+	timestampTestDelta = 5 * time.Second
+	testProject        = "triton-for-games-dev"
+	testNamespace      = "datastore-unittests"
 )
 
 func TestMetaDB_NewMetaDB(t *testing.T) {
 	ctx := context.Background()
-	metaDB, err := m.NewMetaDB(ctx, "")
+	metaDB, err := m.NewMetaDB(ctx, testProject)
 	assert.NotNil(t, metaDB, "NewMetaDB() should return a non-nil instance.")
 	assert.NoError(t, err, "NewMetaDB should succeed.")
 }
@@ -48,7 +51,7 @@ func TestMetaDB_NewMetaDB(t *testing.T) {
 const testTimestampThreshold = 30 * time.Second
 
 func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
-	client, err := datastore.NewClient(ctx, "triton-for-games-dev")
+	client, err := datastore.NewClient(ctx, testProject)
 	if err != nil {
 		t.Fatalf("datastore.NewClient failed: %v", err)
 	}
@@ -60,11 +63,11 @@ func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
 
 func newMetaDB(ctx context.Context, t *testing.T) *m.MetaDB {
 	t.Helper()
-	metaDB, err := m.NewMetaDB(ctx, "triton-for-games-dev")
+	metaDB, err := m.NewMetaDB(ctx, testProject)
 	if err != nil {
 		t.Fatalf("Initializing MetaDB: %v", err)
 	}
-	metaDB.Namespace = "datastore-unittests"
+	metaDB.Namespace = testNamespace
 	t.Cleanup(func() { metaDB.Disconnect(ctx) })
 	return metaDB
 }
@@ -224,11 +227,17 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	expected := cloneRecord(record)
 
 	createdRecord, err := metaDB.InsertRecord(ctx, storeKey, record)
+	expected.Timestamps.NewTimestamps(timestampPrecision)
+	// Copy the new signature as we cannot generate the same UUID.
+	expected.Timestamps.Signature = createdRecord.Timestamps.Signature
 	if err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	metadbtest.AssertEqualRecord(t, expected, createdRecord, "InsertRecord should return the created record.")
+	metadbtest.AssertEqualRecordWithinDuration(t, expected, createdRecord,
+		testTimestampThreshold, "InsertRecord should return the created record.")
 
+	// Use the updated timestamps for the subsequent checks
+	expected.Timestamps = createdRecord.Timestamps
 	record2, err := metaDB.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
