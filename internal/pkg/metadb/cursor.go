@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package datastore
+package metadb
 
 import (
 	"errors"
 
 	ds "cloud.google.com/go/datastore"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 )
 
-var _ metadb.BlobRefCursor = new(blobRefCursor)
+var _ BlobRefCursor = new(blobRefCursor)
 
 type blobRefCursor struct {
 	iter *ds.Iterator
@@ -31,14 +30,14 @@ func newBlobRefIterator(i *ds.Iterator) *blobRefCursor {
 	return &blobRefCursor{iter: i}
 }
 
-func (i *blobRefCursor) Next() (*metadb.BlobRef, error) {
+func (i *blobRefCursor) Next() (*BlobRef, error) {
 	if i == nil {
 		return nil, errors.New("BlobRefIterator.Next was called on nil")
 	}
 	if i.iter == nil {
 		return nil, errors.New("iterator is nil")
 	}
-	var blob metadb.BlobRef
+	var blob BlobRef
 	_, err := i.iter.Next(&blob)
 	if err != nil {
 		return nil, err
