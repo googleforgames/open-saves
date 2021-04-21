@@ -41,12 +41,30 @@ type OpenSavesClient interface {
 	DeleteRecord(ctx context.Context, in *DeleteRecordRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// CreateBlob adds a new blob to a record.
 	CreateBlob(ctx context.Context, opts ...grpc.CallOption) (OpenSaves_CreateBlobClient, error)
+	// CreateChunkedBlob starts a new chunked blob upload session.
+	CreateChunkedBlob(ctx context.Context, in *CreateChunkedBlobRequest, opts ...grpc.CallOption) (*CreateChunkedBlobResponse, error)
+	// UploadChunk uploads and stores each each chunk.
+	UploadChunk(ctx context.Context, opts ...grpc.CallOption) (OpenSaves_UploadChunkClient, error)
+	// CommitChunkedUpload commits a chunked blob upload session and
+	// makes the blob available for reads.
+	CommitChunkedUpload(ctx context.Context, in *CommitChunkedUploadRequest, opts ...grpc.CallOption) (*BlobMetadata, error)
+	// AbortChunkedUploads aborts a chunked blob upload session and
+	// discards temporary objects.
+	AbortChunkedUpload(ctx context.Context, in *AbortChunkedUploadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetBlob retrieves a blob object in a record.
+	// Currently this method does not support chunked blobs and
+	// returns an UNIMPLEMENTED error if called for chunked blobs.
+	// TODO(yuryu): Support chunked blobs and return such objects entirely.
 	GetBlob(ctx context.Context, in *GetBlobRequest, opts ...grpc.CallOption) (OpenSaves_GetBlobClient, error)
+	// GetBlobChunk returns a chunk of a blob object uploaded using
+	// CreateChunkedBlob. It returns an INVALID_ARGUMENT error if the blob is not
+	// a chunked object.
+	GetBlobChunk(ctx context.Context, in *GetBlobChunkRequest, opts ...grpc.CallOption) (OpenSaves_GetBlobChunkClient, error)
 	// DeleteBlob removes an blob object from a record.
 	DeleteBlob(ctx context.Context, in *DeleteBlobRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Ping returns the same string provided by the client.
-	// The string is optional and the server returns an empty string if omitted.
+	// The string is optional and the server returns an empty string if
+	// omitted.
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 }
 
@@ -173,8 +191,69 @@ func (x *openSavesCreateBlobClient) CloseAndRecv() (*BlobMetadata, error) {
 	return m, nil
 }
 
+func (c *openSavesClient) CreateChunkedBlob(ctx context.Context, in *CreateChunkedBlobRequest, opts ...grpc.CallOption) (*CreateChunkedBlobResponse, error) {
+	out := new(CreateChunkedBlobResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CreateChunkedBlob", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) UploadChunk(ctx context.Context, opts ...grpc.CallOption) (OpenSaves_UploadChunkClient, error) {
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[1], "/opensaves.OpenSaves/UploadChunk", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &openSavesUploadChunkClient{stream}
+	return x, nil
+}
+
+type OpenSaves_UploadChunkClient interface {
+	Send(*UploadChunkRequest) error
+	CloseAndRecv() (*ChunkMetadata, error)
+	grpc.ClientStream
+}
+
+type openSavesUploadChunkClient struct {
+	grpc.ClientStream
+}
+
+func (x *openSavesUploadChunkClient) Send(m *UploadChunkRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *openSavesUploadChunkClient) CloseAndRecv() (*ChunkMetadata, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(ChunkMetadata)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *openSavesClient) CommitChunkedUpload(ctx context.Context, in *CommitChunkedUploadRequest, opts ...grpc.CallOption) (*BlobMetadata, error) {
+	out := new(BlobMetadata)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CommitChunkedUpload", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) AbortChunkedUpload(ctx context.Context, in *AbortChunkedUploadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AbortChunkedUpload", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *openSavesClient) GetBlob(ctx context.Context, in *GetBlobRequest, opts ...grpc.CallOption) (OpenSaves_GetBlobClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[1], "/opensaves.OpenSaves/GetBlob", opts...)
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[2], "/opensaves.OpenSaves/GetBlob", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -199,6 +278,38 @@ type openSavesGetBlobClient struct {
 
 func (x *openSavesGetBlobClient) Recv() (*GetBlobResponse, error) {
 	m := new(GetBlobResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *openSavesClient) GetBlobChunk(ctx context.Context, in *GetBlobChunkRequest, opts ...grpc.CallOption) (OpenSaves_GetBlobChunkClient, error) {
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[3], "/opensaves.OpenSaves/GetBlobChunk", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &openSavesGetBlobChunkClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type OpenSaves_GetBlobChunkClient interface {
+	Recv() (*GetBlobChunkResponse, error)
+	grpc.ClientStream
+}
+
+type openSavesGetBlobChunkClient struct {
+	grpc.ClientStream
+}
+
+func (x *openSavesGetBlobChunkClient) Recv() (*GetBlobChunkResponse, error) {
+	m := new(GetBlobChunkResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -249,12 +360,30 @@ type OpenSavesServer interface {
 	DeleteRecord(context.Context, *DeleteRecordRequest) (*emptypb.Empty, error)
 	// CreateBlob adds a new blob to a record.
 	CreateBlob(OpenSaves_CreateBlobServer) error
+	// CreateChunkedBlob starts a new chunked blob upload session.
+	CreateChunkedBlob(context.Context, *CreateChunkedBlobRequest) (*CreateChunkedBlobResponse, error)
+	// UploadChunk uploads and stores each each chunk.
+	UploadChunk(OpenSaves_UploadChunkServer) error
+	// CommitChunkedUpload commits a chunked blob upload session and
+	// makes the blob available for reads.
+	CommitChunkedUpload(context.Context, *CommitChunkedUploadRequest) (*BlobMetadata, error)
+	// AbortChunkedUploads aborts a chunked blob upload session and
+	// discards temporary objects.
+	AbortChunkedUpload(context.Context, *AbortChunkedUploadRequest) (*emptypb.Empty, error)
 	// GetBlob retrieves a blob object in a record.
+	// Currently this method does not support chunked blobs and
+	// returns an UNIMPLEMENTED error if called for chunked blobs.
+	// TODO(yuryu): Support chunked blobs and return such objects entirely.
 	GetBlob(*GetBlobRequest, OpenSaves_GetBlobServer) error
+	// GetBlobChunk returns a chunk of a blob object uploaded using
+	// CreateChunkedBlob. It returns an INVALID_ARGUMENT error if the blob is not
+	// a chunked object.
+	GetBlobChunk(*GetBlobChunkRequest, OpenSaves_GetBlobChunkServer) error
 	// DeleteBlob removes an blob object from a record.
 	DeleteBlob(context.Context, *DeleteBlobRequest) (*emptypb.Empty, error)
 	// Ping returns the same string provided by the client.
-	// The string is optional and the server returns an empty string if omitted.
+	// The string is optional and the server returns an empty string if
+	// omitted.
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	mustEmbedUnimplementedOpenSavesServer()
 }
@@ -293,8 +422,23 @@ func (UnimplementedOpenSavesServer) DeleteRecord(context.Context, *DeleteRecordR
 func (UnimplementedOpenSavesServer) CreateBlob(OpenSaves_CreateBlobServer) error {
 	return status.Errorf(codes.Unimplemented, "method CreateBlob not implemented")
 }
+func (UnimplementedOpenSavesServer) CreateChunkedBlob(context.Context, *CreateChunkedBlobRequest) (*CreateChunkedBlobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateChunkedBlob not implemented")
+}
+func (UnimplementedOpenSavesServer) UploadChunk(OpenSaves_UploadChunkServer) error {
+	return status.Errorf(codes.Unimplemented, "method UploadChunk not implemented")
+}
+func (UnimplementedOpenSavesServer) CommitChunkedUpload(context.Context, *CommitChunkedUploadRequest) (*BlobMetadata, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitChunkedUpload not implemented")
+}
+func (UnimplementedOpenSavesServer) AbortChunkedUpload(context.Context, *AbortChunkedUploadRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AbortChunkedUpload not implemented")
+}
 func (UnimplementedOpenSavesServer) GetBlob(*GetBlobRequest, OpenSaves_GetBlobServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetBlob not implemented")
+}
+func (UnimplementedOpenSavesServer) GetBlobChunk(*GetBlobChunkRequest, OpenSaves_GetBlobChunkServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetBlobChunk not implemented")
 }
 func (UnimplementedOpenSavesServer) DeleteBlob(context.Context, *DeleteBlobRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteBlob not implemented")
@@ -503,6 +647,86 @@ func (x *openSavesCreateBlobServer) Recv() (*CreateBlobRequest, error) {
 	return m, nil
 }
 
+func _OpenSaves_CreateChunkedBlob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateChunkedBlobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).CreateChunkedBlob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/CreateChunkedBlob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).CreateChunkedBlob(ctx, req.(*CreateChunkedBlobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_UploadChunk_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(OpenSavesServer).UploadChunk(&openSavesUploadChunkServer{stream})
+}
+
+type OpenSaves_UploadChunkServer interface {
+	SendAndClose(*ChunkMetadata) error
+	Recv() (*UploadChunkRequest, error)
+	grpc.ServerStream
+}
+
+type openSavesUploadChunkServer struct {
+	grpc.ServerStream
+}
+
+func (x *openSavesUploadChunkServer) SendAndClose(m *ChunkMetadata) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *openSavesUploadChunkServer) Recv() (*UploadChunkRequest, error) {
+	m := new(UploadChunkRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _OpenSaves_CommitChunkedUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitChunkedUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).CommitChunkedUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/CommitChunkedUpload",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).CommitChunkedUpload(ctx, req.(*CommitChunkedUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_AbortChunkedUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AbortChunkedUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).AbortChunkedUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/AbortChunkedUpload",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).AbortChunkedUpload(ctx, req.(*AbortChunkedUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _OpenSaves_GetBlob_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(GetBlobRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -521,6 +745,27 @@ type openSavesGetBlobServer struct {
 }
 
 func (x *openSavesGetBlobServer) Send(m *GetBlobResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _OpenSaves_GetBlobChunk_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetBlobChunkRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OpenSavesServer).GetBlobChunk(m, &openSavesGetBlobChunkServer{stream})
+}
+
+type OpenSaves_GetBlobChunkServer interface {
+	Send(*GetBlobChunkResponse) error
+	grpc.ServerStream
+}
+
+type openSavesGetBlobChunkServer struct {
+	grpc.ServerStream
+}
+
+func (x *openSavesGetBlobChunkServer) Send(m *GetBlobChunkResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -604,6 +849,18 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _OpenSaves_DeleteRecord_Handler,
 		},
 		{
+			MethodName: "CreateChunkedBlob",
+			Handler:    _OpenSaves_CreateChunkedBlob_Handler,
+		},
+		{
+			MethodName: "CommitChunkedUpload",
+			Handler:    _OpenSaves_CommitChunkedUpload_Handler,
+		},
+		{
+			MethodName: "AbortChunkedUpload",
+			Handler:    _OpenSaves_AbortChunkedUpload_Handler,
+		},
+		{
 			MethodName: "DeleteBlob",
 			Handler:    _OpenSaves_DeleteBlob_Handler,
 		},
@@ -619,8 +876,18 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 		{
+			StreamName:    "UploadChunk",
+			Handler:       _OpenSaves_UploadChunk_Handler,
+			ClientStreams: true,
+		},
+		{
 			StreamName:    "GetBlob",
 			Handler:       _OpenSaves_GetBlob_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetBlobChunk",
+			Handler:       _OpenSaves_GetBlobChunk_Handler,
 			ServerStreams: true,
 		},
 	},
