@@ -19,9 +19,9 @@ PROTOC = protoc
 SERVER_BIN = ${BIN_DIR}/server
 COLLECTOR_BIN = ${BIN_DIR}/collector
 OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.go ${API_DIR}/open_saves_grpc.pb.go
-ALL_TARGETS = ${SERVER_BIN} ${COLLECTOR_BIN} ${OPENSAVES_GO_PROTOS} internal/pkg/metadb/mock/mock_metadb.go
+ALL_TARGETS = ${SERVER_BIN} ${COLLECTOR_BIN} ${OPENSAVES_GO_PROTOS}
 
-.PHONY: all clean test server protos swagger mock FORCE
+.PHONY: all clean test server protos swagger FORCE
 
 all: server collector
 
@@ -29,10 +29,10 @@ server: ${SERVER_BIN}
 
 collector: ${COLLECTOR_BIN}
 
-${SERVER_BIN}: cmd/server/main.go protos mock FORCE
+${SERVER_BIN}: cmd/server/main.go protos FORCE
 	go build -o $@ $<
 
-${COLLECTOR_BIN}: cmd/collector/main.go protos mock FORCE
+${COLLECTOR_BIN}: cmd/collector/main.go protos FORCE
 	go build -o $@ $<
 
 clean:
@@ -42,11 +42,6 @@ test: server
 	go test -race -v ./...
 
 protos: ${OPENSAVES_GO_PROTOS}
-
-mock: internal/pkg/metadb/mock/mock_metadb.go
-
-internal/pkg/metadb/mock/mock_metadb.go: internal/pkg/metadb/metadb.go
-	mockgen -source "$<" -destination "$@"
 
 ${OPENSAVES_GO_PROTOS}: ${API_DIR}/open_saves.proto
 	$(PROTOC) -I. \
