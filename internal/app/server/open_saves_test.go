@@ -258,10 +258,11 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 	recordKey := uuid.New().String()
 	const testBlobSize = int64(42)
 	record := &pb.Record{
-		Key:      recordKey,
-		BlobSize: testBlobSize,
-		Tags:     []string{"tag1", "tag2"},
-		OwnerId:  "owner",
+		Key:          recordKey,
+		BlobSize:     testBlobSize,
+		Tags:         []string{"tag1", "tag2"},
+		OwnerId:      "owner",
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		Properties: map[string]*pb.Property{
 			"prop1": {
 				Type:  pb.Property_INTEGER,
@@ -311,8 +312,9 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	updateReq := &pb.UpdateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
-			Key:      recordKey,
-			BlobSize: testBlobSize,
+			Key:          recordKey,
+			BlobSize:     testBlobSize,
+			OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		},
 	}
 	beforeUpdate := time.Now()
@@ -321,10 +323,11 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 		t.Fatalf("UpdateRecord failed: %v", err)
 	}
 	expected := &pb.Record{
-		Key:       recordKey,
-		BlobSize:  testBlobSize,
-		CreatedAt: created.GetCreatedAt(),
-		UpdatedAt: timestamppb.Now(),
+		Key:          recordKey,
+		BlobSize:     testBlobSize,
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
+		CreatedAt:    created.GetCreatedAt(),
+		UpdatedAt:    timestamppb.Now(),
 	}
 	assertEqualRecord(t, expected, record)
 	assert.True(t, created.GetCreatedAt().AsTime().Equal(record.GetCreatedAt().AsTime()))

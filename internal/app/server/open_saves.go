@@ -26,6 +26,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -36,6 +37,7 @@ const (
 	maxRecordSizeToCache int = 10 * 1024 * 1024 // 10 MB
 	maxInlineBlobSize    int = 64 * 1024        // 64 KiB
 	streamBufferSize     int = 1 * 1024 * 1024  // 1 MiB
+	opaqueStringLimit    int = 32 * 1024 * 1024 // 32 KiB
 )
 
 type openSavesServer struct {
@@ -98,6 +100,9 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 
 func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
 	record := metadb.NewRecordFromProto(req.Record)
+	if err := checkRecord(record); err != nil {
+		return nil, err
+	}
 	newRecord, err := s.metaDB.InsertRecord(ctx, req.StoreKey, record)
 	if err != nil {
 		log.Warnf("CreateRecord failed for store (%s), record (%s): %v",
@@ -193,6 +198,9 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
 	record := metadb.NewRecordFromProto(req.GetRecord())
+	if err := checkRecord(record); err != nil {
+		return nil, err
+	}
 	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record.Key,
 		func(r *metadb.Record) (*metadb.Record, error) {
 			r.OwnerID = record.OwnerID
@@ -200,6 +208,7 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 			r.Tags = record.Tags
 			r.Blob = record.Blob
 			r.BlobSize = record.BlobSize
+			r.OpaqueString = record.OpaqueString
 			return r, nil
 		})
 	if err != nil {
@@ -535,4 +544,15 @@ func shouldCheckCache(hint *pb.Hint) bool {
 		return true
 	}
 	return !hint.SkipCache
+}
+
+// checkRecord checks a record against size limits.
+// Returns nil if the record satisfies conditions.
+// Returns codes.InvalidArgument if it does not.
+func checkRecord(record *metadb.Record) error {
+	if len(record.OpaqueString) > opaqueStringLimit {
+		return grpc.Errorf(codes.InvalidArgument, "The length of OpaqueString exceeds %v bytes (actual = %v bytes)",
+			opaqueStringLimit, len(record.OpaqueString))
+	}
+	return nil
 }

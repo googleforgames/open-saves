@@ -49,6 +49,7 @@ type Record struct {
 	Properties   PropertyMap
 	OwnerID      string
 	Tags         []string
+	OpaqueString string `datastore:",noindex"`
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
@@ -95,10 +96,6 @@ func NewPropertyValueFromProto(proto *pb.Property) *PropertyValue {
 	return ret
 }
 
-// These functions are Datastore specific but need to be implemented here
-// instead of the datastore package because Go doesn't permit to define
-// additional receivers in another package.
-
 const externalBlobPropertyName = "ExternalBlob"
 
 // Save and Load for Record replicate the default behaviors, however, they are
@@ -140,13 +137,14 @@ func (r *Record) LoadKey(k *datastore.Key) error {
 // ToProto converts the struct to a proto.
 func (r *Record) ToProto() *pb.Record {
 	ret := &pb.Record{
-		Key:        r.Key,
-		BlobSize:   r.BlobSize,
-		OwnerId:    r.OwnerID,
-		Tags:       r.Tags,
-		Properties: r.Properties.ToProto(),
-		CreatedAt:  timestamppb.New(r.Timestamps.CreatedAt),
-		UpdatedAt:  timestamppb.New(r.Timestamps.UpdatedAt),
+		Key:          r.Key,
+		BlobSize:     r.BlobSize,
+		OwnerId:      r.OwnerID,
+		Tags:         r.Tags,
+		Properties:   r.Properties.ToProto(),
+		OpaqueString: r.OpaqueString,
+		CreatedAt:    timestamppb.New(r.Timestamps.CreatedAt),
+		UpdatedAt:    timestamppb.New(r.Timestamps.UpdatedAt),
 	}
 	return ret
 }
@@ -158,11 +156,12 @@ func NewRecordFromProto(p *pb.Record) *Record {
 		return new(Record)
 	}
 	return &Record{
-		Key:        p.GetKey(),
-		BlobSize:   p.GetBlobSize(),
-		OwnerID:    p.GetOwnerId(),
-		Tags:       p.GetTags(),
-		Properties: NewPropertyMapFromProto(p.GetProperties()),
+		Key:          p.GetKey(),
+		BlobSize:     p.GetBlobSize(),
+		OwnerID:      p.GetOwnerId(),
+		Tags:         p.GetTags(),
+		Properties:   NewPropertyMapFromProto(p.GetProperties()),
+		OpaqueString: p.GetOpaqueString(),
 		Timestamps: Timestamps{
 			CreatedAt: p.GetCreatedAt().AsTime(),
 			UpdatedAt: p.GetUpdatedAt().AsTime(),
