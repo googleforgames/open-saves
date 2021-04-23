@@ -30,6 +30,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -258,10 +260,11 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 	recordKey := uuid.New().String()
 	const testBlobSize = int64(42)
 	record := &pb.Record{
-		Key:      recordKey,
-		BlobSize: testBlobSize,
-		Tags:     []string{"tag1", "tag2"},
-		OwnerId:  "owner",
+		Key:          recordKey,
+		BlobSize:     testBlobSize,
+		Tags:         []string{"tag1", "tag2"},
+		OwnerId:      "owner",
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		Properties: map[string]*pb.Property{
 			"prop1": {
 				Type:  pb.Property_INTEGER,
@@ -311,8 +314,9 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	updateReq := &pb.UpdateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
-			Key:      recordKey,
-			BlobSize: testBlobSize,
+			Key:          recordKey,
+			BlobSize:     testBlobSize,
+			OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		},
 	}
 	beforeUpdate := time.Now()
@@ -321,10 +325,11 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 		t.Fatalf("UpdateRecord failed: %v", err)
 	}
 	expected := &pb.Record{
-		Key:       recordKey,
-		BlobSize:  testBlobSize,
-		CreatedAt: created.GetCreatedAt(),
-		UpdatedAt: timestamppb.Now(),
+		Key:          recordKey,
+		BlobSize:     testBlobSize,
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
+		CreatedAt:    created.GetCreatedAt(),
+		UpdatedAt:    timestamppb.Now(),
 	}
 	assertEqualRecord(t, expected, record)
 	assert.True(t, created.GetCreatedAt().AsTime().Equal(record.GetCreatedAt().AsTime()))
@@ -667,4 +672,32 @@ func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
 		t.Errorf("DeleteBlob failed: %v", err)
 	}
 	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+}
+
+func generateTestString(length int) string {
+	runes := make([]rune, length)
+	for i := 0; i < length; i++ {
+		runes[i] = rune('0' + i%('z'-'0'))
+	}
+	return string(runes)
+}
+
+func TestOpenSaves_RecordChecks(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.New().String()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.New().String()}
+	const opaqueStringLimit = 32 * 1024
+	record.OpaqueString = generateTestString(opaqueStringLimit)
+	setupTestRecord(ctx, t, client, store.Key, record)
+	record.OpaqueString = generateTestString(opaqueStringLimit + 1)
+
+	_, err := client.UpdateRecord(ctx, &pb.UpdateRecordRequest{
+		StoreKey: store.Key,
+		Record:   record,
+	})
+	assert.Equal(t, codes.InvalidArgument, status.Code(err),
+		"UpdateRecord should return InvalidArgument when OpaqueString is too big.")
 }
