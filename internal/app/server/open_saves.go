@@ -26,7 +26,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -37,7 +36,7 @@ const (
 	maxRecordSizeToCache int = 10 * 1024 * 1024 // 10 MB
 	maxInlineBlobSize    int = 64 * 1024        // 64 KiB
 	streamBufferSize     int = 1 * 1024 * 1024  // 1 MiB
-	opaqueStringLimit    int = 32 * 1024 * 1024 // 32 KiB
+	opaqueStringLimit    int = 32 * 1024        // 32 KiB
 )
 
 type openSavesServer struct {
@@ -551,7 +550,7 @@ func shouldCheckCache(hint *pb.Hint) bool {
 // Returns codes.InvalidArgument if it does not.
 func checkRecord(record *metadb.Record) error {
 	if len(record.OpaqueString) > opaqueStringLimit {
-		return grpc.Errorf(codes.InvalidArgument, "The length of OpaqueString exceeds %v bytes (actual = %v bytes)",
+		return status.Errorf(codes.InvalidArgument, "The length of OpaqueString exceeds %v bytes (actual = %v bytes)",
 			opaqueStringLimit, len(record.OpaqueString))
 	}
 	return nil
