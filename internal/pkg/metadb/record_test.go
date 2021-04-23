@@ -143,8 +143,9 @@ func TestRecord_Save(t *testing.T) {
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
-		OwnerID: "owner",
-		Tags:    []string{"a", "b"},
+		OwnerID:      "owner",
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		Tags:         []string{"a", "b"},
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
@@ -155,9 +156,9 @@ func TestRecord_Save(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	if assert.Len(t, properties, 7, "Save didn't return the expected number of elements.") {
+	if assert.Len(t, properties, 8, "Save didn't return the expected number of elements.") {
 		idx := 2
-		assert.Equal(t, properties[:idx], []datastore.Property{
+		assert.Equal(t, []datastore.Property{
 			{
 				Name:    "Blob",
 				Value:   testBlob,
@@ -167,14 +168,14 @@ func TestRecord_Save(t *testing.T) {
 				Name:  "BlobSize",
 				Value: int64(len(testBlob)),
 			},
-		})
+		}, properties[:idx])
 		assert.Equal(t, properties[idx].Name, "Properties")
 		assert.False(t, properties[idx].NoIndex)
 		if assert.IsType(t, properties[idx].Value, &datastore.Entity{}) {
 			e := properties[idx].Value.(*datastore.Entity)
 
 			assert.Nil(t, e.Key)
-			assert.ElementsMatch(t, e.Properties, []datastore.Property{
+			assert.ElementsMatch(t, []datastore.Property{
 				{
 					Name:  "prop1",
 					Value: int64(42),
@@ -183,10 +184,10 @@ func TestRecord_Save(t *testing.T) {
 					Name:  "prop2",
 					Value: "value",
 				},
-			})
+			}, e.Properties)
 		}
 		idx++
-		assert.Equal(t, properties[idx:], []datastore.Property{
+		assert.Equal(t, []datastore.Property{
 			{
 				Name:  "OwnerID",
 				Value: "owner",
@@ -194,6 +195,11 @@ func TestRecord_Save(t *testing.T) {
 			{
 				Name:  "Tags",
 				Value: []interface{}{"a", "b"},
+			},
+			{
+				Name:    "OpaqueString",
+				Value:   "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+				NoIndex: true,
 			},
 			{
 				Name: "Timestamps",
@@ -219,7 +225,7 @@ func TestRecord_Save(t *testing.T) {
 				Name:  "ExternalBlob",
 				Value: "",
 			},
-		})
+		}, properties[idx:])
 	}
 }
 
@@ -244,6 +250,10 @@ func TestRecord_Load(t *testing.T) {
 		{
 			Name:  "OwnerID",
 			Value: "owner",
+		},
+		{
+			Name:  "OpaqueString",
+			Value: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		},
 		{
 			Name:  "Tags",
@@ -297,8 +307,9 @@ func TestRecord_Load(t *testing.T) {
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
-		OwnerID: "owner",
-		Tags:    []string{"a", "b"},
+		OwnerID:      "owner",
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		Tags:         []string{"a", "b"},
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
@@ -321,8 +332,9 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
-		OwnerID: "owner",
-		Tags:    []string{"a", "b"},
+		OwnerID:      "owner",
+		Tags:         []string{"a", "b"},
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
@@ -342,10 +354,11 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 				Value: &pb.Property_StringValue{StringValue: "value"},
 			},
 		},
-		OwnerId:   "owner",
-		Tags:      []string{"a", "b"},
-		CreatedAt: timestamppb.New(createdAt),
-		UpdatedAt: timestamppb.New(updatedAt),
+		OwnerId:      "owner",
+		Tags:         []string{"a", "b"},
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		CreatedAt:    timestamppb.New(createdAt),
+		UpdatedAt:    timestamppb.New(updatedAt),
 	}
 	assert.Equal(t, expected, record.ToProto())
 }
@@ -367,10 +380,11 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 				Value: &pb.Property_StringValue{StringValue: "value"},
 			},
 		},
-		OwnerId:   "owner",
-		Tags:      []string{"a", "b"},
-		CreatedAt: timestamppb.New(createdAt),
-		UpdatedAt: timestamppb.New(updatedAt),
+		OwnerId:      "owner",
+		Tags:         []string{"a", "b"},
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		CreatedAt:    timestamppb.New(createdAt),
+		UpdatedAt:    timestamppb.New(updatedAt),
 	}
 	expected := &m.Record{
 		Key:          "key",
@@ -380,8 +394,9 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
-		OwnerID: "owner",
-		Tags:    []string{"a", "b"},
+		OwnerID:      "owner",
+		Tags:         []string{"a", "b"},
+		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		Timestamps: m.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,

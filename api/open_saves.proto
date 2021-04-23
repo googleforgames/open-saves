@@ -148,6 +148,11 @@ message Record {
 
   // Number of chunks.
   int64 number_of_chunks = 10;
+
+  // Opaque string where you can store any utf-8 string (e.g. JSON) that is too
+  // big and does not fit in the properties. This will not be indexed or
+  // queryable. The current size limit is 32KiB.
+  string opaque_string = 11;
 }
 
 // Performance optimization hints for the server.
