@@ -3,7 +3,7 @@
 - [Before you begin](#before-you-begin)
 - [Setting up backend services on Google Cloud](#setting-up-backend-services-on-google-cloud)
   - [Starting the cache store](#starting-the-cache-store)
-  - [Set up Serverless VPC Access](#set-up-serverless-vpc-access)
+  - [Set up Serverless VPC access](#set-up-serverless-vpc-access)
   - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
   - [Cloud Storage](#cloud-storage)
   - [Deploying to Cloud Run](#deploying-to-cloud-run-recommended) (recommended)
@@ -90,7 +90,7 @@ Then, save this private IP address to another environment variable:
 export REDIS_IP=<your ip here>
 ```
 
-### Set up Serverless VPC Access
+### Set up Serverless VPC access
 
 By default, because our Redis instance in Memorystore only has a private IP, we need to create a VPC connector
 so that Cloud Run can talk to Memorystore properly.
