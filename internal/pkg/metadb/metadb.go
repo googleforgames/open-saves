@@ -439,7 +439,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 			return err
 		}
 
-		if blob.Status != blobref.BlobRefStatusReady {
+		if blob.Status != blobref.StatusReady {
 			if blob.Ready() != nil {
 				return status.Error(codes.Internal, "blob is not ready to become current")
 			}
@@ -507,7 +507,7 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 		if err != nil {
 			return err
 		}
-		if blob.Status == blobref.BlobRefStatusReady {
+		if blob.Status == blobref.StatusReady {
 			return status.Error(codes.FailedPrecondition, "blob is currently marked as ready. mark it for deletion first")
 		}
 		return tx.Delete(m.createBlobKey(key))
@@ -517,7 +517,7 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 
 // ListBlobRefsByStatus returns a cursor that iterates over BlobRefs
 // where Status = status and UpdatedAt < olderThan.
-func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.BlobRefStatus, olderThan time.Time) (*blobref.BlobRefCursor, error) {
+func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status, olderThan time.Time) (*blobref.BlobRefCursor, error) {
 	query := m.newQuery(blobKind).Filter("Status = ", int(status)).
 		Filter("Timestamps.UpdatedAt <", olderThan)
 	iter := blobref.NewCursor(m.client.Run(ctx, query))

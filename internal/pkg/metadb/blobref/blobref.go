@@ -23,7 +23,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
-// BlobRefStatus represents a current blob status.
+// Status represents a current blob status.
 //
 // Life of a Blob
 //
@@ -38,23 +38,23 @@ import (
 //     delete the record |          -----[BlobRefStatusPendingDeletion]
 //                       v                  /
 //  [Delete the blob entity] <-------------/   Garbage collection
-type BlobRefStatus int16
+type Status int16
 
 const (
-	// BlobRefStatusUnknown represents internal error.
-	BlobRefStatusUnknown BlobRefStatus = iota
-	// BlobRefStatusInitializing means the blob is currently being prepared, i.e.
+	// StatusUnknown represents internal error.
+	StatusUnknown Status = iota
+	// StatusInitializing means the blob is currently being prepared, i.e.
 	// being uploaded to the blob store.
-	BlobRefStatusInitializing
-	// BlobRefStatusReady means the blob is committed and ready for use.
-	BlobRefStatusReady
-	// BlobRefStatusPendingDeletion means the blob is no longer referenced by
+	StatusInitializing
+	// StatusReady means the blob is committed and ready for use.
+	StatusReady
+	// StatusPendingDeletion means the blob is no longer referenced by
 	// any Record entities and needs to be deleted.
-	BlobRefStatusPendingDeletion
-	// BlobRefStatusError means the blob was not uploaded due to client or server
+	StatusPendingDeletion
+	// StatusError means the blob was not uploaded due to client or server
 	// errors and the corresponding record needs to be updated (either by
 	// retrying blob upload or deleting the entry).
-	BlobRefStatusError
+	StatusError
 )
 
 // BlobRef is a metadata document to keep track of blobs stored in an external blob store.
@@ -64,7 +64,7 @@ type BlobRef struct {
 	// Size is the byte size of the blob
 	Size int64
 	// Status is the current status of the blob
-	Status BlobRefStatus
+	Status Status
 	// StoreKey is the key of the store that the blob belongs to
 	StoreKey string
 	// RecordKey is the key of the record that the blob belongs to
@@ -116,7 +116,7 @@ func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 	b := new(BlobRef)
 	b.Key = uuid.New()
 	b.Size = size
-	b.Status = BlobRefStatusInitializing
+	b.Status = StatusInitializing
 	b.StoreKey = storeKey
 	b.RecordKey = recordKey
 	// Nanosecond is fine as it will not be returned to clients.
@@ -127,10 +127,10 @@ func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 // Ready changes Status to BlobRefStatusReady and updates Timestamps.
 // It returns an error if the current Status is not BlobRefStatusInitializing.
 func (b *BlobRef) Ready() error {
-	if b.Status != BlobRefStatusInitializing {
+	if b.Status != StatusInitializing {
 		return errors.New("Ready was called when Status is not Initializing")
 	}
-	b.Status = BlobRefStatusReady
+	b.Status = StatusReady
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
 }
@@ -138,10 +138,10 @@ func (b *BlobRef) Ready() error {
 // MarkForDeletion marks the BlobRef as BlobRefStatusPendingDeletion and updates Timestamps.
 // Returns an error if the current Status is not BlobRefStatusReady.
 func (b *BlobRef) MarkForDeletion() error {
-	if b.Status != BlobRefStatusInitializing && b.Status != BlobRefStatusReady {
+	if b.Status != StatusInitializing && b.Status != StatusReady {
 		return errors.New("MarkForDeletion was called when Status is not either Initializing or Ready")
 	}
-	b.Status = BlobRefStatusPendingDeletion
+	b.Status = StatusPendingDeletion
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
 }
@@ -149,7 +149,7 @@ func (b *BlobRef) MarkForDeletion() error {
 // Fail marks the BlobRef as BlobRefStatusError and updates Timestamps.
 // Any state can transition to BlobRefStatusError.
 func (b *BlobRef) Fail() error {
-	b.Status = BlobRefStatusError
+	b.Status = StatusError
 	b.Timestamps.UpdateTimestamps(time.Nanosecond)
 	return nil
 }

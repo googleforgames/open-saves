@@ -84,17 +84,17 @@ func Run(ctx context.Context, cfg *Config) {
 }
 
 func (c *Collector) run(ctx context.Context) {
-	var statuses = []blobref.BlobRefStatus{
-		blobref.BlobRefStatusPendingDeletion,
-		blobref.BlobRefStatusError,
-		blobref.BlobRefStatusInitializing,
+	var statuses = []blobref.Status{
+		blobref.StatusPendingDeletion,
+		blobref.StatusError,
+		blobref.StatusInitializing,
 	}
 	for _, s := range statuses {
 		c.deleteMatchingBlobRefs(ctx, s, c.cfg.Before)
 	}
 }
 
-func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.BlobRefStatus, olderThan time.Time) error {
+func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.Status, olderThan time.Time) error {
 	log.Infof("Garbage collecting BlobRef objects with status = %v, and older than %v", status, olderThan)
 	cursor, err := c.metaDB.ListBlobRefsByStatus(ctx, status, olderThan)
 	if err != nil {
@@ -112,7 +112,7 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.B
 		}
 		if err := c.blob.Delete(ctx, blob.ObjectPath()); err != nil {
 			log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
-			if blob.Status != blobref.BlobRefStatusError {
+			if blob.Status != blobref.StatusError {
 				blob.Fail()
 				_, err := c.metaDB.UpdateBlobRef(ctx, blob)
 				if err != nil {
