@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb_test
+package blobref
 
 import (
 	"testing"
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBlobRef_LoadKey(t *testing.T) {
 	key := uuid.MustParse("d13c289c-8845-485f-b582-c87342d5dade")
-	blob := new(m.BlobRef)
+	blob := new(BlobRef)
 	assert.NoError(t, blob.LoadKey(datastore.NameKey("blob", key.String(), nil)))
 	assert.Equal(t, key, blob.Key)
 }
@@ -38,9 +37,9 @@ func TestBlobRef_Save(t *testing.T) {
 		record     = "record"
 	)
 
-	blob := m.BlobRef{
+	blob := BlobRef{
 		Size:      size,
-		Status:    m.BlobRefStatusInitializing,
+		Status:    BlobRefStatusInitializing,
 		StoreKey:  store,
 		RecordKey: record,
 	}
@@ -51,7 +50,7 @@ func TestBlobRef_Save(t *testing.T) {
 		},
 		{
 			Name:  "Status",
-			Value: int64(m.BlobRefStatusInitializing),
+			Value: int64(BlobRefStatusInitializing),
 		},
 		{
 			Name:  "StoreKey",
@@ -85,7 +84,7 @@ func TestBlobRef_Load(t *testing.T) {
 		},
 		{
 			Name:  "Status",
-			Value: int64(m.BlobRefStatusReady),
+			Value: int64(BlobRefStatusReady),
 		},
 		{
 			Name:  "StoreKey",
@@ -96,20 +95,20 @@ func TestBlobRef_Load(t *testing.T) {
 			Value: record,
 		},
 	}
-	expected := &m.BlobRef{
+	expected := &BlobRef{
 		Size:      123,
-		Status:    m.BlobRefStatusReady,
+		Status:    BlobRefStatusReady,
 		StoreKey:  store,
 		RecordKey: record,
 	}
-	actual := new(m.BlobRef)
+	actual := new(BlobRef)
 	err := actual.Load(properties)
 	if assert.NoError(t, err) {
 		assert.Equal(t, expected, actual)
 	}
 }
 
-func newInitBlob(t *testing.T) *m.BlobRef {
+func newInitBlob(t *testing.T) *BlobRef {
 	const (
 		size   = int64(4)
 		name   = "abc"
@@ -118,13 +117,13 @@ func newInitBlob(t *testing.T) *m.BlobRef {
 	)
 
 	// Initialize
-	blob := m.NewBlobRef(size, store, record)
+	blob := NewBlobRef(size, store, record)
 	if blob == nil {
 		t.Fatal("NewBlobRef returned nil.")
 	}
 	assert.NotEqual(t, uuid.Nil, blob.Key)
 	assert.Equal(t, size, blob.Size)
-	assert.Equal(t, m.BlobRefStatusInitializing, blob.Status)
+	assert.Equal(t, BlobRefStatusInitializing, blob.Status)
 	assert.Equal(t, store, blob.StoreKey)
 	assert.Equal(t, record, blob.RecordKey)
 	assert.NotEmpty(t, blob.Timestamps.CreatedAt)
@@ -138,21 +137,21 @@ func TestBlobRef_LifeCycle(t *testing.T) {
 
 	// Mark for deletion
 	assert.NoError(t, blob.MarkForDeletion())
-	assert.Equal(t, m.BlobRefStatusPendingDeletion, blob.Status)
+	assert.Equal(t, BlobRefStatusPendingDeletion, blob.Status)
 
 	// Start over
 	blob = newInitBlob(t)
 
 	// Ready
 	assert.NoError(t, blob.Ready())
-	assert.Equal(t, m.BlobRefStatusReady, blob.Status)
+	assert.Equal(t, BlobRefStatusReady, blob.Status)
 
 	// Invalid transitions
 	assert.Error(t, blob.Ready())
 
 	// Mark for deletion
 	assert.NoError(t, blob.MarkForDeletion())
-	assert.Equal(t, m.BlobRefStatusPendingDeletion, blob.Status)
+	assert.Equal(t, BlobRefStatusPendingDeletion, blob.Status)
 
 	// Invalid transitions
 	assert.Error(t, blob.MarkForDeletion())
@@ -160,7 +159,7 @@ func TestBlobRef_LifeCycle(t *testing.T) {
 }
 
 func TestBlobRef_Fail(t *testing.T) {
-	blob := new(m.BlobRef)
+	blob := new(BlobRef)
 
 	// Fail should work for BlobStatusUnknown too.
 	assert.NoError(t, blob.Fail())
@@ -168,21 +167,21 @@ func TestBlobRef_Fail(t *testing.T) {
 	blob = newInitBlob(t)
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = m.BlobRefStatusInitializing
+	blob.Status = BlobRefStatusInitializing
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = m.BlobRefStatusPendingDeletion
+	blob.Status = BlobRefStatusPendingDeletion
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = m.BlobRefStatusReady
+	blob.Status = BlobRefStatusReady
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = m.BlobRefStatusError
+	blob.Status = BlobRefStatusError
 	assert.NoError(t, blob.Fail())
 }
 
 func TestBlobRef_GetObjectPath(t *testing.T) {
-	blob := m.NewBlobRef(0, "", "")
+	blob := NewBlobRef(0, "", "")
 
 	assert.Equal(t, blob.Key.String(), blob.ObjectPath())
 }

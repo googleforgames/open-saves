@@ -20,41 +20,44 @@ import (
 
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
 func TestMetaDBTest_TestAssertEqualStore(t *testing.T) {
 	AssertEqualStore(t, nil, nil)
 	AssertEqualStoreWithinDuration(t, nil, nil, time.Duration(100))
-	store := &metadb.Store{
+	original := &store.Store{
 		Key:     "abc",
 		OwnerID: "owner",
 		Tags:    []string{"tag1", "tag2"},
-		Timestamps: metadb.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(100, 0),
 			UpdatedAt: time.Unix(110, 0),
 			Signature: uuid.MustParse("BF6B705A-D14E-414D-A40F-58F6311119B9"),
 		},
 	}
-	AssertEqualStore(t, store, store)
-	store2 := new(metadb.Store)
-	*store2 = *store
-	store2.Tags = []string{"tag2", "tag1"}
-	store2.Timestamps.CreatedAt = store2.Timestamps.CreatedAt.Add(time.Duration(42))
-	store2.Timestamps.UpdatedAt = store2.Timestamps.UpdatedAt.Add(time.Duration(42))
-	AssertEqualStoreWithinDuration(t, store, store2, time.Duration(42))
+	AssertEqualStore(t, original, original)
+	copied := new(store.Store)
+	*copied = *original
+	copied.Tags = []string{"tag2", "tag1"}
+	copied.Timestamps.CreatedAt = copied.Timestamps.CreatedAt.Add(time.Duration(42))
+	copied.Timestamps.UpdatedAt = copied.Timestamps.UpdatedAt.Add(time.Duration(42))
+	AssertEqualStoreWithinDuration(t, original, copied, time.Duration(42))
 }
 
 func TestMetaDBTest_TestAssertEqualRecord(t *testing.T) {
 	AssertEqualRecord(t, nil, nil)
 	AssertEqualRecordWithinDuration(t, nil, nil, time.Duration(100))
-	record := &metadb.Record{
+	original := &record.Record{
 		Key:      "abc",
 		Blob:     []byte{1, 2, 3},
 		BlobSize: 3,
 		OwnerID:  "owner",
 		Tags:     []string{"tag1", "tag2"},
-		Properties: metadb.PropertyMap{
+		Properties: record.PropertyMap{
 			"prop1": {
 				Type:         pb.Property_INTEGER,
 				IntegerValue: 42,
@@ -64,38 +67,38 @@ func TestMetaDBTest_TestAssertEqualRecord(t *testing.T) {
 				StringValue: "string value",
 			},
 		},
-		Timestamps: metadb.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(100, 0),
 			UpdatedAt: time.Unix(110, 0),
 			Signature: uuid.MustParse("BF6B705A-D14E-414D-A40F-58F6311119B9"),
 		},
 	}
-	AssertEqualRecord(t, record, record)
-	record2 := new(metadb.Record)
-	*record2 = *record
-	record2.Tags = []string{"tag2", "tag1"}
-	record2.Timestamps.CreatedAt = record2.Timestamps.CreatedAt.Add(time.Duration(42))
-	record2.Timestamps.UpdatedAt = record2.Timestamps.UpdatedAt.Add(time.Duration(42))
-	AssertEqualRecordWithinDuration(t, record, record2, time.Duration(42))
+	AssertEqualRecord(t, original, original)
+	copied := new(record.Record)
+	*copied = *original
+	copied.Tags = []string{"tag2", "tag1"}
+	copied.Timestamps.CreatedAt = copied.Timestamps.CreatedAt.Add(time.Duration(42))
+	copied.Timestamps.UpdatedAt = copied.Timestamps.UpdatedAt.Add(time.Duration(42))
+	AssertEqualRecordWithinDuration(t, original, copied, time.Duration(42))
 }
 
 func TestMetaDBTest_TestAssertEqualBlobRef(t *testing.T) {
-	blob := &metadb.BlobRef{
+	original := &blobref.BlobRef{
 		Key:       uuid.MustParse("35B7DABC-9523-45E1-995A-D76F3EF29F79"),
 		Size:      12345,
-		Status:    metadb.BlobRefStatusInitializing,
+		Status:    blobref.BlobRefStatusInitializing,
 		StoreKey:  "storeKey",
 		RecordKey: "recordKey",
-		Timestamps: metadb.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(100, 0),
 			UpdatedAt: time.Unix(200, 0),
 			Signature: uuid.MustParse("D4F08F0D-0FD1-49E4-9681-A0569A608FC9"),
 		},
 	}
-	AssertEqualBlobRef(t, blob, blob)
-	blob2 := new(metadb.BlobRef)
-	*blob2 = *blob
-	blob2.Timestamps.CreatedAt = blob.Timestamps.CreatedAt.Add(time.Duration(42))
-	blob2.Timestamps.UpdatedAt = blob.Timestamps.UpdatedAt.Add(time.Duration(42))
-	AssertEqualBlobRefWithinDuration(t, blob, blob2, time.Duration(42))
+	AssertEqualBlobRef(t, original, original)
+	copied := new(blobref.BlobRef)
+	*copied = *original
+	copied.Timestamps.CreatedAt = original.Timestamps.CreatedAt.Add(time.Duration(42))
+	copied.Timestamps.UpdatedAt = original.Timestamps.UpdatedAt.Add(time.Duration(42))
+	AssertEqualBlobRefWithinDuration(t, original, copied, time.Duration(42))
 }

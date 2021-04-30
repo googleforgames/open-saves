@@ -21,7 +21,9 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/stretchr/testify/assert"
 	"gocloud.dev/gcerrors"
 	"google.golang.org/grpc"
@@ -56,9 +58,9 @@ func newTestCollector(ctx context.Context, t *testing.T) *Collector {
 	return c
 }
 
-func setupTestStore(ctx context.Context, t *testing.T, collector *Collector) *metadb.Store {
+func setupTestStore(ctx context.Context, t *testing.T, collector *Collector) *store.Store {
 	t.Helper()
-	store := &metadb.Store{
+	store := &store.Store{
 		Key:  uuid.New().String(),
 		Name: t.Name(),
 	}
@@ -81,12 +83,12 @@ func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
 	return ds
 }
 
-func setupTestRecord(ctx context.Context, t *testing.T, collector *Collector, storeKey string) *metadb.Record {
+func setupTestRecord(ctx context.Context, t *testing.T, collector *Collector, storeKey string) *record.Record {
 	t.Helper()
-	record := &metadb.Record{
+	record := &record.Record{
 		Key:        uuid.New().String(),
 		Tags:       []string{t.Name()},
-		Properties: make(metadb.PropertyMap),
+		Properties: make(record.PropertyMap),
 	}
 	record, err := collector.metaDB.InsertRecord(ctx, storeKey, record)
 	if err != nil {
@@ -98,7 +100,7 @@ func setupTestRecord(ctx context.Context, t *testing.T, collector *Collector, st
 	return record
 }
 
-func setupTestBlobRef(ctx context.Context, t *testing.T, ds *datastore.Client, blobRef *metadb.BlobRef) {
+func setupTestBlobRef(ctx context.Context, t *testing.T, ds *datastore.Client, blobRef *blobref.BlobRef) {
 	t.Helper()
 	// Directly update Datastore to specify Timestamps.
 	key := datastore.NameKey(blobKind, blobRef.Key.String(), nil)
@@ -128,13 +130,13 @@ func TestCollector_DeletesBlobs(t *testing.T) {
 	store := setupTestStore(ctx, t, collector)
 	record := setupTestRecord(ctx, t, collector, store.Key)
 	const numBlobRefs = 5
-	blobRefs := make([]*metadb.BlobRef, 0, numBlobRefs)
+	blobRefs := make([]*blobref.BlobRef, 0, numBlobRefs)
 
 	// 0 and 2 are old, to be deleted
 	// 1 and 3 have the applicable statuses but new
 	// 4 is still initializing
 	for i := 0; i < numBlobRefs; i++ {
-		blobRef := metadb.NewBlobRef(0, store.Key, record.Key)
+		blobRef := blobref.NewBlobRef(0, store.Key, record.Key)
 		blobRef.Timestamps.CreatedAt = collector.cfg.Before
 		blobRef.Timestamps.UpdatedAt = collector.cfg.Before
 		blobRefs = append(blobRefs, blobRef)

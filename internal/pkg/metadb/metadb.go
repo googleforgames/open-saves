@@ -20,6 +20,9 @@ import (
 
 	ds "cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -51,7 +54,7 @@ type MetaDB struct {
 
 // RecordUpdater is a callback function for record updates.
 // Returning a non-nil error aborts the transaction.
-type RecordUpdater func(record *Record) (*Record, error)
+type RecordUpdater func(record *record.Record) (*record.Record, error)
 
 // NewMetaDB creates a new MetaDB instance with an initialized database client.
 func NewMetaDB(ctx context.Context, projectID string, opts ...option.ClientOption) (*MetaDB, error) {
@@ -89,11 +92,11 @@ func (d *MetaDB) createBlobKey(key uuid.UUID) *ds.Key {
 	return k
 }
 
-func (m *MetaDB) getBlobRef(ctx context.Context, tx *ds.Transaction, key uuid.UUID) (*BlobRef, error) {
+func (m *MetaDB) getBlobRef(ctx context.Context, tx *ds.Transaction, key uuid.UUID) (*blobref.BlobRef, error) {
 	if key == uuid.Nil {
 		return nil, status.Error(codes.FailedPrecondition, "there is no an external blob associated")
 	}
-	blob := new(BlobRef)
+	blob := new(blobref.BlobRef)
 	if tx == nil {
 		if err := m.client.Get(ctx, m.createBlobKey(key), blob); err != nil {
 			return nil, datastoreErrToGRPCStatus(err)
@@ -108,7 +111,7 @@ func (m *MetaDB) getBlobRef(ctx context.Context, tx *ds.Transaction, key uuid.UU
 
 // Returns a modified Record and the caller must commit the change.
 func (m *MetaDB) markBlobRefForDeletion(_ context.Context, tx *ds.Transaction,
-	storeKey string, record *Record, blob *BlobRef, newBlobKey uuid.UUID) (*Record, error) {
+	storeKey string, record *record.Record, blob *blobref.BlobRef, newBlobKey uuid.UUID) (*record.Record, error) {
 	if record.ExternalBlob == uuid.Nil {
 		return nil, status.Error(codes.FailedPrecondition, "the record doesn't have an external blob associated")
 	}
@@ -166,7 +169,7 @@ func (m *MetaDB) Disconnect(ctx context.Context) error {
 }
 
 // CreateStore creates a new store.
-func (m *MetaDB) CreateStore(ctx context.Context, store *Store) (*Store, error) {
+func (m *MetaDB) CreateStore(ctx context.Context, store *store.Store) (*store.Store, error) {
 	store.Timestamps.NewTimestamps(timestampPrecision)
 	key := m.createStoreKey(store.Key)
 	mut := ds.NewInsert(key, store)
@@ -178,9 +181,9 @@ func (m *MetaDB) CreateStore(ctx context.Context, store *Store) (*Store, error) 
 
 // GetStore fetches a store based on the key provided.
 // Returns error if the key is not found.
-func (m *MetaDB) GetStore(ctx context.Context, key string) (*Store, error) {
+func (m *MetaDB) GetStore(ctx context.Context, key string) (*store.Store, error) {
 	dskey := m.createStoreKey(key)
-	store := new(Store)
+	store := new(store.Store)
 	err := m.client.Get(ctx, dskey, store)
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
@@ -189,10 +192,10 @@ func (m *MetaDB) GetStore(ctx context.Context, key string) (*Store, error) {
 }
 
 // FindStoreByName finds and fetch a store based on the name (complete match).
-func (m *MetaDB) FindStoreByName(ctx context.Context, name string) (*Store, error) {
+func (m *MetaDB) FindStoreByName(ctx context.Context, name string) (*store.Store, error) {
 	query := m.newQuery(storeKind).Filter("Name =", name)
 	iter := m.client.Run(ctx, query)
-	store := new(Store)
+	store := new(store.Store)
 	_, err := iter.Next(store)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound,
@@ -225,7 +228,7 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
-func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *Record) (*Record, error) {
+func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *record.Record) (*record.Record, error) {
 	record.Timestamps.NewTimestamps(timestampPrecision)
 	rkey := m.createRecordKey(storeKey, record.Key)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -251,59 +254,59 @@ func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *Reco
 // Pass a callback function to updater and change values there. The callback
 // will be protected by a transaction.
 // Returns error if the store doesn't have a record with the key provided.
-func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, updater RecordUpdater) (*Record, error) {
+func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, updater RecordUpdater) (*record.Record, error) {
 	if updater == nil {
 		return nil, grpc.Errorf(codes.Internal, "updater cannot be nil")
 	}
-	var record *Record
+	var toUpdate *record.Record
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(storeKey, key)
 
 		// TODO(yuryu): Consider supporting transactions in MetaDB and move
 		// this operation out of the Datastore specific code.
-		record = new(Record)
-		if err := tx.Get(rkey, record); err != nil {
+		toUpdate = new(record.Record)
+		if err := tx.Get(rkey, toUpdate); err != nil {
 			return err
 		}
 
-		oldExternalBlob := record.ExternalBlob
+		oldExternalBlob := toUpdate.ExternalBlob
 
 		// Update the record entry by calling the updater callback.
 		var err error
-		record, err = updater(record)
+		toUpdate, err = updater(toUpdate)
 		if err != nil {
 			return err
 		}
 
-		if oldExternalBlob != record.ExternalBlob {
+		if oldExternalBlob != toUpdate.ExternalBlob {
 			return status.Error(codes.Internal, "UpdateRecord: ExternalBlob must not be modified in UpdateRecord")
 		}
 		// Deassociate the old blob if an external blob is associated, and a new inline blob is being added.
-		if oldExternalBlob != uuid.Nil && len(record.Blob) > 0 {
-			oldBlob, err := m.getBlobRef(ctx, tx, record.ExternalBlob)
+		if oldExternalBlob != uuid.Nil && len(toUpdate.Blob) > 0 {
+			oldBlob, err := m.getBlobRef(ctx, tx, toUpdate.ExternalBlob)
 			if err != nil {
 				return err
 			}
-			record, err = m.markBlobRefForDeletion(ctx, tx, storeKey, record, oldBlob, uuid.Nil)
+			toUpdate, err = m.markBlobRefForDeletion(ctx, tx, storeKey, toUpdate, oldBlob, uuid.Nil)
 			if err != nil {
 				return err
 			}
 		}
 
-		record.Timestamps.UpdateTimestamps(timestampPrecision)
-		return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
+		toUpdate.Timestamps.UpdateTimestamps(timestampPrecision)
+		return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, toUpdate))
 	})
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
-	return record, nil
+	return toUpdate, nil
 }
 
 // GetRecord fetches and returns a record with key in store storeKey.
 // Returns error if not found.
-func (m *MetaDB) GetRecord(ctx context.Context, storeKey, key string) (*Record, error) {
+func (m *MetaDB) GetRecord(ctx context.Context, storeKey, key string) (*record.Record, error) {
 	rkey := m.createRecordKey(storeKey, key)
-	record := new(Record)
+	record := new(record.Record)
 	if err := m.client.Get(ctx, rkey, record); err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
@@ -315,7 +318,7 @@ func (m *MetaDB) GetRecord(ctx context.Context, storeKey, key string) (*Record, 
 func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 	rkey := m.createRecordKey(storeKey, key)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		record := new(Record)
+		record := new(record.Record)
 		if err := tx.Get(rkey, record); err != nil {
 			if err == ds.ErrNoSuchEntity {
 				// Exit the transaction as DeleteRecord should ignore a not found error.
@@ -340,7 +343,7 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 }
 
 // InsertBlobRef inserts a new BlobRef object to the datastore.
-func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, error) {
+func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blobref.BlobRef, error) {
 	blob.Timestamps.NewTimestamps(timestampPrecision)
 	rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -360,7 +363,7 @@ func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, er
 
 // UpdateBlobRef updates a BlobRef object with the new property values.
 // Returns a NotFound error if the key is not found.
-func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, error) {
+func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blobref.BlobRef, error) {
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		oldBlob, err := m.getBlobRef(ctx, tx, blob.Key)
 		if err != nil {
@@ -381,7 +384,7 @@ func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *BlobRef) (*BlobRef, er
 // GetBlobRef returns a BlobRef object specified by the key.
 // Returns errors:
 //	- NotFound: the object is not found.
-func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*BlobRef, error) {
+func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*blobref.BlobRef, error) {
 	return m.getBlobRef(ctx, nil, key)
 }
 
@@ -389,10 +392,10 @@ func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*BlobRef, error
 // Returned errors:
 // 	- NotFound: the record is not found.
 // 	- FailedPrecondition: the record doesn't have a blob.
-func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*BlobRef, error) {
-	var blob *BlobRef
+func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*blobref.BlobRef, error) {
+	var blob *blobref.BlobRef
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		record := new(Record)
+		record := new(record.Record)
 		err := tx.Get(m.createRecordKey(storeKey, recordKey), record)
 		if err != nil {
 			return err
@@ -408,8 +411,8 @@ func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey stri
 // Returned errors:
 //	- NotFound: the specified record or the blobref was not found
 //  - Internal: BlobRef status transition error
-func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*Record, *BlobRef, error) {
-	record := new(Record)
+func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.BlobRef) (*record.Record, *blobref.BlobRef, error) {
+	record := new(record.Record)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
 		if err := tx.Get(rkey, record); err != nil {
@@ -436,7 +439,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*R
 			return err
 		}
 
-		if blob.Status != BlobRefStatusReady {
+		if blob.Status != blobref.BlobRefStatusReady {
 			if blob.Ready() != nil {
 				return status.Error(codes.Internal, "blob is not ready to become current")
 			}
@@ -459,10 +462,10 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *BlobRef) (*R
 //	- NotFound: the specified record or the blobref was not found
 //	- FailedPrecondition: the record doesn't have an external blob
 //  - Internal: BlobRef status transition error
-func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*Record, *BlobRef, error) {
+func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*record.Record, *blobref.BlobRef, error) {
 	rkey := m.createRecordKey(storeKey, recordKey)
-	blob := new(BlobRef)
-	record := new(Record)
+	blob := new(blobref.BlobRef)
+	record := new(record.Record)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		err := tx.Get(rkey, record)
 		if err != nil {
@@ -504,7 +507,7 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 		if err != nil {
 			return err
 		}
-		if blob.Status == BlobRefStatusReady {
+		if blob.Status == blobref.BlobRefStatusReady {
 			return status.Error(codes.FailedPrecondition, "blob is currently marked as ready. mark it for deletion first")
 		}
 		return tx.Delete(m.createBlobKey(key))
@@ -514,9 +517,9 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 
 // ListBlobRefsByStatus returns a cursor that iterates over BlobRefs
 // where Status = status and UpdatedAt < olderThan.
-func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status BlobRefStatus, olderThan time.Time) (BlobRefCursor, error) {
+func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.BlobRefStatus, olderThan time.Time) (*blobref.BlobRefCursor, error) {
 	query := m.newQuery(blobKind).Filter("Status = ", int(status)).
 		Filter("Timestamps.UpdatedAt <", olderThan)
-	iter := &blobRefCursor{m.client.Run(ctx, query)}
+	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
 }

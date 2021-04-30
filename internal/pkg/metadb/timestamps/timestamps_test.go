@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb_test
+package timestamps
 
 import (
 	"testing"
@@ -20,7 +20,6 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +31,7 @@ func now() time.Time {
 
 func TestTimestamps_NewTimestamps(t *testing.T) {
 	beforeNew := now()
-	var ts m.Timestamps
+	var ts Timestamps
 	ts.NewTimestamps(precision)
 	afterNew := now()
 	assert.NotNil(t, ts)
@@ -53,7 +52,7 @@ func TestTimestamps_NewTimestamps(t *testing.T) {
 }
 
 func TestTimestamps_Update(t *testing.T) {
-	var ts m.Timestamps
+	var ts Timestamps
 	ts.NewTimestamps(precision)
 	ocreated := ts.CreatedAt
 	oupdated := ts.UpdatedAt
@@ -75,7 +74,7 @@ func TestTimestamps_Update(t *testing.T) {
 }
 
 func TestTimestamps_Save(t *testing.T) {
-	var ts m.Timestamps
+	var ts Timestamps
 	ts.NewTimestamps(precision)
 	actual, err := ts.Save()
 	assert.NoError(t, err)
@@ -116,9 +115,9 @@ func TestTimestamps_Load(t *testing.T) {
 			NoIndex: true,
 		},
 	}
-	var actual m.Timestamps
+	var actual Timestamps
 	assert.NoError(t, actual.Load(properties))
-	expected := m.Timestamps{
+	expected := Timestamps{
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 		Signature: uuid,

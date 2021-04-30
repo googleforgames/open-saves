@@ -12,35 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb
+package blobref
 
 import (
-	"errors"
+	"testing"
 
-	ds "cloud.google.com/go/datastore"
+	"github.com/stretchr/testify/assert"
 )
 
-var _ BlobRefCursor = new(blobRefCursor)
-
-type blobRefCursor struct {
-	iter *ds.Iterator
-}
-
-func newBlobRefIterator(i *ds.Iterator) *blobRefCursor {
-	return &blobRefCursor{iter: i}
-}
-
-func (i *blobRefCursor) Next() (*BlobRef, error) {
-	if i == nil {
-		return nil, errors.New("BlobRefIterator.Next was called on nil")
-	}
-	if i.iter == nil {
-		return nil, errors.New("iterator is nil")
-	}
-	var blob BlobRef
-	_, err := i.iter.Next(&blob)
-	if err != nil {
-		return nil, err
-	}
-	return &blob, nil
+func TestCursor_NextOnNil(t *testing.T) {
+	var c BlobRefCursor
+	b, err := c.Next()
+	assert.Nil(t, b)
+	assert.Error(t, err)
 }

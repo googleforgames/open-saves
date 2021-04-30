@@ -26,7 +26,8 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc"
@@ -173,7 +174,7 @@ func cleanupBlobs(ctx context.Context, t *testing.T, storeKey, recordkey string)
 	iter := client.Run(ctx, query)
 
 	for {
-		var blobRef metadb.BlobRef
+		var blobRef blobref.BlobRef
 		key, err := iter.Next(&blobRef)
 		if err == iterator.Done {
 			break
@@ -395,14 +396,14 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 		},
 	}
 	expected := createReq.Record
-	record, err := client.CreateRecord(ctx, createReq)
+	created, err := client.CreateRecord(ctx, createReq)
 	if err != nil {
 		t.Fatalf("CreateRecord failed: %v", err)
 	}
 	expected.CreatedAt = timestamppb.Now()
 	expected.UpdatedAt = expected.CreatedAt
-	assertEqualRecord(t, expected, record)
-	assert.Equal(t, record.GetCreatedAt(), record.GetUpdatedAt())
+	assertEqualRecord(t, expected, created)
+	assert.Equal(t, created.GetCreatedAt(), created.GetUpdatedAt())
 
 	// Check do not cache hint was honored.
 	key := cache.FormatKey(storeKey, recordKey)
@@ -436,7 +437,7 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	// Insert some bad data directly into the cache store.
 	// Check that the SkipCache hint successfully skips the
 	// cache and retrieves the correct data directly.
-	server.storeRecordInCache(ctx, key, &metadb.Record{
+	server.storeRecordInCache(ctx, key, &record.Record{
 		Key: "bad record",
 	})
 	getReqSkipCache := &pb.GetRecordRequest{
