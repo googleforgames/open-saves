@@ -71,8 +71,6 @@ type BlobRef struct {
 	// It can be non-existent (e.g. deleted already) but then the Status
 	// should not be Blob StatusReady.
 	RecordKey string
-	// Chunks contains
-	Chunks []int16
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
