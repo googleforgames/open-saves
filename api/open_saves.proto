@@ -230,6 +230,39 @@ message ListStoresRequest {
   string owner_id = 3;
 }
 
+message ListStoresResponse {
+  // List of stores that match the provided criteria.
+  repeated Store stores = 1;
+}
+
+message DeleteStoreRequest {
+  // The key of the store to delete.
+  string key = 1;
+}
+
+
+message CreateRecordRequest {
+  // The key of the store to create the record into.
+  string store_key = 1;
+
+  // The record to create.
+  Record record = 2;
+
+  // Performance hints.
+  Hint hint = 3;
+}
+
+message GetRecordRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to get.
+  string key = 2;
+
+  // Performance hints.
+  Hint hint = 3;
+}
+
 // QueryRecordsRequest contains conditions to search particular records.
 // Multiple conditions are AND'ed together.
 message QueryRecordsRequest {
@@ -287,33 +320,6 @@ message QueryRecordsResponse {
   Hint hint = 3;
 }
 
-message DeleteStoreRequest {
-  // The key of the store to delete.
-  string key = 1;
-}
-
-message CreateRecordRequest {
-  // The key of the store to create the record into.
-  string store_key = 1;
-
-  // The record to create.
-  Record record = 2;
-
-  // Performance hints.
-  Hint hint = 3;
-}
-
-message GetRecordRequest {
-  // The key of the store that the record belongs to.
-  string store_key = 1;
-
-  // The key of the record to get.
-  string key = 2;
-
-  // Performance hints.
-  Hint hint = 3;
-}
-
 message UpdateRecordRequest {
   // The key of the store that the record belongs to.
   string store_key = 1;
@@ -333,19 +339,17 @@ message DeleteRecordRequest {
   string key = 2;
 }
 
-message ListStoresResponse {
-  // List of stores that match the provided criteria.
-  repeated Store stores = 1;
-}
+// CreateBlobRequest is used for CreateBlob, a client-streaming method.
+// The first message should contain metadata, and the subsequent messages
+// should contain content.
+message CreateBlobRequest {
+  oneof request {
+    // metadata is the metadata used to initialize the blob object with.
+    BlobMetadata metadata = 1;
 
-message PingRequest {
-  // An optional string to send with the ping message.
-  string ping = 1;
-}
-
-message PingResponse {
-  // An optional string that is copied from PingRequest.
-  string pong = 1;
+    // content is the binary content of the blob object.
+    bytes content = 2;
+  }
 }
 
 // BlobMetadata contains necessary metadata
@@ -362,19 +366,6 @@ message BlobMetadata {
 
   // Performance hints (write only).
   Hint hint = 4;
-}
-
-// CreateBlobRequest is used for CreateBlob, a client-streaming method.
-// The first message should contain metadata, and the subsequent messages
-// should contain content.
-message CreateBlobRequest {
-  oneof request {
-    // metadata is the metadata used to initialize the blob object with.
-    BlobMetadata metadata = 1;
-
-    // content is the binary content of the blob object.
-    bytes content = 2;
-  }
 }
 
 message CreateChunkedBlobRequest {
@@ -443,20 +434,6 @@ message GetBlobRequest {
   Hint hint = 3;
 }
 
-message GetBlobChunkRequest {
-  // The key of the store that the record belongs to.
-  string store_key = 1;
-
-  // The key of the record to get.
-  string record_key = 2;
-
-  // chunk_number is the number of the chunk to get.
-  int64 chunk_number = 3;
-
-  // Performance hints.
-  Hint hint = 4;
-}
-
 // GetBlobResponse is a server-streaming response to return metadata and
 // content of a blob object. The first message contains metadata and the
 // subsequent messages contain the rest of the binary blob in the content
@@ -469,6 +446,20 @@ message GetBlobResponse {
     // content is the binary content of the blob object.
     bytes content = 2;
   }
+}
+
+message GetBlobChunkRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to get.
+  string record_key = 2;
+
+  // chunk_number is the number of the chunk to get.
+  int64 chunk_number = 3;
+
+  // Performance hints.
+  Hint hint = 4;
 }
 
 // GetBlobChunkResponse is a server-streaming response to return metadata and
@@ -490,4 +481,15 @@ message DeleteBlobRequest {
 
   // Performance hints.
   Hint hint = 3;
+}
+
+
+message PingRequest {
+  // An optional string to send with the ping message.
+  string ping = 1;
+}
+
+message PingResponse {
+  // An optional string that is copied from PingRequest.
+  string pong = 1;
 }
