@@ -30,7 +30,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/iterator"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -411,7 +410,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	setupTestBlobRef(ctx, t, metaDB, blob)
 
 	_, err := metaDB.GetCurrentBlobRef(ctx, storeKey, recordKey)
-	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 
 	blob2, err := metaDB.GetBlobRef(ctx, blobKey)
 	if err != nil {
@@ -450,7 +449,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	if err := metaDB.DeleteBlobRef(ctx, blobKey); err == nil {
 		t.Errorf("DeleteBlobRef should fail on current blob: %v", err)
 	} else {
-		assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 	}
 
 	delPendRecord, delPendBlob, err := metaDB.RemoveBlobFromRecord(ctx, storeKey, recordKey)
@@ -471,7 +470,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 
 	deletedBlob, err := metaDB.GetBlobRef(ctx, blobKey)
 	assert.Nil(t, deletedBlob)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), "GetBlobRef should return NotFound after deletion.")
+	assert.Equal(t, codes.NotFound, status.Code(err), "GetBlobRef should return NotFound after deletion.")
 }
 
 func TestMetaDB_SwapBlobRefs(t *testing.T) {
@@ -595,7 +594,7 @@ func TestMetaDB_BlobInsertShouldFailForNonexistentRecord(t *testing.T) {
 		t.Error("InsertBlobRef should fail for a non-existent record.")
 		assert.NoError(t, metaDB.DeleteBlobRef(ctx, blob.Key))
 	} else {
-		assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 		assert.Nil(t, insertedBlob)
 	}
 }
@@ -639,7 +638,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 		return record, nil
 	})
 	if assert.Error(t, err, "UpdateRecord should fail when ExternalBlob is modified") {
-		assert.Equal(t, codes.Internal, grpc.Code(err))
+		assert.Equal(t, codes.Internal, status.Code(err))
 	}
 
 	// Make sure ExternalBlob is preserved when not modified
@@ -826,7 +825,7 @@ func TestMetaDB_DeleteRecordWithNonExistentBlobRef(t *testing.T) {
 	actualBlob, err := metaDB.GetBlobRef(ctx, record.ExternalBlob)
 	assert.Nil(t, actualBlob)
 	if assert.Error(t, err, "GetBlobRef should return error when BlobRef doesn't exist.") {
-		assert.Equal(t, codes.NotFound, grpc.Code(err),
+		assert.Equal(t, codes.NotFound, status.Code(err),
 			"GetBlobRef should return NotFound when BlobRef doesn't exist.")
 	}
 
@@ -837,7 +836,7 @@ func TestMetaDB_DeleteRecordWithNonExistentBlobRef(t *testing.T) {
 	actualRecord, err := metaDB.GetRecord(ctx, storeKey, recordKey)
 	assert.Nil(t, actualRecord)
 	if assert.Error(t, err, "GetRecord should return error after DeleteRecord") {
-		assert.Equal(t, codes.NotFound, grpc.Code(err),
+		assert.Equal(t, codes.NotFound, status.Code(err),
 			"GetRecord should return NotFound after DeleteRecord")
 	}
 }

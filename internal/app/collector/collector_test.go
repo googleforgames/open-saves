@@ -26,8 +26,8 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/stretchr/testify/assert"
 	"gocloud.dev/gcerrors"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -163,7 +163,7 @@ func TestCollector_DeletesBlobs(t *testing.T) {
 			assert.NoError(t, err)
 		} else {
 			assert.Nil(t, actual)
-			assert.Equal(t, codes.NotFound, grpc.Code(err))
+			assert.Equal(t, codes.NotFound, status.Code(err))
 		}
 		_, err = collector.blob.Get(ctx, blobRefs[i].ObjectPath())
 		if e {
