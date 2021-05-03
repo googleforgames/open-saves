@@ -25,7 +25,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -256,7 +255,7 @@ func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *reco
 // Returns error if the store doesn't have a record with the key provided.
 func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, updater RecordUpdater) (*record.Record, error) {
 	if updater == nil {
-		return nil, grpc.Errorf(codes.Internal, "updater cannot be nil")
+		return nil, status.Errorf(codes.Internal, "updater cannot be nil")
 	}
 	var toUpdate *record.Record
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -333,7 +332,7 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 				if err != nil {
 					return err
 				}
-			} else if grpc.Code(err) != codes.NotFound {
+			} else if status.Code(err) != codes.NotFound {
 				return err
 			}
 		}
