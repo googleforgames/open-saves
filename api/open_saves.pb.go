@@ -751,6 +751,234 @@ func (x *ListStoresRequest) GetOwnerId() string {
 	return ""
 }
 
+type ListStoresResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// List of stores that match the provided criteria.
+	Stores []*Store `protobuf:"bytes,1,rep,name=stores,proto3" json:"stores,omitempty"`
+}
+
+func (x *ListStoresResponse) Reset() {
+	*x = ListStoresResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListStoresResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListStoresResponse) ProtoMessage() {}
+
+func (x *ListStoresResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListStoresResponse.ProtoReflect.Descriptor instead.
+func (*ListStoresResponse) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListStoresResponse) GetStores() []*Store {
+	if x != nil {
+		return x.Stores
+	}
+	return nil
+}
+
+type DeleteStoreRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The key of the store to delete.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+}
+
+func (x *DeleteStoreRequest) Reset() {
+	*x = DeleteStoreRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeleteStoreRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteStoreRequest) ProtoMessage() {}
+
+func (x *DeleteStoreRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteStoreRequest.ProtoReflect.Descriptor instead.
+func (*DeleteStoreRequest) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *DeleteStoreRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+type CreateRecordRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The key of the store to create the record into.
+	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
+	// The record to create.
+	Record *Record `protobuf:"bytes,2,opt,name=record,proto3" json:"record,omitempty"`
+	// Performance hints.
+	Hint *Hint `protobuf:"bytes,3,opt,name=hint,proto3" json:"hint,omitempty"`
+}
+
+func (x *CreateRecordRequest) Reset() {
+	*x = CreateRecordRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CreateRecordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRecordRequest) ProtoMessage() {}
+
+func (x *CreateRecordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRecordRequest.ProtoReflect.Descriptor instead.
+func (*CreateRecordRequest) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CreateRecordRequest) GetStoreKey() string {
+	if x != nil {
+		return x.StoreKey
+	}
+	return ""
+}
+
+func (x *CreateRecordRequest) GetRecord() *Record {
+	if x != nil {
+		return x.Record
+	}
+	return nil
+}
+
+func (x *CreateRecordRequest) GetHint() *Hint {
+	if x != nil {
+		return x.Hint
+	}
+	return nil
+}
+
+type GetRecordRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The key of the store that the record belongs to.
+	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
+	// The key of the record to get.
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// Performance hints.
+	Hint *Hint `protobuf:"bytes,3,opt,name=hint,proto3" json:"hint,omitempty"`
+}
+
+func (x *GetRecordRequest) Reset() {
+	*x = GetRecordRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetRecordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecordRequest) ProtoMessage() {}
+
+func (x *GetRecordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecordRequest.ProtoReflect.Descriptor instead.
+func (*GetRecordRequest) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetRecordRequest) GetStoreKey() string {
+	if x != nil {
+		return x.StoreKey
+	}
+	return ""
+}
+
+func (x *GetRecordRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *GetRecordRequest) GetHint() *Hint {
+	if x != nil {
+		return x.Hint
+	}
+	return nil
+}
+
 // QueryRecordsRequest contains conditions to search particular records.
 // Multiple conditions are AND'ed together.
 type QueryRecordsRequest struct {
@@ -772,7 +1000,7 @@ type QueryRecordsRequest struct {
 func (x *QueryRecordsRequest) Reset() {
 	*x = QueryRecordsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[7]
+		mi := &file_api_open_saves_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -785,7 +1013,7 @@ func (x *QueryRecordsRequest) String() string {
 func (*QueryRecordsRequest) ProtoMessage() {}
 
 func (x *QueryRecordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[7]
+	mi := &file_api_open_saves_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -798,7 +1026,7 @@ func (x *QueryRecordsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryRecordsRequest.ProtoReflect.Descriptor instead.
 func (*QueryRecordsRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{7}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *QueryRecordsRequest) GetStoreKey() string {
@@ -846,7 +1074,7 @@ type QueryFilter struct {
 func (x *QueryFilter) Reset() {
 	*x = QueryFilter{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[8]
+		mi := &file_api_open_saves_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -859,7 +1087,7 @@ func (x *QueryFilter) String() string {
 func (*QueryFilter) ProtoMessage() {}
 
 func (x *QueryFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[8]
+	mi := &file_api_open_saves_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -872,7 +1100,7 @@ func (x *QueryFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryFilter.ProtoReflect.Descriptor instead.
 func (*QueryFilter) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{8}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *QueryFilter) GetPropertyName() string {
@@ -915,7 +1143,7 @@ type QueryRecordsResponse struct {
 func (x *QueryRecordsResponse) Reset() {
 	*x = QueryRecordsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[9]
+		mi := &file_api_open_saves_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -928,7 +1156,7 @@ func (x *QueryRecordsResponse) String() string {
 func (*QueryRecordsResponse) ProtoMessage() {}
 
 func (x *QueryRecordsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[9]
+	mi := &file_api_open_saves_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -941,7 +1169,7 @@ func (x *QueryRecordsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryRecordsResponse.ProtoReflect.Descriptor instead.
 func (*QueryRecordsResponse) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{9}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *QueryRecordsResponse) GetRecords() []*Record {
@@ -965,186 +1193,6 @@ func (x *QueryRecordsResponse) GetHint() *Hint {
 	return nil
 }
 
-type DeleteStoreRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// The key of the store to delete.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-}
-
-func (x *DeleteStoreRequest) Reset() {
-	*x = DeleteStoreRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[10]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *DeleteStoreRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteStoreRequest) ProtoMessage() {}
-
-func (x *DeleteStoreRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[10]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteStoreRequest.ProtoReflect.Descriptor instead.
-func (*DeleteStoreRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *DeleteStoreRequest) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-type CreateRecordRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// The key of the store to create the record into.
-	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
-	// The record to create.
-	Record *Record `protobuf:"bytes,2,opt,name=record,proto3" json:"record,omitempty"`
-	// Performance hints.
-	Hint *Hint `protobuf:"bytes,3,opt,name=hint,proto3" json:"hint,omitempty"`
-}
-
-func (x *CreateRecordRequest) Reset() {
-	*x = CreateRecordRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[11]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *CreateRecordRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateRecordRequest) ProtoMessage() {}
-
-func (x *CreateRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[11]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateRecordRequest.ProtoReflect.Descriptor instead.
-func (*CreateRecordRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *CreateRecordRequest) GetStoreKey() string {
-	if x != nil {
-		return x.StoreKey
-	}
-	return ""
-}
-
-func (x *CreateRecordRequest) GetRecord() *Record {
-	if x != nil {
-		return x.Record
-	}
-	return nil
-}
-
-func (x *CreateRecordRequest) GetHint() *Hint {
-	if x != nil {
-		return x.Hint
-	}
-	return nil
-}
-
-type GetRecordRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// The key of the store that the record belongs to.
-	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
-	// The key of the record to get.
-	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	// Performance hints.
-	Hint *Hint `protobuf:"bytes,3,opt,name=hint,proto3" json:"hint,omitempty"`
-}
-
-func (x *GetRecordRequest) Reset() {
-	*x = GetRecordRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[12]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *GetRecordRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetRecordRequest) ProtoMessage() {}
-
-func (x *GetRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[12]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetRecordRequest.ProtoReflect.Descriptor instead.
-func (*GetRecordRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *GetRecordRequest) GetStoreKey() string {
-	if x != nil {
-		return x.StoreKey
-	}
-	return ""
-}
-
-func (x *GetRecordRequest) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *GetRecordRequest) GetHint() *Hint {
-	if x != nil {
-		return x.Hint
-	}
-	return nil
-}
-
 type UpdateRecordRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1161,7 +1209,7 @@ type UpdateRecordRequest struct {
 func (x *UpdateRecordRequest) Reset() {
 	*x = UpdateRecordRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[13]
+		mi := &file_api_open_saves_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1174,7 +1222,7 @@ func (x *UpdateRecordRequest) String() string {
 func (*UpdateRecordRequest) ProtoMessage() {}
 
 func (x *UpdateRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[13]
+	mi := &file_api_open_saves_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1187,7 +1235,7 @@ func (x *UpdateRecordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRecordRequest.ProtoReflect.Descriptor instead.
 func (*UpdateRecordRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{13}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UpdateRecordRequest) GetStoreKey() string {
@@ -1225,7 +1273,7 @@ type DeleteRecordRequest struct {
 func (x *DeleteRecordRequest) Reset() {
 	*x = DeleteRecordRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[14]
+		mi := &file_api_open_saves_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1238,7 +1286,7 @@ func (x *DeleteRecordRequest) String() string {
 func (*DeleteRecordRequest) ProtoMessage() {}
 
 func (x *DeleteRecordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[14]
+	mi := &file_api_open_saves_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1251,7 +1299,7 @@ func (x *DeleteRecordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRecordRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRecordRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{14}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DeleteRecordRequest) GetStoreKey() string {
@@ -1266,227 +1314,6 @@ func (x *DeleteRecordRequest) GetKey() string {
 		return x.Key
 	}
 	return ""
-}
-
-type ListStoresResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// List of stores that match the provided criteria.
-	Stores []*Store `protobuf:"bytes,1,rep,name=stores,proto3" json:"stores,omitempty"`
-}
-
-func (x *ListStoresResponse) Reset() {
-	*x = ListStoresResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[15]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ListStoresResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListStoresResponse) ProtoMessage() {}
-
-func (x *ListStoresResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[15]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListStoresResponse.ProtoReflect.Descriptor instead.
-func (*ListStoresResponse) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *ListStoresResponse) GetStores() []*Store {
-	if x != nil {
-		return x.Stores
-	}
-	return nil
-}
-
-type PingRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// An optional string to send with the ping message.
-	Ping string `protobuf:"bytes,1,opt,name=ping,proto3" json:"ping,omitempty"`
-}
-
-func (x *PingRequest) Reset() {
-	*x = PingRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[16]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PingRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PingRequest) ProtoMessage() {}
-
-func (x *PingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[16]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PingRequest.ProtoReflect.Descriptor instead.
-func (*PingRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *PingRequest) GetPing() string {
-	if x != nil {
-		return x.Ping
-	}
-	return ""
-}
-
-type PingResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// An optional string that is copied from PingRequest.
-	Pong string `protobuf:"bytes,1,opt,name=pong,proto3" json:"pong,omitempty"`
-}
-
-func (x *PingResponse) Reset() {
-	*x = PingResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[17]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *PingResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PingResponse) ProtoMessage() {}
-
-func (x *PingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[17]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PingResponse.ProtoReflect.Descriptor instead.
-func (*PingResponse) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *PingResponse) GetPong() string {
-	if x != nil {
-		return x.Pong
-	}
-	return ""
-}
-
-// BlobMetadata contains necessary metadata
-// when creating (uploading) a new blob object.
-type BlobMetadata struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// store_key is the key of the store that the record belongs to.
-	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
-	// record_key is the key of the record the new blob object belongs to.
-	RecordKey string `protobuf:"bytes,2,opt,name=record_key,json=recordKey,proto3" json:"record_key,omitempty"`
-	// size is the byte length of the object.
-	Size int64 `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
-	// Performance hints (write only).
-	Hint *Hint `protobuf:"bytes,4,opt,name=hint,proto3" json:"hint,omitempty"`
-}
-
-func (x *BlobMetadata) Reset() {
-	*x = BlobMetadata{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[18]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *BlobMetadata) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*BlobMetadata) ProtoMessage() {}
-
-func (x *BlobMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[18]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use BlobMetadata.ProtoReflect.Descriptor instead.
-func (*BlobMetadata) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{18}
-}
-
-func (x *BlobMetadata) GetStoreKey() string {
-	if x != nil {
-		return x.StoreKey
-	}
-	return ""
-}
-
-func (x *BlobMetadata) GetRecordKey() string {
-	if x != nil {
-		return x.RecordKey
-	}
-	return ""
-}
-
-func (x *BlobMetadata) GetSize() int64 {
-	if x != nil {
-		return x.Size
-	}
-	return 0
-}
-
-func (x *BlobMetadata) GetHint() *Hint {
-	if x != nil {
-		return x.Hint
-	}
-	return nil
 }
 
 // CreateBlobRequest is used for CreateBlob, a client-streaming method.
@@ -1506,7 +1333,7 @@ type CreateBlobRequest struct {
 func (x *CreateBlobRequest) Reset() {
 	*x = CreateBlobRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[19]
+		mi := &file_api_open_saves_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1519,7 +1346,7 @@ func (x *CreateBlobRequest) String() string {
 func (*CreateBlobRequest) ProtoMessage() {}
 
 func (x *CreateBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[19]
+	mi := &file_api_open_saves_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1532,7 +1359,7 @@ func (x *CreateBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBlobRequest.ProtoReflect.Descriptor instead.
 func (*CreateBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{19}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{16}
 }
 
 func (m *CreateBlobRequest) GetRequest() isCreateBlobRequest_Request {
@@ -1574,6 +1401,83 @@ func (*CreateBlobRequest_Metadata) isCreateBlobRequest_Request() {}
 
 func (*CreateBlobRequest_Content) isCreateBlobRequest_Request() {}
 
+// BlobMetadata contains necessary metadata
+// when creating (uploading) a new blob object.
+type BlobMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// store_key is the key of the store that the record belongs to.
+	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
+	// record_key is the key of the record the new blob object belongs to.
+	RecordKey string `protobuf:"bytes,2,opt,name=record_key,json=recordKey,proto3" json:"record_key,omitempty"`
+	// size is the byte length of the object.
+	Size int64 `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
+	// Performance hints (write only).
+	Hint *Hint `protobuf:"bytes,4,opt,name=hint,proto3" json:"hint,omitempty"`
+}
+
+func (x *BlobMetadata) Reset() {
+	*x = BlobMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[17]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BlobMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlobMetadata) ProtoMessage() {}
+
+func (x *BlobMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[17]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlobMetadata.ProtoReflect.Descriptor instead.
+func (*BlobMetadata) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *BlobMetadata) GetStoreKey() string {
+	if x != nil {
+		return x.StoreKey
+	}
+	return ""
+}
+
+func (x *BlobMetadata) GetRecordKey() string {
+	if x != nil {
+		return x.RecordKey
+	}
+	return ""
+}
+
+func (x *BlobMetadata) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *BlobMetadata) GetHint() *Hint {
+	if x != nil {
+		return x.Hint
+	}
+	return nil
+}
+
 type CreateChunkedBlobRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1590,7 +1494,7 @@ type CreateChunkedBlobRequest struct {
 func (x *CreateChunkedBlobRequest) Reset() {
 	*x = CreateChunkedBlobRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[20]
+		mi := &file_api_open_saves_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1603,7 +1507,7 @@ func (x *CreateChunkedBlobRequest) String() string {
 func (*CreateChunkedBlobRequest) ProtoMessage() {}
 
 func (x *CreateChunkedBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[20]
+	mi := &file_api_open_saves_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1616,7 +1520,7 @@ func (x *CreateChunkedBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateChunkedBlobRequest.ProtoReflect.Descriptor instead.
 func (*CreateChunkedBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{20}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateChunkedBlobRequest) GetStoreKey() string {
@@ -1652,7 +1556,7 @@ type CreateChunkedBlobResponse struct {
 func (x *CreateChunkedBlobResponse) Reset() {
 	*x = CreateChunkedBlobResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[21]
+		mi := &file_api_open_saves_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1665,7 +1569,7 @@ func (x *CreateChunkedBlobResponse) String() string {
 func (*CreateChunkedBlobResponse) ProtoMessage() {}
 
 func (x *CreateChunkedBlobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[21]
+	mi := &file_api_open_saves_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1678,7 +1582,7 @@ func (x *CreateChunkedBlobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateChunkedBlobResponse.ProtoReflect.Descriptor instead.
 func (*CreateChunkedBlobResponse) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{21}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateChunkedBlobResponse) GetSessionId() string {
@@ -1705,7 +1609,7 @@ type UploadChunkRequest struct {
 func (x *UploadChunkRequest) Reset() {
 	*x = UploadChunkRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[22]
+		mi := &file_api_open_saves_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1718,7 +1622,7 @@ func (x *UploadChunkRequest) String() string {
 func (*UploadChunkRequest) ProtoMessage() {}
 
 func (x *UploadChunkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[22]
+	mi := &file_api_open_saves_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1731,7 +1635,7 @@ func (x *UploadChunkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadChunkRequest.ProtoReflect.Descriptor instead.
 func (*UploadChunkRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{22}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{20}
 }
 
 func (m *UploadChunkRequest) GetRequest() isUploadChunkRequest_Request {
@@ -1791,7 +1695,7 @@ type ChunkMetadata struct {
 func (x *ChunkMetadata) Reset() {
 	*x = ChunkMetadata{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[23]
+		mi := &file_api_open_saves_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1804,7 +1708,7 @@ func (x *ChunkMetadata) String() string {
 func (*ChunkMetadata) ProtoMessage() {}
 
 func (x *ChunkMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[23]
+	mi := &file_api_open_saves_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1817,7 +1721,7 @@ func (x *ChunkMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChunkMetadata.ProtoReflect.Descriptor instead.
 func (*ChunkMetadata) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{23}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ChunkMetadata) GetSessionId() string {
@@ -1860,7 +1764,7 @@ type CommitChunkedUploadRequest struct {
 func (x *CommitChunkedUploadRequest) Reset() {
 	*x = CommitChunkedUploadRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[24]
+		mi := &file_api_open_saves_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1873,7 +1777,7 @@ func (x *CommitChunkedUploadRequest) String() string {
 func (*CommitChunkedUploadRequest) ProtoMessage() {}
 
 func (x *CommitChunkedUploadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[24]
+	mi := &file_api_open_saves_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1886,7 +1790,7 @@ func (x *CommitChunkedUploadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitChunkedUploadRequest.ProtoReflect.Descriptor instead.
 func (*CommitChunkedUploadRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{24}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CommitChunkedUploadRequest) GetSessionId() string {
@@ -1908,7 +1812,7 @@ type AbortChunkedUploadRequest struct {
 func (x *AbortChunkedUploadRequest) Reset() {
 	*x = AbortChunkedUploadRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[25]
+		mi := &file_api_open_saves_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1921,7 +1825,7 @@ func (x *AbortChunkedUploadRequest) String() string {
 func (*AbortChunkedUploadRequest) ProtoMessage() {}
 
 func (x *AbortChunkedUploadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[25]
+	mi := &file_api_open_saves_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1934,7 +1838,7 @@ func (x *AbortChunkedUploadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AbortChunkedUploadRequest.ProtoReflect.Descriptor instead.
 func (*AbortChunkedUploadRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{25}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AbortChunkedUploadRequest) GetSessionId() string {
@@ -1960,7 +1864,7 @@ type GetBlobRequest struct {
 func (x *GetBlobRequest) Reset() {
 	*x = GetBlobRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[26]
+		mi := &file_api_open_saves_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1973,7 +1877,7 @@ func (x *GetBlobRequest) String() string {
 func (*GetBlobRequest) ProtoMessage() {}
 
 func (x *GetBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[26]
+	mi := &file_api_open_saves_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1986,7 +1890,7 @@ func (x *GetBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBlobRequest.ProtoReflect.Descriptor instead.
 func (*GetBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{26}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetBlobRequest) GetStoreKey() string {
@@ -2004,81 +1908,6 @@ func (x *GetBlobRequest) GetRecordKey() string {
 }
 
 func (x *GetBlobRequest) GetHint() *Hint {
-	if x != nil {
-		return x.Hint
-	}
-	return nil
-}
-
-type GetBlobChunkRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// The key of the store that the record belongs to.
-	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
-	// The key of the record to get.
-	RecordKey string `protobuf:"bytes,2,opt,name=record_key,json=recordKey,proto3" json:"record_key,omitempty"`
-	// chunk_number is the number of the chunk to get.
-	ChunkNumber int64 `protobuf:"varint,3,opt,name=chunk_number,json=chunkNumber,proto3" json:"chunk_number,omitempty"`
-	// Performance hints.
-	Hint *Hint `protobuf:"bytes,4,opt,name=hint,proto3" json:"hint,omitempty"`
-}
-
-func (x *GetBlobChunkRequest) Reset() {
-	*x = GetBlobChunkRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[27]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *GetBlobChunkRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetBlobChunkRequest) ProtoMessage() {}
-
-func (x *GetBlobChunkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[27]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetBlobChunkRequest.ProtoReflect.Descriptor instead.
-func (*GetBlobChunkRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *GetBlobChunkRequest) GetStoreKey() string {
-	if x != nil {
-		return x.StoreKey
-	}
-	return ""
-}
-
-func (x *GetBlobChunkRequest) GetRecordKey() string {
-	if x != nil {
-		return x.RecordKey
-	}
-	return ""
-}
-
-func (x *GetBlobChunkRequest) GetChunkNumber() int64 {
-	if x != nil {
-		return x.ChunkNumber
-	}
-	return 0
-}
-
-func (x *GetBlobChunkRequest) GetHint() *Hint {
 	if x != nil {
 		return x.Hint
 	}
@@ -2103,7 +1932,7 @@ type GetBlobResponse struct {
 func (x *GetBlobResponse) Reset() {
 	*x = GetBlobResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[28]
+		mi := &file_api_open_saves_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2116,7 +1945,7 @@ func (x *GetBlobResponse) String() string {
 func (*GetBlobResponse) ProtoMessage() {}
 
 func (x *GetBlobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[28]
+	mi := &file_api_open_saves_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2129,7 +1958,7 @@ func (x *GetBlobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBlobResponse.ProtoReflect.Descriptor instead.
 func (*GetBlobResponse) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{28}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{25}
 }
 
 func (m *GetBlobResponse) GetResponse() isGetBlobResponse_Response {
@@ -2171,6 +2000,81 @@ func (*GetBlobResponse_Metadata) isGetBlobResponse_Response() {}
 
 func (*GetBlobResponse_Content) isGetBlobResponse_Response() {}
 
+type GetBlobChunkRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The key of the store that the record belongs to.
+	StoreKey string `protobuf:"bytes,1,opt,name=store_key,json=storeKey,proto3" json:"store_key,omitempty"`
+	// The key of the record to get.
+	RecordKey string `protobuf:"bytes,2,opt,name=record_key,json=recordKey,proto3" json:"record_key,omitempty"`
+	// chunk_number is the number of the chunk to get.
+	ChunkNumber int64 `protobuf:"varint,3,opt,name=chunk_number,json=chunkNumber,proto3" json:"chunk_number,omitempty"`
+	// Performance hints.
+	Hint *Hint `protobuf:"bytes,4,opt,name=hint,proto3" json:"hint,omitempty"`
+}
+
+func (x *GetBlobChunkRequest) Reset() {
+	*x = GetBlobChunkRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[26]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetBlobChunkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBlobChunkRequest) ProtoMessage() {}
+
+func (x *GetBlobChunkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[26]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBlobChunkRequest.ProtoReflect.Descriptor instead.
+func (*GetBlobChunkRequest) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetBlobChunkRequest) GetStoreKey() string {
+	if x != nil {
+		return x.StoreKey
+	}
+	return ""
+}
+
+func (x *GetBlobChunkRequest) GetRecordKey() string {
+	if x != nil {
+		return x.RecordKey
+	}
+	return ""
+}
+
+func (x *GetBlobChunkRequest) GetChunkNumber() int64 {
+	if x != nil {
+		return x.ChunkNumber
+	}
+	return 0
+}
+
+func (x *GetBlobChunkRequest) GetHint() *Hint {
+	if x != nil {
+		return x.Hint
+	}
+	return nil
+}
+
 // GetBlobChunkResponse is a server-streaming response to return metadata and
 // content of a chunked blob object. The first message contains metadata and the
 // subsequent messages contain the binary data of the chunk inthe content field.
@@ -2188,7 +2092,7 @@ type GetBlobChunkResponse struct {
 func (x *GetBlobChunkResponse) Reset() {
 	*x = GetBlobChunkResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[29]
+		mi := &file_api_open_saves_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2201,7 +2105,7 @@ func (x *GetBlobChunkResponse) String() string {
 func (*GetBlobChunkResponse) ProtoMessage() {}
 
 func (x *GetBlobChunkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[29]
+	mi := &file_api_open_saves_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2214,7 +2118,7 @@ func (x *GetBlobChunkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBlobChunkResponse.ProtoReflect.Descriptor instead.
 func (*GetBlobChunkResponse) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{29}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{27}
 }
 
 func (m *GetBlobChunkResponse) GetResponse() isGetBlobChunkResponse_Response {
@@ -2270,7 +2174,7 @@ type DeleteBlobRequest struct {
 func (x *DeleteBlobRequest) Reset() {
 	*x = DeleteBlobRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_open_saves_proto_msgTypes[30]
+		mi := &file_api_open_saves_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2283,7 +2187,7 @@ func (x *DeleteBlobRequest) String() string {
 func (*DeleteBlobRequest) ProtoMessage() {}
 
 func (x *DeleteBlobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_open_saves_proto_msgTypes[30]
+	mi := &file_api_open_saves_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2296,7 +2200,7 @@ func (x *DeleteBlobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBlobRequest.ProtoReflect.Descriptor instead.
 func (*DeleteBlobRequest) Descriptor() ([]byte, []int) {
-	return file_api_open_saves_proto_rawDescGZIP(), []int{30}
+	return file_api_open_saves_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *DeleteBlobRequest) GetStoreKey() string {
@@ -2318,6 +2222,102 @@ func (x *DeleteBlobRequest) GetHint() *Hint {
 		return x.Hint
 	}
 	return nil
+}
+
+type PingRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// An optional string to send with the ping message.
+	Ping string `protobuf:"bytes,1,opt,name=ping,proto3" json:"ping,omitempty"`
+}
+
+func (x *PingRequest) Reset() {
+	*x = PingRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[29]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingRequest) ProtoMessage() {}
+
+func (x *PingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[29]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PingRequest.ProtoReflect.Descriptor instead.
+func (*PingRequest) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *PingRequest) GetPing() string {
+	if x != nil {
+		return x.Ping
+	}
+	return ""
+}
+
+type PingResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// An optional string that is copied from PingRequest.
+	Pong string `protobuf:"bytes,1,opt,name=pong,proto3" json:"pong,omitempty"`
+}
+
+func (x *PingResponse) Reset() {
+	*x = PingResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_open_saves_proto_msgTypes[30]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingResponse) ProtoMessage() {}
+
+func (x *PingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_open_saves_proto_msgTypes[30]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PingResponse.ProtoReflect.Descriptor instead.
+func (*PingResponse) Descriptor() ([]byte, []int) {
+	return file_api_open_saves_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *PingResponse) GetPong() string {
+	if x != nil {
+		return x.Pong
+	}
+	return ""
 }
 
 var File_api_open_saves_proto protoreflect.FileDescriptor
@@ -2409,50 +2409,54 @@ var file_api_open_saves_proto_rawDesc = []byte{
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04,
 	0x74, 0x61, 0x67, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x74, 0x61, 0x67, 0x73,
 	0x12, 0x19, 0x0a, 0x08, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x93, 0x01, 0x0a, 0x13,
-	0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79,
-	0x12, 0x30, 0x0a, 0x07, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x16, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x51, 0x75,
-	0x65, 0x72, 0x79, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x52, 0x07, 0x66, 0x69, 0x6c, 0x74, 0x65,
-	0x72, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x61, 0x67, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09,
-	0x52, 0x04, 0x74, 0x61, 0x67, 0x73, 0x12, 0x19, 0x0a, 0x08, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f,
-	0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49,
-	0x64, 0x22, 0x94, 0x01, 0x0a, 0x0b, 0x51, 0x75, 0x65, 0x72, 0x79, 0x46, 0x69, 0x6c, 0x74, 0x65,
-	0x72, 0x12, 0x23, 0x0a, 0x0d, 0x70, 0x72, 0x6f, 0x70, 0x65, 0x72, 0x74, 0x79, 0x5f, 0x6e, 0x61,
-	0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x70, 0x72, 0x6f, 0x70, 0x65, 0x72,
-	0x74, 0x79, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x35, 0x0a, 0x08, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74,
-	0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x19, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73,
-	0x61, 0x76, 0x65, 0x73, 0x2e, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x4f, 0x70, 0x65, 0x72, 0x61,
-	0x74, 0x6f, 0x72, 0x52, 0x08, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x12, 0x29, 0x0a,
-	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x6f,
-	0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x50, 0x72, 0x6f, 0x70, 0x65, 0x72, 0x74,
-	0x79, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x87, 0x01, 0x0a, 0x14, 0x51, 0x75, 0x65,
-	0x72, 0x79, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x2b, 0x0a, 0x07, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03,
-	0x28, 0x0b, 0x32, 0x11, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x52,
-	0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x07, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x12, 0x1d,
-	0x0a, 0x0a, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x02, 0x20, 0x03,
-	0x28, 0x09, 0x52, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x73, 0x12, 0x23, 0x0a,
-	0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70,
-	0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69,
-	0x6e, 0x74, 0x22, 0x26, 0x0a, 0x12, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x6f, 0x72,
-	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22, 0x82, 0x01, 0x0a, 0x13, 0x43,
-	0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12,
-	0x29, 0x0a, 0x06, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x11, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x52, 0x65, 0x63, 0x6f,
-	0x72, 0x64, 0x52, 0x06, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69,
-	0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73,
-	0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22,
-	0x66, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79,
-	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b,
-	0x65, 0x79, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
+	0x28, 0x09, 0x52, 0x07, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x3e, 0x0a, 0x12, 0x4c,
+	0x69, 0x73, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x28, 0x0a, 0x06, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x10, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x53, 0x74,
+	0x6f, 0x72, 0x65, 0x52, 0x06, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x73, 0x22, 0x26, 0x0a, 0x12, 0x44,
+	0x65, 0x6c, 0x65, 0x74, 0x65, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03,
+	0x6b, 0x65, 0x79, 0x22, 0x82, 0x01, 0x0a, 0x13, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65,
+	0x63, 0x6f, 0x72, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73,
+	0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
+	0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x29, 0x0a, 0x06, 0x72, 0x65, 0x63, 0x6f,
+	0x72, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73,
+	0x61, 0x76, 0x65, 0x73, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x06, 0x72, 0x65, 0x63,
+	0x6f, 0x72, 0x64, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69,
+	0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22, 0x66, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x52,
+	0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09,
+	0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x23, 0x0a, 0x04, 0x68,
+	0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e,
+	0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74,
+	0x22, 0x93, 0x01, 0x0a, 0x13, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72,
+	0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f,
+	0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x30, 0x0a, 0x07, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x73,
+	0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76,
+	0x65, 0x73, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x52, 0x07,
+	0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x61, 0x67, 0x73, 0x18,
+	0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x74, 0x61, 0x67, 0x73, 0x12, 0x19, 0x0a, 0x08, 0x6f,
+	0x77, 0x6e, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6f,
+	0x77, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x22, 0x94, 0x01, 0x0a, 0x0b, 0x51, 0x75, 0x65, 0x72, 0x79,
+	0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x12, 0x23, 0x0a, 0x0d, 0x70, 0x72, 0x6f, 0x70, 0x65, 0x72,
+	0x74, 0x79, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x70,
+	0x72, 0x6f, 0x70, 0x65, 0x72, 0x74, 0x79, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x35, 0x0a, 0x08, 0x6f,
+	0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x19, 0x2e,
+	0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72,
+	0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x08, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74,
+	0x6f, 0x72, 0x12, 0x29, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x13, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x50, 0x72,
+	0x6f, 0x70, 0x65, 0x72, 0x74, 0x79, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x87, 0x01,
+	0x0a, 0x14, 0x51, 0x75, 0x65, 0x72, 0x79, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2b, 0x0a, 0x07, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61,
+	0x76, 0x65, 0x73, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x07, 0x72, 0x65, 0x63, 0x6f,
+	0x72, 0x64, 0x73, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79,
+	0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65,
+	0x79, 0x73, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
 	0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e,
 	0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22, 0x82, 0x01, 0x0a, 0x13, 0x55, 0x70, 0x64, 0x61,
 	0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
@@ -2467,104 +2471,100 @@ var file_api_open_saves_proto_rawDesc = []byte{
 	0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79,
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79,
 	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b,
-	0x65, 0x79, 0x22, 0x3e, 0x0a, 0x12, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x73,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x28, 0x0a, 0x06, 0x73, 0x74, 0x6f, 0x72,
-	0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73,
-	0x61, 0x76, 0x65, 0x73, 0x2e, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x52, 0x06, 0x73, 0x74, 0x6f, 0x72,
-	0x65, 0x73, 0x22, 0x21, 0x0a, 0x0b, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x69, 0x6e, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x04, 0x70, 0x69, 0x6e, 0x67, 0x22, 0x22, 0x0a, 0x0c, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x6f, 0x6e, 0x67, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x6f, 0x6e, 0x67, 0x22, 0x83, 0x01, 0x0a, 0x0c, 0x42, 0x6c,
-	0x6f, 0x62, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74,
-	0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73,
-	0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x72, 0x65, 0x63, 0x6f, 0x72,
-	0x64, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x63,
-	0x6f, 0x72, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x03, 0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69,
-	0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73,
-	0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22,
-	0x71, 0x0a, 0x11, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x12, 0x35, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76,
-	0x65, 0x73, 0x2e, 0x42, 0x6c, 0x6f, 0x62, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x48,
-	0x00, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1a, 0x0a, 0x07, 0x63,
-	0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52, 0x07,
-	0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x42, 0x09, 0x0a, 0x07, 0x72, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x22, 0x75, 0x0a, 0x18, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x43, 0x68, 0x75, 0x6e,
-	0x6b, 0x65, 0x64, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b,
-	0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x72,
-	0x65, 0x63, 0x6f, 0x72, 0x64, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x09, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x68,
-	0x75, 0x6e, 0x6b, 0x5f, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09,
-	0x63, 0x68, 0x75, 0x6e, 0x6b, 0x53, 0x69, 0x7a, 0x65, 0x22, 0x3a, 0x0a, 0x19, 0x43, 0x72, 0x65,
-	0x61, 0x74, 0x65, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x65, 0x64, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f,
-	0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73,
-	0x69, 0x6f, 0x6e, 0x49, 0x64, 0x22, 0x73, 0x0a, 0x12, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x43,
-	0x68, 0x75, 0x6e, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x36, 0x0a, 0x08, 0x6d,
-	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18, 0x2e,
-	0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x4d,
-	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x48, 0x00, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64,
-	0x61, 0x74, 0x61, 0x12, 0x1a, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x42,
-	0x09, 0x0a, 0x07, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x7f, 0x0a, 0x0d, 0x43, 0x68,
-	0x75, 0x6e, 0x6b, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1d, 0x0a, 0x0a, 0x73,
-	0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x6e, 0x75,
-	0x6d, 0x62, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x6e, 0x75, 0x6d, 0x62,
-	0x65, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03,
-	0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x04,
-	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73,
-	0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22, 0x3b, 0x0a, 0x1a, 0x43,
-	0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x65, 0x64, 0x55, 0x70, 0x6c, 0x6f,
-	0x61, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73,
-	0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73,
-	0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x22, 0x3a, 0x0a, 0x19, 0x41, 0x62, 0x6f, 0x72,
-	0x74, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x65, 0x64, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e,
-	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69,
-	0x6f, 0x6e, 0x49, 0x64, 0x22, 0x71, 0x0a, 0x0e, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x62, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f,
+	0x65, 0x79, 0x22, 0x71, 0x0a, 0x11, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x42, 0x6c, 0x6f, 0x62,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x35, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64,
+	0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x6f, 0x70, 0x65, 0x6e,
+	0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x42, 0x6c, 0x6f, 0x62, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x74, 0x61, 0x48, 0x00, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1a,
+	0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x48,
+	0x00, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x42, 0x09, 0x0a, 0x07, 0x72, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x83, 0x01, 0x0a, 0x0c, 0x42, 0x6c, 0x6f, 0x62, 0x4d, 0x65,
+	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f,
 	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65,
 	0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x5f, 0x6b, 0x65,
 	0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x4b,
-	0x65, 0x79, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e,
-	0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22, 0x99, 0x01, 0x0a, 0x13, 0x47, 0x65, 0x74, 0x42,
-	0x6c, 0x6f, 0x62, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x65, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73,
+	0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22, 0x75, 0x0a, 0x18, 0x43,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x65, 0x64, 0x42, 0x6c, 0x6f, 0x62,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65,
+	0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72,
+	0x65, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x5f, 0x6b,
+	0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x68, 0x75, 0x6e, 0x6b, 0x5f, 0x73, 0x69, 0x7a,
+	0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x63, 0x68, 0x75, 0x6e, 0x6b, 0x53, 0x69,
+	0x7a, 0x65, 0x22, 0x3a, 0x0a, 0x19, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x43, 0x68, 0x75, 0x6e,
+	0x6b, 0x65, 0x64, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x22, 0x73,
+	0x0a, 0x12, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x36, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76,
+	0x65, 0x73, 0x2e, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0x48, 0x00, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1a, 0x0a, 0x07,
+	0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52,
+	0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x42, 0x09, 0x0a, 0x07, 0x72, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x22, 0x7f, 0x0a, 0x0d, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x4d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f,
+	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f,
+	0x6e, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x6e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x03, 0x52, 0x06, 0x6e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x73,
+	0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x12,
+	0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e,
+	0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04,
+	0x68, 0x69, 0x6e, 0x74, 0x22, 0x3b, 0x0a, 0x1a, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x43, 0x68,
+	0x75, 0x6e, 0x6b, 0x65, 0x64, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49,
+	0x64, 0x22, 0x3a, 0x0a, 0x19, 0x41, 0x62, 0x6f, 0x72, 0x74, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x65,
+	0x64, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d,
+	0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x22, 0x71, 0x0a,
+	0x0e, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
 	0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a,
 	0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x09, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x21, 0x0a, 0x0c, 0x63,
-	0x68, 0x75, 0x6e, 0x6b, 0x5f, 0x6e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28,
-	0x03, 0x52, 0x0b, 0x63, 0x68, 0x75, 0x6e, 0x6b, 0x4e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x12, 0x23,
-	0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f,
-	0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68,
-	0x69, 0x6e, 0x74, 0x22, 0x70, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x35, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
-	0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73,
-	0x61, 0x76, 0x65, 0x73, 0x2e, 0x42, 0x6c, 0x6f, 0x62, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
-	0x61, 0x48, 0x00, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1a, 0x0a,
-	0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00,
-	0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x42, 0x0a, 0x0a, 0x08, 0x72, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x76, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x62,
-	0x43, 0x68, 0x75, 0x6e, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x36, 0x0a,
-	0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x18, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x43, 0x68, 0x75, 0x6e,
-	0x6b, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x48, 0x00, 0x52, 0x08, 0x6d, 0x65, 0x74,
-	0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1a, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
-	0x74, 0x42, 0x0a, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x74, 0x0a,
-	0x11, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12,
-	0x1d, 0x0a, 0x0a, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x23,
-	0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f,
-	0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68,
-	0x69, 0x6e, 0x74, 0x2a, 0x5b, 0x0a, 0x0e, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x4f, 0x70, 0x65,
+	0x52, 0x09, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x23, 0x0a, 0x04, 0x68,
+	0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e,
+	0x73, 0x61, 0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74,
+	0x22, 0x70, 0x0a, 0x0f, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x35, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65,
+	0x73, 0x2e, 0x42, 0x6c, 0x6f, 0x62, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x48, 0x00,
+	0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1a, 0x0a, 0x07, 0x63, 0x6f,
+	0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52, 0x07, 0x63,
+	0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x42, 0x0a, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x99, 0x01, 0x0a, 0x13, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x62, 0x43, 0x68,
+	0x75, 0x6e, 0x6b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73, 0x74,
+	0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x73,
+	0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x72, 0x65, 0x63, 0x6f, 0x72,
+	0x64, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x63,
+	0x6f, 0x72, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x21, 0x0a, 0x0c, 0x63, 0x68, 0x75, 0x6e, 0x6b, 0x5f,
+	0x6e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0b, 0x63, 0x68,
+	0x75, 0x6e, 0x6b, 0x4e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e,
+	0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61,
+	0x76, 0x65, 0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22, 0x76,
+	0x0a, 0x14, 0x47, 0x65, 0x74, 0x42, 0x6c, 0x6f, 0x62, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x36, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73,
+	0x61, 0x76, 0x65, 0x73, 0x2e, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x74, 0x61, 0x48, 0x00, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x1a,
+	0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x48,
+	0x00, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x42, 0x0a, 0x0a, 0x08, 0x72, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x74, 0x0a, 0x11, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x42, 0x6c, 0x6f, 0x62, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x73,
+	0x74, 0x6f, 0x72, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
+	0x73, 0x74, 0x6f, 0x72, 0x65, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x72, 0x65, 0x63, 0x6f,
+	0x72, 0x64, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65,
+	0x63, 0x6f, 0x72, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x23, 0x0a, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x73, 0x61, 0x76, 0x65,
+	0x73, 0x2e, 0x48, 0x69, 0x6e, 0x74, 0x52, 0x04, 0x68, 0x69, 0x6e, 0x74, 0x22, 0x21, 0x0a, 0x0b,
+	0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x70,
+	0x69, 0x6e, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x69, 0x6e, 0x67, 0x22,
+	0x22, 0x0a, 0x0c, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x12, 0x0a, 0x04, 0x70, 0x6f, 0x6e, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70,
+	0x6f, 0x6e, 0x67, 0x2a, 0x5b, 0x0a, 0x0e, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x4f, 0x70, 0x65,
 	0x72, 0x61, 0x74, 0x6f, 0x72, 0x12, 0x09, 0x0a, 0x05, 0x45, 0x51, 0x55, 0x41, 0x4c, 0x10, 0x00,
 	0x12, 0x0b, 0x0a, 0x07, 0x47, 0x52, 0x45, 0x41, 0x54, 0x45, 0x52, 0x10, 0x01, 0x12, 0x08, 0x0a,
 	0x04, 0x4c, 0x45, 0x53, 0x53, 0x10, 0x02, 0x12, 0x14, 0x0a, 0x10, 0x47, 0x52, 0x45, 0x41, 0x54,
@@ -2685,30 +2685,30 @@ var file_api_open_saves_proto_goTypes = []interface{}{
 	(*CreateStoreRequest)(nil),         // 6: opensaves.CreateStoreRequest
 	(*GetStoreRequest)(nil),            // 7: opensaves.GetStoreRequest
 	(*ListStoresRequest)(nil),          // 8: opensaves.ListStoresRequest
-	(*QueryRecordsRequest)(nil),        // 9: opensaves.QueryRecordsRequest
-	(*QueryFilter)(nil),                // 10: opensaves.QueryFilter
-	(*QueryRecordsResponse)(nil),       // 11: opensaves.QueryRecordsResponse
-	(*DeleteStoreRequest)(nil),         // 12: opensaves.DeleteStoreRequest
-	(*CreateRecordRequest)(nil),        // 13: opensaves.CreateRecordRequest
-	(*GetRecordRequest)(nil),           // 14: opensaves.GetRecordRequest
-	(*UpdateRecordRequest)(nil),        // 15: opensaves.UpdateRecordRequest
-	(*DeleteRecordRequest)(nil),        // 16: opensaves.DeleteRecordRequest
-	(*ListStoresResponse)(nil),         // 17: opensaves.ListStoresResponse
-	(*PingRequest)(nil),                // 18: opensaves.PingRequest
-	(*PingResponse)(nil),               // 19: opensaves.PingResponse
-	(*BlobMetadata)(nil),               // 20: opensaves.BlobMetadata
-	(*CreateBlobRequest)(nil),          // 21: opensaves.CreateBlobRequest
-	(*CreateChunkedBlobRequest)(nil),   // 22: opensaves.CreateChunkedBlobRequest
-	(*CreateChunkedBlobResponse)(nil),  // 23: opensaves.CreateChunkedBlobResponse
-	(*UploadChunkRequest)(nil),         // 24: opensaves.UploadChunkRequest
-	(*ChunkMetadata)(nil),              // 25: opensaves.ChunkMetadata
-	(*CommitChunkedUploadRequest)(nil), // 26: opensaves.CommitChunkedUploadRequest
-	(*AbortChunkedUploadRequest)(nil),  // 27: opensaves.AbortChunkedUploadRequest
-	(*GetBlobRequest)(nil),             // 28: opensaves.GetBlobRequest
-	(*GetBlobChunkRequest)(nil),        // 29: opensaves.GetBlobChunkRequest
-	(*GetBlobResponse)(nil),            // 30: opensaves.GetBlobResponse
-	(*GetBlobChunkResponse)(nil),       // 31: opensaves.GetBlobChunkResponse
-	(*DeleteBlobRequest)(nil),          // 32: opensaves.DeleteBlobRequest
+	(*ListStoresResponse)(nil),         // 9: opensaves.ListStoresResponse
+	(*DeleteStoreRequest)(nil),         // 10: opensaves.DeleteStoreRequest
+	(*CreateRecordRequest)(nil),        // 11: opensaves.CreateRecordRequest
+	(*GetRecordRequest)(nil),           // 12: opensaves.GetRecordRequest
+	(*QueryRecordsRequest)(nil),        // 13: opensaves.QueryRecordsRequest
+	(*QueryFilter)(nil),                // 14: opensaves.QueryFilter
+	(*QueryRecordsResponse)(nil),       // 15: opensaves.QueryRecordsResponse
+	(*UpdateRecordRequest)(nil),        // 16: opensaves.UpdateRecordRequest
+	(*DeleteRecordRequest)(nil),        // 17: opensaves.DeleteRecordRequest
+	(*CreateBlobRequest)(nil),          // 18: opensaves.CreateBlobRequest
+	(*BlobMetadata)(nil),               // 19: opensaves.BlobMetadata
+	(*CreateChunkedBlobRequest)(nil),   // 20: opensaves.CreateChunkedBlobRequest
+	(*CreateChunkedBlobResponse)(nil),  // 21: opensaves.CreateChunkedBlobResponse
+	(*UploadChunkRequest)(nil),         // 22: opensaves.UploadChunkRequest
+	(*ChunkMetadata)(nil),              // 23: opensaves.ChunkMetadata
+	(*CommitChunkedUploadRequest)(nil), // 24: opensaves.CommitChunkedUploadRequest
+	(*AbortChunkedUploadRequest)(nil),  // 25: opensaves.AbortChunkedUploadRequest
+	(*GetBlobRequest)(nil),             // 26: opensaves.GetBlobRequest
+	(*GetBlobResponse)(nil),            // 27: opensaves.GetBlobResponse
+	(*GetBlobChunkRequest)(nil),        // 28: opensaves.GetBlobChunkRequest
+	(*GetBlobChunkResponse)(nil),       // 29: opensaves.GetBlobChunkResponse
+	(*DeleteBlobRequest)(nil),          // 30: opensaves.DeleteBlobRequest
+	(*PingRequest)(nil),                // 31: opensaves.PingRequest
+	(*PingResponse)(nil),               // 32: opensaves.PingResponse
 	nil,                                // 33: opensaves.Record.PropertiesEntry
 	(*timestamppb.Timestamp)(nil),      // 34: google.protobuf.Timestamp
 	(*emptypb.Empty)(nil),              // 35: google.protobuf.Empty
@@ -2721,63 +2721,63 @@ var file_api_open_saves_proto_depIdxs = []int32{
 	34, // 4: opensaves.Store.created_at:type_name -> google.protobuf.Timestamp
 	34, // 5: opensaves.Store.updated_at:type_name -> google.protobuf.Timestamp
 	5,  // 6: opensaves.CreateStoreRequest.store:type_name -> opensaves.Store
-	10, // 7: opensaves.QueryRecordsRequest.filters:type_name -> opensaves.QueryFilter
-	0,  // 8: opensaves.QueryFilter.operator:type_name -> opensaves.FilterOperator
-	2,  // 9: opensaves.QueryFilter.value:type_name -> opensaves.Property
-	3,  // 10: opensaves.QueryRecordsResponse.records:type_name -> opensaves.Record
-	4,  // 11: opensaves.QueryRecordsResponse.hint:type_name -> opensaves.Hint
-	3,  // 12: opensaves.CreateRecordRequest.record:type_name -> opensaves.Record
-	4,  // 13: opensaves.CreateRecordRequest.hint:type_name -> opensaves.Hint
-	4,  // 14: opensaves.GetRecordRequest.hint:type_name -> opensaves.Hint
-	3,  // 15: opensaves.UpdateRecordRequest.record:type_name -> opensaves.Record
-	4,  // 16: opensaves.UpdateRecordRequest.hint:type_name -> opensaves.Hint
-	5,  // 17: opensaves.ListStoresResponse.stores:type_name -> opensaves.Store
-	4,  // 18: opensaves.BlobMetadata.hint:type_name -> opensaves.Hint
-	20, // 19: opensaves.CreateBlobRequest.metadata:type_name -> opensaves.BlobMetadata
-	25, // 20: opensaves.UploadChunkRequest.metadata:type_name -> opensaves.ChunkMetadata
+	5,  // 7: opensaves.ListStoresResponse.stores:type_name -> opensaves.Store
+	3,  // 8: opensaves.CreateRecordRequest.record:type_name -> opensaves.Record
+	4,  // 9: opensaves.CreateRecordRequest.hint:type_name -> opensaves.Hint
+	4,  // 10: opensaves.GetRecordRequest.hint:type_name -> opensaves.Hint
+	14, // 11: opensaves.QueryRecordsRequest.filters:type_name -> opensaves.QueryFilter
+	0,  // 12: opensaves.QueryFilter.operator:type_name -> opensaves.FilterOperator
+	2,  // 13: opensaves.QueryFilter.value:type_name -> opensaves.Property
+	3,  // 14: opensaves.QueryRecordsResponse.records:type_name -> opensaves.Record
+	4,  // 15: opensaves.QueryRecordsResponse.hint:type_name -> opensaves.Hint
+	3,  // 16: opensaves.UpdateRecordRequest.record:type_name -> opensaves.Record
+	4,  // 17: opensaves.UpdateRecordRequest.hint:type_name -> opensaves.Hint
+	19, // 18: opensaves.CreateBlobRequest.metadata:type_name -> opensaves.BlobMetadata
+	4,  // 19: opensaves.BlobMetadata.hint:type_name -> opensaves.Hint
+	23, // 20: opensaves.UploadChunkRequest.metadata:type_name -> opensaves.ChunkMetadata
 	4,  // 21: opensaves.ChunkMetadata.hint:type_name -> opensaves.Hint
 	4,  // 22: opensaves.GetBlobRequest.hint:type_name -> opensaves.Hint
-	4,  // 23: opensaves.GetBlobChunkRequest.hint:type_name -> opensaves.Hint
-	20, // 24: opensaves.GetBlobResponse.metadata:type_name -> opensaves.BlobMetadata
-	25, // 25: opensaves.GetBlobChunkResponse.metadata:type_name -> opensaves.ChunkMetadata
+	19, // 23: opensaves.GetBlobResponse.metadata:type_name -> opensaves.BlobMetadata
+	4,  // 24: opensaves.GetBlobChunkRequest.hint:type_name -> opensaves.Hint
+	23, // 25: opensaves.GetBlobChunkResponse.metadata:type_name -> opensaves.ChunkMetadata
 	4,  // 26: opensaves.DeleteBlobRequest.hint:type_name -> opensaves.Hint
 	2,  // 27: opensaves.Record.PropertiesEntry.value:type_name -> opensaves.Property
 	6,  // 28: opensaves.OpenSaves.CreateStore:input_type -> opensaves.CreateStoreRequest
 	7,  // 29: opensaves.OpenSaves.GetStore:input_type -> opensaves.GetStoreRequest
 	8,  // 30: opensaves.OpenSaves.ListStores:input_type -> opensaves.ListStoresRequest
-	12, // 31: opensaves.OpenSaves.DeleteStore:input_type -> opensaves.DeleteStoreRequest
-	13, // 32: opensaves.OpenSaves.CreateRecord:input_type -> opensaves.CreateRecordRequest
-	14, // 33: opensaves.OpenSaves.GetRecord:input_type -> opensaves.GetRecordRequest
-	9,  // 34: opensaves.OpenSaves.QueryRecords:input_type -> opensaves.QueryRecordsRequest
-	15, // 35: opensaves.OpenSaves.UpdateRecord:input_type -> opensaves.UpdateRecordRequest
-	16, // 36: opensaves.OpenSaves.DeleteRecord:input_type -> opensaves.DeleteRecordRequest
-	21, // 37: opensaves.OpenSaves.CreateBlob:input_type -> opensaves.CreateBlobRequest
-	22, // 38: opensaves.OpenSaves.CreateChunkedBlob:input_type -> opensaves.CreateChunkedBlobRequest
-	24, // 39: opensaves.OpenSaves.UploadChunk:input_type -> opensaves.UploadChunkRequest
-	26, // 40: opensaves.OpenSaves.CommitChunkedUpload:input_type -> opensaves.CommitChunkedUploadRequest
-	27, // 41: opensaves.OpenSaves.AbortChunkedUpload:input_type -> opensaves.AbortChunkedUploadRequest
-	28, // 42: opensaves.OpenSaves.GetBlob:input_type -> opensaves.GetBlobRequest
-	29, // 43: opensaves.OpenSaves.GetBlobChunk:input_type -> opensaves.GetBlobChunkRequest
-	32, // 44: opensaves.OpenSaves.DeleteBlob:input_type -> opensaves.DeleteBlobRequest
-	18, // 45: opensaves.OpenSaves.Ping:input_type -> opensaves.PingRequest
+	10, // 31: opensaves.OpenSaves.DeleteStore:input_type -> opensaves.DeleteStoreRequest
+	11, // 32: opensaves.OpenSaves.CreateRecord:input_type -> opensaves.CreateRecordRequest
+	12, // 33: opensaves.OpenSaves.GetRecord:input_type -> opensaves.GetRecordRequest
+	13, // 34: opensaves.OpenSaves.QueryRecords:input_type -> opensaves.QueryRecordsRequest
+	16, // 35: opensaves.OpenSaves.UpdateRecord:input_type -> opensaves.UpdateRecordRequest
+	17, // 36: opensaves.OpenSaves.DeleteRecord:input_type -> opensaves.DeleteRecordRequest
+	18, // 37: opensaves.OpenSaves.CreateBlob:input_type -> opensaves.CreateBlobRequest
+	20, // 38: opensaves.OpenSaves.CreateChunkedBlob:input_type -> opensaves.CreateChunkedBlobRequest
+	22, // 39: opensaves.OpenSaves.UploadChunk:input_type -> opensaves.UploadChunkRequest
+	24, // 40: opensaves.OpenSaves.CommitChunkedUpload:input_type -> opensaves.CommitChunkedUploadRequest
+	25, // 41: opensaves.OpenSaves.AbortChunkedUpload:input_type -> opensaves.AbortChunkedUploadRequest
+	26, // 42: opensaves.OpenSaves.GetBlob:input_type -> opensaves.GetBlobRequest
+	28, // 43: opensaves.OpenSaves.GetBlobChunk:input_type -> opensaves.GetBlobChunkRequest
+	30, // 44: opensaves.OpenSaves.DeleteBlob:input_type -> opensaves.DeleteBlobRequest
+	31, // 45: opensaves.OpenSaves.Ping:input_type -> opensaves.PingRequest
 	5,  // 46: opensaves.OpenSaves.CreateStore:output_type -> opensaves.Store
 	5,  // 47: opensaves.OpenSaves.GetStore:output_type -> opensaves.Store
-	17, // 48: opensaves.OpenSaves.ListStores:output_type -> opensaves.ListStoresResponse
+	9,  // 48: opensaves.OpenSaves.ListStores:output_type -> opensaves.ListStoresResponse
 	35, // 49: opensaves.OpenSaves.DeleteStore:output_type -> google.protobuf.Empty
 	3,  // 50: opensaves.OpenSaves.CreateRecord:output_type -> opensaves.Record
 	3,  // 51: opensaves.OpenSaves.GetRecord:output_type -> opensaves.Record
-	11, // 52: opensaves.OpenSaves.QueryRecords:output_type -> opensaves.QueryRecordsResponse
+	15, // 52: opensaves.OpenSaves.QueryRecords:output_type -> opensaves.QueryRecordsResponse
 	3,  // 53: opensaves.OpenSaves.UpdateRecord:output_type -> opensaves.Record
 	35, // 54: opensaves.OpenSaves.DeleteRecord:output_type -> google.protobuf.Empty
-	20, // 55: opensaves.OpenSaves.CreateBlob:output_type -> opensaves.BlobMetadata
-	23, // 56: opensaves.OpenSaves.CreateChunkedBlob:output_type -> opensaves.CreateChunkedBlobResponse
-	25, // 57: opensaves.OpenSaves.UploadChunk:output_type -> opensaves.ChunkMetadata
-	20, // 58: opensaves.OpenSaves.CommitChunkedUpload:output_type -> opensaves.BlobMetadata
+	19, // 55: opensaves.OpenSaves.CreateBlob:output_type -> opensaves.BlobMetadata
+	21, // 56: opensaves.OpenSaves.CreateChunkedBlob:output_type -> opensaves.CreateChunkedBlobResponse
+	23, // 57: opensaves.OpenSaves.UploadChunk:output_type -> opensaves.ChunkMetadata
+	19, // 58: opensaves.OpenSaves.CommitChunkedUpload:output_type -> opensaves.BlobMetadata
 	35, // 59: opensaves.OpenSaves.AbortChunkedUpload:output_type -> google.protobuf.Empty
-	30, // 60: opensaves.OpenSaves.GetBlob:output_type -> opensaves.GetBlobResponse
-	31, // 61: opensaves.OpenSaves.GetBlobChunk:output_type -> opensaves.GetBlobChunkResponse
+	27, // 60: opensaves.OpenSaves.GetBlob:output_type -> opensaves.GetBlobResponse
+	29, // 61: opensaves.OpenSaves.GetBlobChunk:output_type -> opensaves.GetBlobChunkResponse
 	35, // 62: opensaves.OpenSaves.DeleteBlob:output_type -> google.protobuf.Empty
-	19, // 63: opensaves.OpenSaves.Ping:output_type -> opensaves.PingResponse
+	32, // 63: opensaves.OpenSaves.Ping:output_type -> opensaves.PingResponse
 	46, // [46:64] is the sub-list for method output_type
 	28, // [28:46] is the sub-list for method input_type
 	28, // [28:28] is the sub-list for extension type_name
@@ -2876,102 +2876,6 @@ func file_api_open_saves_proto_init() {
 			}
 		}
 		file_api_open_saves_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryRecordsRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryFilter); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryRecordsResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteStoreRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateRecordRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetRecordRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateRecordRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteRecordRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ListStoresResponse); i {
 			case 0:
 				return &v.state
@@ -2983,43 +2887,103 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
+		file_api_open_saves_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeleteStoreRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CreateRecordRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetRecordRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*QueryRecordsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*QueryFilter); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*QueryRecordsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdateRecordRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DeleteRecordRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 		file_api_open_saves_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PingRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PingResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BlobMetadata); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CreateBlobRequest); i {
 			case 0:
 				return &v.state
@@ -3031,7 +2995,19 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*BlobMetadata); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CreateChunkedBlobRequest); i {
 			case 0:
 				return &v.state
@@ -3043,7 +3019,7 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CreateChunkedBlobResponse); i {
 			case 0:
 				return &v.state
@@ -3055,7 +3031,7 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UploadChunkRequest); i {
 			case 0:
 				return &v.state
@@ -3067,7 +3043,7 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ChunkMetadata); i {
 			case 0:
 				return &v.state
@@ -3079,7 +3055,7 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CommitChunkedUploadRequest); i {
 			case 0:
 				return &v.state
@@ -3091,7 +3067,7 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AbortChunkedUploadRequest); i {
 			case 0:
 				return &v.state
@@ -3103,7 +3079,7 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetBlobRequest); i {
 			case 0:
 				return &v.state
@@ -3115,19 +3091,7 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetBlobChunkRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_api_open_saves_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetBlobResponse); i {
 			case 0:
 				return &v.state
@@ -3139,7 +3103,19 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetBlobChunkRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GetBlobChunkResponse); i {
 			case 0:
 				return &v.state
@@ -3151,8 +3127,32 @@ func file_api_open_saves_proto_init() {
 				return nil
 			}
 		}
-		file_api_open_saves_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+		file_api_open_saves_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DeleteBlobRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PingRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_open_saves_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PingResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3169,19 +3169,19 @@ func file_api_open_saves_proto_init() {
 		(*Property_StringValue)(nil),
 		(*Property_BooleanValue)(nil),
 	}
-	file_api_open_saves_proto_msgTypes[19].OneofWrappers = []interface{}{
+	file_api_open_saves_proto_msgTypes[16].OneofWrappers = []interface{}{
 		(*CreateBlobRequest_Metadata)(nil),
 		(*CreateBlobRequest_Content)(nil),
 	}
-	file_api_open_saves_proto_msgTypes[22].OneofWrappers = []interface{}{
+	file_api_open_saves_proto_msgTypes[20].OneofWrappers = []interface{}{
 		(*UploadChunkRequest_Metadata)(nil),
 		(*UploadChunkRequest_Content)(nil),
 	}
-	file_api_open_saves_proto_msgTypes[28].OneofWrappers = []interface{}{
+	file_api_open_saves_proto_msgTypes[25].OneofWrappers = []interface{}{
 		(*GetBlobResponse_Metadata)(nil),
 		(*GetBlobResponse_Content)(nil),
 	}
-	file_api_open_saves_proto_msgTypes[29].OneofWrappers = []interface{}{
+	file_api_open_saves_proto_msgTypes[27].OneofWrappers = []interface{}{
 		(*GetBlobChunkResponse_Metadata)(nil),
 		(*GetBlobChunkResponse_Content)(nil),
 	}
