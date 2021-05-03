@@ -333,7 +333,7 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 				if err != nil {
 					return err
 				}
-			} else if grpc.Code(err) != codes.NotFound {
+			} else if status.Code(err) != codes.NotFound {
 				return err
 			}
 		}
