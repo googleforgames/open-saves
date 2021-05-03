@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb
+package timestamps
 
 import (
 	"cloud.google.com/go/datastore"
@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func uuidToDatastoreProperty(name string, u uuid.UUID, noIndex bool) datastore.Property {
+func UUIDToDatastoreProperty(name string, u uuid.UUID, noIndex bool) datastore.Property {
 	// Output an empty string instead of "000000-..." to save space
 	if u == uuid.Nil {
 		return datastore.Property{
@@ -37,7 +37,7 @@ func uuidToDatastoreProperty(name string, u uuid.UUID, noIndex bool) datastore.P
 	}
 }
 
-func datastoreLoadUUID(ps []datastore.Property, name string) (uuid.UUID, []datastore.Property, error) {
+func LoadUUID(ps []datastore.Property, name string) (uuid.UUID, []datastore.Property, error) {
 	for i, p := range ps {
 		if p.Name == name {
 			if s, ok := p.Value.(string); ok {

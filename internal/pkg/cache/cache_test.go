@@ -19,22 +19,23 @@ import (
 	"time"
 
 	pb "github.com/googleforgames/open-saves/api"
-	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCache_SerializeRecord(t *testing.T) {
-	rr := []*m.Record{
+	rr := []*record.Record{
 		{
-			Timestamps: m.Timestamps{
+			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
 		},
 		{
 			Key: "some-key",
-			Properties: m.PropertyMap{
+			Properties: record.PropertyMap{
 				"prop1": {
 					Type:         pb.Property_BOOLEAN,
 					BooleanValue: false,
@@ -48,7 +49,7 @@ func TestCache_SerializeRecord(t *testing.T) {
 					StringValue: "string value",
 				},
 			},
-			Timestamps: m.Timestamps{
+			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
@@ -59,7 +60,7 @@ func TestCache_SerializeRecord(t *testing.T) {
 			BlobSize: 64,
 			OwnerID:  "new-owner",
 			Tags:     []string{"tag1", "tag2"},
-			Timestamps: m.Timestamps{
+			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},

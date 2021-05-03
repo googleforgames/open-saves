@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb
+package blobref
 
 import (
 	"errors"
@@ -20,6 +20,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
 // BlobRefStatus represents a current blob status.
@@ -73,7 +74,7 @@ type BlobRef struct {
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
-	Timestamps Timestamps
+	Timestamps timestamps.Timestamps
 }
 
 // Assert Blob implements both PropertyLoadSave and KeyLoader.
@@ -156,11 +157,4 @@ func (b *BlobRef) Fail() error {
 // ObjectPath returns an object path for the backend blob storage.
 func (b *BlobRef) ObjectPath() string {
 	return b.Key.String()
-}
-
-// BlobRefCursor is a database cursor for BlobRef.
-type BlobRefCursor interface {
-	// Next advances the iterator and returns the next value.
-	// Returns nil and an iterator.Done at the end of the iterator.
-	Next() (*BlobRef, error)
 }

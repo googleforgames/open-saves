@@ -23,7 +23,11 @@ import (
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc"
@@ -80,13 +84,13 @@ func newRecordKey() string {
 	return uuid.New().String() + "_unittest_record"
 }
 
-func cloneRecord(r *m.Record) *m.Record {
+func cloneRecord(r *record.Record) *record.Record {
 	if r == nil {
 		return nil
 	}
 	ret := *r
 	ret.Blob = append([]byte{}, r.Blob...)
-	ret.Properties = make(m.PropertyMap)
+	ret.Properties = make(record.PropertyMap)
 	for k, v := range r.Properties {
 		ret.Properties[k] = v
 	}
@@ -97,7 +101,7 @@ func cloneRecord(r *m.Record) *m.Record {
 // setupTestStoreRecord creates a new store and inserts a record into it, then registers
 // cleanup functions to delete these test store and record.
 // Passing a nil to record will skip the record insertion.
-func setupTestStoreRecord(ctx context.Context, t *testing.T, metaDB *m.MetaDB, store *m.Store, record *m.Record) (*m.Store, *m.Record) {
+func setupTestStoreRecord(ctx context.Context, t *testing.T, metaDB *m.MetaDB, store *store.Store, r *record.Record) (*store.Store, *record.Record) {
 	t.Helper()
 	newStore, err := metaDB.CreateStore(ctx, store)
 	if err != nil {
@@ -107,21 +111,21 @@ func setupTestStoreRecord(ctx context.Context, t *testing.T, metaDB *m.MetaDB, s
 		metaDB.DeleteStore(ctx, newStore.Key)
 	})
 	metadbtest.AssertEqualStore(t, store, newStore, "CreateStore should return the created store.")
-	var newRecord *m.Record
-	if record != nil {
-		newRecord, err = metaDB.InsertRecord(ctx, newStore.Key, record)
+	var newRecord *record.Record
+	if r != nil {
+		newRecord, err = metaDB.InsertRecord(ctx, newStore.Key, r)
 		if err != nil {
 			t.Fatalf("Could not create a new record: %v", err)
 		}
 		t.Cleanup(func() {
 			metaDB.DeleteRecord(ctx, newStore.Key, newRecord.Key)
 		})
-		metadbtest.AssertEqualRecord(t, record, newRecord, "GetRecord should return the exact same record.")
+		metadbtest.AssertEqualRecord(t, r, newRecord, "GetRecord should return the exact same record.")
 	}
 	return newStore, newRecord
 }
 
-func setupTestBlobRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob *m.BlobRef) *m.BlobRef {
+func setupTestBlobRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob *blobref.BlobRef) *blobref.BlobRef {
 	t.Helper()
 	newBlob, err := metaDB.InsertBlobRef(ctx, blob)
 	if err != nil {
@@ -153,12 +157,12 @@ func TestMetaDB_SimpleCreateGetDeleteStore(t *testing.T) {
 	storeKey := newStoreKey()
 	storeName := "SimpleCreateGetDeleteStore" + uuid.New().String()
 	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
-	store := &m.Store{
+	store := &store.Store{
 		Key:     storeKey,
 		Name:    storeName,
 		OwnerID: "owner",
 		Tags:    []string{"abc", "def"},
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: createdAt,
 			Signature: uuid.MustParse("db94be80-e036-4ca8-a9c0-2259b8a67acc"),
@@ -197,7 +201,7 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
 	storeKey := newStoreKey()
-	store := &m.Store{
+	store := &store.Store{
 		Key:     storeKey,
 		Name:    "SimpleCreateGetDeleteRecord",
 		OwnerID: "owner",
@@ -207,18 +211,18 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
 	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
-	record := &m.Record{
+	record := &record.Record{
 		Key:      recordKey,
 		Blob:     blob,
 		BlobSize: int64(len(blob)),
 		OwnerID:  "record owner",
 		Tags:     []string{"abc", "def"},
-		Properties: m.PropertyMap{
+		Properties: record.PropertyMap{
 			"BoolTP":   {Type: pb.Property_BOOLEAN, BooleanValue: false},
 			"IntTP":    {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"StringTP": {Type: pb.Property_STRING, StringValue: "a string value"},
 		},
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: createdAt,
 			Signature: uuid.MustParse("89223949-0414-438e-8f5e-3fd9e2d11c1e"),
@@ -262,7 +266,7 @@ func TestMetaDB_InsertRecordShouldFailWithNonExistentStore(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
 	storeKey := newStoreKey()
-	record := &m.Record{
+	record := &record.Record{
 		Key: newRecordKey(),
 	}
 	record1, err := metaDB.InsertRecord(ctx, storeKey, record)
@@ -279,8 +283,8 @@ func TestMetaDB_InsertRecordShouldFailWithNonExistentStore(t *testing.T) {
 func TestMetaDB_DeleteStoreShouldFailWhenNotEmpty(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
-	store := &m.Store{Key: newStoreKey()}
-	record := &m.Record{Key: newRecordKey(), Properties: make(m.PropertyMap)}
+	store := &store.Store{Key: newStoreKey()}
+	record := &record.Record{Key: newRecordKey(), Properties: make(record.PropertyMap)}
 
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
 
@@ -297,7 +301,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 
 	storeKey := newStoreKey()
-	store := &m.Store{
+	store := &store.Store{
 		Key:     storeKey,
 		Name:    "UpdateRecord",
 		OwnerID: "owner",
@@ -305,50 +309,50 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
-	record := &m.Record{
+	work := &record.Record{
 		Key:        recordKey,
 		Blob:       blob,
 		BlobSize:   int64(len(blob)),
-		Properties: make(m.PropertyMap),
+		Properties: make(record.PropertyMap),
 		OwnerID:    "record owner",
 		Tags:       []string{"abc", "def"},
 	}
-	record.Timestamps.NewTimestamps(timestampPrecision)
-	expected := cloneRecord(record)
+	work.Timestamps.NewTimestamps(timestampPrecision)
+	expected := cloneRecord(work)
 
-	updatedRecord, err := metaDB.UpdateRecord(ctx, storeKey, recordKey,
-		func(*m.Record) (*m.Record, error) { return nil, nil })
+	updated, err := metaDB.UpdateRecord(ctx, storeKey, recordKey,
+		func(*record.Record) (*record.Record, error) { return nil, nil })
 	assert.NotNil(t, err, "UpdateRecord should return an error if the specified record doesn't exist.")
-	assert.Nil(t, updatedRecord, "UpdateRecord should return nil with error")
+	assert.Nil(t, updated, "UpdateRecord should return nil with error")
 
-	setupTestStoreRecord(ctx, t, metaDB, store, record)
+	setupTestStoreRecord(ctx, t, metaDB, store, work)
 
-	record.Tags = append(record.Tags, "ghi")
+	work.Tags = append(work.Tags, "ghi")
 	expected.Tags = append(expected.Tags, "ghi")
-	record.OwnerID = "NewOwner"
-	expected.OwnerID = record.OwnerID
+	work.OwnerID = "NewOwner"
+	expected.OwnerID = work.OwnerID
 	expected.Timestamps.NewTimestamps(timestampPrecision)
 
 	// Make sure UpdateRecord doesn't update CreatedAt
-	record.Timestamps.CreatedAt = time.Unix(0, 0)
-	updatedRecord, err = metaDB.UpdateRecord(ctx, storeKey, recordKey,
-		func(r *m.Record) (*m.Record, error) {
-			r.OwnerID = record.OwnerID
-			r.Tags = record.Tags
+	work.Timestamps.CreatedAt = time.Unix(0, 0)
+	updated, err = metaDB.UpdateRecord(ctx, storeKey, recordKey,
+		func(r *record.Record) (*record.Record, error) {
+			r.OwnerID = work.OwnerID
+			r.Tags = work.Tags
 			return r, nil
 		})
 	assert.Nilf(t, err, "Failed to update a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	// Make sure the signatures are different before passing to AssertEqualRecordWithinDuration
-	assert.NotEqual(t, expected.Timestamps.Signature, updatedRecord.Timestamps.Signature)
-	expected.Timestamps.Signature = updatedRecord.Timestamps.Signature
+	assert.NotEqual(t, expected.Timestamps.Signature, updated.Timestamps.Signature)
+	expected.Timestamps.Signature = updated.Timestamps.Signature
 	metadbtest.AssertEqualRecordWithinDuration(t, expected,
-		updatedRecord, testTimestampThreshold, "Updated record is not the same as original.")
+		updated, testTimestampThreshold, "Updated record is not the same as original.")
 
-	record2, err := metaDB.GetRecord(ctx, storeKey, recordKey)
+	stored, err := metaDB.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	metadbtest.AssertEqualRecord(t, updatedRecord, record2, "GetRecord should fetch the updated record.")
+	metadbtest.AssertEqualRecord(t, updated, stored, "GetRecord should fetch the updated record.")
 }
 
 func TestMetaDB_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
@@ -368,7 +372,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
 	storeKey := newStoreKey()
-	store := &m.Store{
+	store := &store.Store{
 		Key:  storeKey,
 		Name: "SimpleCreateGetDeleteBlobRef",
 	}
@@ -376,12 +380,12 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 
 	recordKey := newRecordKey()
 	createdAt := time.Unix(12345, 0)
-	record := &m.Record{
+	record := &record.Record{
 		Key:        recordKey,
 		Blob:       testBlob,
 		BlobSize:   int64(len(testBlob)),
-		Properties: make(m.PropertyMap),
-		Timestamps: m.Timestamps{
+		Properties: make(record.PropertyMap),
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: createdAt,
 			Signature: uuid.New(),
@@ -391,13 +395,13 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
 	blobKey := uuid.New()
 	origSig := uuid.New()
-	blob := &m.BlobRef{
+	blob := &blobref.BlobRef{
 		Key:       blobKey,
 		Size:      12345,
-		Status:    m.BlobRefStatusInitializing,
+		Status:    blobref.BlobRefStatusInitializing,
 		StoreKey:  storeKey,
 		RecordKey: recordKey,
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: createdAt,
 			Signature: origSig,
@@ -430,7 +434,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		}
 		if assert.NotNil(t, promoBlob) {
 			assert.Equal(t, blobKey, promoBlob.Key)
-			assert.Equal(t, m.BlobRefStatusReady, promoBlob.Status)
+			assert.Equal(t, blobref.BlobRefStatusReady, promoBlob.Status)
 			assert.True(t, beforePromo.Before(promoBlob.Timestamps.UpdatedAt))
 			assert.NotEqual(t, origSig, promoBlob.Timestamps.Signature)
 		}
@@ -459,7 +463,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Zero(t, delPendRecord.BlobSize)
 		}
 		if assert.NotNil(t, delPendBlob) {
-			assert.Equal(t, m.BlobRefStatusPendingDeletion, delPendBlob.Status)
+			assert.Equal(t, blobref.BlobRefStatusPendingDeletion, delPendBlob.Status)
 		}
 	}
 
@@ -473,20 +477,20 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 func TestMetaDB_SwapBlobRefs(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
-	store := &m.Store{
+	store := &store.Store{
 		Key:  newStoreKey(),
 		Name: "SwapBlobRefs",
 	}
 
-	record := &m.Record{
+	record := &record.Record{
 		Key:        newRecordKey(),
-		Properties: make(m.PropertyMap),
+		Properties: make(record.PropertyMap),
 	}
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
 
-	blob := &m.BlobRef{
+	blob := &blobref.BlobRef{
 		Key:       uuid.New(),
-		Status:    m.BlobRefStatusInitializing,
+		Status:    blobref.BlobRefStatusInitializing,
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
 	}
@@ -497,9 +501,9 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
 	}
 
-	newBlob := &m.BlobRef{
+	newBlob := &blobref.BlobRef{
 		Key:       uuid.New(),
-		Status:    m.BlobRefStatusInitializing,
+		Status:    blobref.BlobRefStatusInitializing,
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
 	}
@@ -512,7 +516,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 		}
 		if assert.NotNil(t, newCurrBlob) {
 			assert.Equal(t, newBlob.Key, newCurrBlob.Key)
-			assert.Equal(t, m.BlobRefStatusReady, newCurrBlob.Status)
+			assert.Equal(t, blobref.BlobRefStatusReady, newCurrBlob.Status)
 		}
 	}
 
@@ -520,7 +524,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, oldBlob) {
 			assert.Equal(t, blob.Key, oldBlob.Key)
-			assert.Equal(t, m.BlobRefStatusPendingDeletion, oldBlob.Status)
+			assert.Equal(t, blobref.BlobRefStatusPendingDeletion, oldBlob.Status)
 		}
 	}
 
@@ -531,23 +535,23 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 func TestMetaDB_UpdateBlobRef(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
-	store := &m.Store{
+	store := &store.Store{
 		Key:  newStoreKey(),
 		Name: "SimpleCreateGetDeleteBlobRef",
 	}
 
-	record := &m.Record{
+	record := &record.Record{
 		Key:        newRecordKey(),
-		Properties: make(m.PropertyMap),
+		Properties: make(record.PropertyMap),
 	}
 
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
-	blob := &m.BlobRef{
+	blob := &blobref.BlobRef{
 		Key:       uuid.New(),
-		Status:    m.BlobRefStatusInitializing,
+		Status:    blobref.BlobRefStatusInitializing,
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(123, 0),
 			UpdatedAt: time.Unix(123, 0),
 		},
@@ -580,7 +584,7 @@ func TestMetaDB_UpdateBlobRef(t *testing.T) {
 func TestMetaDB_BlobInsertShouldFailForNonexistentRecord(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
-	blob := &m.BlobRef{
+	blob := &blobref.BlobRef{
 		Key:       uuid.New(),
 		StoreKey:  "non-existent" + uuid.New().String(),
 		RecordKey: "non-existent" + uuid.New().String(),
@@ -601,24 +605,24 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 
 	storeKey := newStoreKey()
-	store := &m.Store{
+	store := &store.Store{
 		Key: storeKey,
 	}
 
 	recordKey := newRecordKey()
-	record := &m.Record{
+	origRecord := &record.Record{
 		Key:        recordKey,
-		Properties: make(m.PropertyMap),
+		Properties: make(record.PropertyMap),
 	}
-	setupTestStoreRecord(ctx, t, metaDB, store, record)
+	setupTestStoreRecord(ctx, t, metaDB, store, origRecord)
 
 	blobKey := uuid.New()
-	blob := &m.BlobRef{
+	blob := &blobref.BlobRef{
 		Key:       blobKey,
-		Status:    m.BlobRefStatusInitializing,
+		Status:    blobref.BlobRefStatusInitializing,
 		StoreKey:  storeKey,
 		RecordKey: recordKey,
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(123, 0),
 			UpdatedAt: time.Unix(123, 0),
 		},
@@ -630,7 +634,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
 	}
 
-	_, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *m.Record) (*m.Record, error) {
+	_, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
 		record.ExternalBlob = uuid.New()
 		return record, nil
 	})
@@ -639,7 +643,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	}
 
 	// Make sure ExternalBlob is preserved when not modified
-	newRecord, err := metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *m.Record) (*m.Record, error) {
+	newRecord, err := metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
 		// noop
 		return record, nil
 	})
@@ -659,7 +663,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 
 	// Check if ExternalBlob is marked for deletion
 	testBlob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
-	newRecord, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *m.Record) (*m.Record, error) {
+	newRecord, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
 		record.Blob = testBlob
 		record.BlobSize = int64(len(testBlob))
 		return record, nil
@@ -684,7 +688,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	blob, err = metaDB.GetBlobRef(ctx, blob.Key)
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, blob) {
-			assert.Equal(t, m.BlobRefStatusPendingDeletion, blob.Status)
+			assert.Equal(t, blobref.BlobRefStatusPendingDeletion, blob.Status)
 		}
 	}
 }
@@ -695,21 +699,25 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	client := newDatastoreClient(ctx, t)
 
 	storeKey := newStoreKey()
-	store := &m.Store{
+	store := &store.Store{
 		Key: storeKey,
 	}
 
 	recordKey := newRecordKey()
-	record := &m.Record{
+	record := &record.Record{
 		Key:        recordKey,
-		Properties: make(m.PropertyMap),
+		Properties: make(record.PropertyMap),
 	}
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
 
-	statuses := []m.BlobRefStatus{m.BlobRefStatusError, m.BlobRefStatusInitializing, m.BlobRefStatusPendingDeletion, m.BlobRefStatusPendingDeletion}
-	blobs := []*m.BlobRef{}
+	statuses := []blobref.BlobRefStatus{
+		blobref.BlobRefStatusError,
+		blobref.BlobRefStatusInitializing,
+		blobref.BlobRefStatusPendingDeletion,
+		blobref.BlobRefStatusPendingDeletion}
+	blobs := []*blobref.BlobRef{}
 	for i, s := range statuses {
-		blob := &m.BlobRef{
+		blob := &blobref.BlobRef{
 			Key:       uuid.New(),
 			Status:    s,
 			StoreKey:  storeKey,
@@ -728,7 +736,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	}
 
 	// Should return iterator.Done and nil when not found
-	iter, err := metaDB.ListBlobRefsByStatus(ctx, m.BlobRefStatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
+	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.BlobRefStatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		b, err := iter.Next()
@@ -736,7 +744,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		assert.Nil(t, b)
 	}
 
-	iter, err = metaDB.ListBlobRefsByStatus(ctx, m.BlobRefStatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
+	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.BlobRefStatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		// Should return both of the PendingDeletion entries
@@ -761,20 +769,20 @@ func TestMetaDB_DeleteRecordWithExternalBlob(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 
 	storeKey := newStoreKey()
-	store := &m.Store{
+	store := &store.Store{
 		Key:  storeKey,
 		Name: t.Name(),
 	}
 
 	recordKey := newRecordKey()
-	record := &m.Record{
+	record := &record.Record{
 		Key:        recordKey,
 		Tags:       []string{t.Name()},
-		Properties: make(m.PropertyMap),
+		Properties: make(record.PropertyMap),
 	}
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
 
-	blob := m.NewBlobRef(0, storeKey, recordKey)
+	blob := blobref.NewBlobRef(0, storeKey, recordKey)
 	setupTestBlobRef(ctx, t, metaDB, blob)
 
 	_, blob, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
@@ -789,7 +797,7 @@ func TestMetaDB_DeleteRecordWithExternalBlob(t *testing.T) {
 	actual, err := metaDB.GetBlobRef(ctx, blob.Key)
 	assert.NoError(t, err, "GetBlobRef should not return error")
 	if assert.NotNil(t, actual) {
-		assert.Equal(t, m.BlobRefStatusPendingDeletion, actual.Status)
+		assert.Equal(t, blobref.BlobRefStatusPendingDeletion, actual.Status)
 	}
 }
 
@@ -800,17 +808,17 @@ func TestMetaDB_DeleteRecordWithNonExistentBlobRef(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 
 	storeKey := newStoreKey()
-	store := &m.Store{
+	store := &store.Store{
 		Key:  storeKey,
 		Name: t.Name(),
 	}
 
 	recordKey := newRecordKey()
-	record := &m.Record{
+	record := &record.Record{
 		Key:          recordKey,
 		ExternalBlob: uuid.New(),
 		Tags:         []string{t.Name()},
-		Properties:   make(m.PropertyMap),
+		Properties:   make(record.PropertyMap),
 	}
 
 	setupTestStoreRecord(ctx, t, metaDB, store, record)

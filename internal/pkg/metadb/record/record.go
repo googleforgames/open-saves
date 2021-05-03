@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb
+package record
 
 import (
 	"fmt"
@@ -21,6 +21,7 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -53,7 +54,7 @@ type Record struct {
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
-	Timestamps Timestamps
+	Timestamps timestamps.Timestamps
 }
 
 // Assert Record implements both PropertyLoadSave and KeyLoader.
@@ -109,14 +110,14 @@ func (r *Record) Save() ([]datastore.Property, error) {
 		return nil, err
 	}
 	properties = append(properties,
-		uuidToDatastoreProperty(externalBlobPropertyName, r.ExternalBlob, false))
+		timestamps.UUIDToDatastoreProperty(externalBlobPropertyName, r.ExternalBlob, false))
 	return properties, nil
 }
 
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.
 func (r *Record) Load(ps []datastore.Property) error {
-	externalBlob, ps, err := datastoreLoadUUID(ps, externalBlobPropertyName)
+	externalBlob, ps, err := timestamps.LoadUUID(ps, externalBlobPropertyName)
 	if err != nil {
 		return err
 	}
@@ -162,7 +163,7 @@ func NewRecordFromProto(p *pb.Record) *Record {
 		Tags:         p.GetTags(),
 		Properties:   NewPropertyMapFromProto(p.GetProperties()),
 		OpaqueString: p.GetOpaqueString(),
-		Timestamps: Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: p.GetCreatedAt().AsTime(),
 			UpdatedAt: p.GetUpdatedAt().AsTime(),
 		},

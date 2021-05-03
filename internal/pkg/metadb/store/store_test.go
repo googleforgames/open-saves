@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb_test
+package store
 
 import (
 	"testing"
@@ -21,26 +21,26 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
-	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestStore_NewStoreFromProtoNil(t *testing.T) {
-	actual := m.NewStoreFromProto(nil)
+	actual := NewStoreFromProto(nil)
 	assert.NotNil(t, actual)
-	assert.Equal(t, new(m.Store), actual)
+	assert.Equal(t, new(Store), actual)
 }
 
 func TestStore_ToProtoSimple(t *testing.T) {
 	createdAt := time.Date(2020, 7, 14, 13, 16, 5, 0, time.UTC)
 	updatedAt := time.Date(2020, 12, 28, 12, 15, 3, 0, time.UTC)
-	store := &m.Store{
+	store := &Store{
 		Key:     "test",
 		Name:    "a test store",
 		Tags:    []string{"tag1"},
 		OwnerID: "owner",
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 			Signature: uuid.MustParse("A634B035-E496-4B4E-8B18-05FD2112BEF2"),
@@ -68,22 +68,22 @@ func TestStore_NewStoreFromProtoSimple(t *testing.T) {
 		CreatedAt: timestamppb.New(createdAt),
 		UpdatedAt: timestamppb.New(updatedAt),
 	}
-	expected := &m.Store{
+	expected := &Store{
 		Key:     "test",
 		Name:    "a test store",
 		Tags:    []string{"tag1"},
 		OwnerID: "owner",
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 		},
 	}
-	actual := m.NewStoreFromProto(proto)
+	actual := NewStoreFromProto(proto)
 	assert.Equal(t, expected, actual)
 }
 
 func TestStore_LoadKey(t *testing.T) {
-	store := new(m.Store)
+	store := new(Store)
 	key := datastore.NameKey("kind", "testkey", nil)
 	assert.NoError(t, store.LoadKey(key))
 	assert.Equal(t, "testkey", store.Key)

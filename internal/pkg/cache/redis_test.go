@@ -20,8 +20,9 @@ import (
 	"time"
 
 	pb "github.com/googleforgames/open-saves/api"
-	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,17 +68,17 @@ func TestRedis_SerializeRecord(t *testing.T) {
 
 	red := NewRedis("localhost:6379")
 
-	rr := []*m.Record{
+	rr := []*record.Record{
 		{
 			Key: "key1",
-			Timestamps: m.Timestamps{
+			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
 		},
 		{
 			Key: "key2",
-			Properties: m.PropertyMap{
+			Properties: record.PropertyMap{
 				"prop1": {
 					Type:         pb.Property_BOOLEAN,
 					BooleanValue: false,
@@ -91,7 +92,7 @@ func TestRedis_SerializeRecord(t *testing.T) {
 					StringValue: "string value",
 				},
 			},
-			Timestamps: m.Timestamps{
+			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
@@ -102,7 +103,7 @@ func TestRedis_SerializeRecord(t *testing.T) {
 			BlobSize: 64,
 			OwnerID:  "new-owner",
 			Tags:     []string{"tag1", "tag2"},
-			Timestamps: m.Timestamps{
+			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},

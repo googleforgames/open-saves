@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb
+package store
 
 import (
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -30,7 +31,7 @@ type Store struct {
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
-	Timestamps Timestamps
+	Timestamps timestamps.Timestamps
 }
 
 // Assert Store implements both PropertyLoadSave and KeyLoader.
@@ -83,7 +84,7 @@ func NewStoreFromProto(p *pb.Store) *Store {
 		Name:    p.Name,
 		Tags:    p.Tags,
 		OwnerID: p.OwnerId,
-		Timestamps: Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: p.GetCreatedAt().AsTime(),
 			UpdatedAt: p.GetUpdatedAt().AsTime(),
 		},
