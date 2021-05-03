@@ -34,6 +34,10 @@ type OpenSavesClient interface {
 	GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*Record, error)
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(ctx context.Context, in *QueryRecordsRequest, opts ...grpc.CallOption) (*QueryRecordsResponse, error)
+	// Min returns the record with the minimum value of a field in a store.
+	Min(ctx context.Context, in *MinRecordRequest, opts ...grpc.CallOption) (*Record, error)
+	// Max returns the record with the max value of a field in a store.
+	Max(ctx context.Context, in *MaxRecordRequest, opts ...grpc.CallOption) (*Record, error)
 	// UpdateRecord updates an existing record. This returns an error and
 	// does not create a new record if the key doesn't exist.
 	UpdateRecord(ctx context.Context, in *UpdateRecordRequest, opts ...grpc.CallOption) (*Record, error)
@@ -133,6 +137,24 @@ func (c *openSavesClient) GetRecord(ctx context.Context, in *GetRecordRequest, o
 func (c *openSavesClient) QueryRecords(ctx context.Context, in *QueryRecordsRequest, opts ...grpc.CallOption) (*QueryRecordsResponse, error) {
 	out := new(QueryRecordsResponse)
 	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/QueryRecords", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) Min(ctx context.Context, in *MinRecordRequest, opts ...grpc.CallOption) (*Record, error) {
+	out := new(Record)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/Min", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) Max(ctx context.Context, in *MaxRecordRequest, opts ...grpc.CallOption) (*Record, error) {
+	out := new(Record)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/Max", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +375,10 @@ type OpenSavesServer interface {
 	GetRecord(context.Context, *GetRecordRequest) (*Record, error)
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error)
+	// Min returns the record with the minimum value of a field in a store.
+	Min(context.Context, *MinRecordRequest) (*Record, error)
+	// Max returns the record with the max value of a field in a store.
+	Max(context.Context, *MaxRecordRequest) (*Record, error)
 	// UpdateRecord updates an existing record. This returns an error and
 	// does not create a new record if the key doesn't exist.
 	UpdateRecord(context.Context, *UpdateRecordRequest) (*Record, error)
@@ -412,6 +438,12 @@ func (UnimplementedOpenSavesServer) GetRecord(context.Context, *GetRecordRequest
 }
 func (UnimplementedOpenSavesServer) QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryRecords not implemented")
+}
+func (UnimplementedOpenSavesServer) Min(context.Context, *MinRecordRequest) (*Record, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Min not implemented")
+}
+func (UnimplementedOpenSavesServer) Max(context.Context, *MaxRecordRequest) (*Record, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Max not implemented")
 }
 func (UnimplementedOpenSavesServer) UpdateRecord(context.Context, *UpdateRecordRequest) (*Record, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRecord not implemented")
@@ -581,6 +613,42 @@ func _OpenSaves_QueryRecords_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OpenSavesServer).QueryRecords(ctx, req.(*QueryRecordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_Min_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MinRecordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).Min(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/Min",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).Min(ctx, req.(*MinRecordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_Max_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MaxRecordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).Max(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/Max",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).Max(ctx, req.(*MaxRecordRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -839,6 +907,14 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "QueryRecords",
 			Handler:    _OpenSaves_QueryRecords_Handler,
+		},
+		{
+			MethodName: "Min",
+			Handler:    _OpenSaves_Min_Handler,
+		},
+		{
+			MethodName: "Max",
+			Handler:    _OpenSaves_Max_Handler,
 		},
 		{
 			MethodName: "UpdateRecord",

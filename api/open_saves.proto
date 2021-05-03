@@ -45,6 +45,12 @@ service OpenSaves {
   // QueryRecords performs a query and returns matching records.
   rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {}
 
+  // Min returns the record with the minimum value of a field in a store.
+  rpc Min(MinRecordRequest) returns (Record) {}
+
+  // Max returns the record with the max value of a field in a store.
+  rpc Max(MaxRecordRequest) returns (Record) {}
+
   // UpdateRecord updates an existing record. This returns an error and
   // does not create a new record if the key doesn't exist.
   rpc UpdateRecord(UpdateRecordRequest) returns (Record) {}
@@ -318,6 +324,28 @@ message QueryRecordsResponse {
   // Performance hints.
   // Query caching is not supported at the moment
   Hint hint = 3;
+}
+
+message MinRecordRequest {
+  // store_key is the primary key of the store.
+  string store_key = 1;
+
+  // field to check for min value.
+  string field = 2;
+
+  // owner_id is the owner of records, represented as an external user ID.
+  string owner_id = 3;
+}
+
+message MaxRecordRequest {
+  // store_key is the primary key of the store.
+  string store_key = 1;
+
+  // field to check for max value.
+  string field = 2;
+
+  // owner_id is the owner of records, represented as an external user ID.
+  string owner_id = 3;
 }
 
 message UpdateRecordRequest {
