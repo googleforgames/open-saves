@@ -18,11 +18,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
 
-func assertTimestampsWithinDuration(t *testing.T, expected, actual *metadb.Timestamps, delta time.Duration, msgAndArgs ...interface{}) {
+func assertTimestampsWithinDuration(t *testing.T, expected, actual *timestamps.Timestamps, delta time.Duration, msgAndArgs ...interface{}) {
 	t.Helper()
 	assert.WithinDuration(t, expected.CreatedAt, actual.CreatedAt, delta, msgAndArgs...)
 	assert.WithinDuration(t, expected.UpdatedAt, actual.UpdatedAt, delta, msgAndArgs...)
@@ -31,14 +34,14 @@ func assertTimestampsWithinDuration(t *testing.T, expected, actual *metadb.Times
 
 // AssertEqualStore is equivalent to
 // AssertEqualStoreWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
-func AssertEqualStore(t *testing.T, expected, actual *metadb.Store, msgAndArgs ...interface{}) {
+func AssertEqualStore(t *testing.T, expected, actual *store.Store, msgAndArgs ...interface{}) {
 	t.Helper()
 	AssertEqualStoreWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 }
 
-// AssertEqualStoreWithinDuration compares each field in metadb.Store and asserts the timestamps
+// AssertEqualStoreWithinDuration compares each field in store.Store and asserts the timestamps
 // are within delta.
-func AssertEqualStoreWithinDuration(t *testing.T, expected, actual *metadb.Store, delta time.Duration, msgAndArgs ...interface{}) {
+func AssertEqualStoreWithinDuration(t *testing.T, expected, actual *store.Store, delta time.Duration, msgAndArgs ...interface{}) {
 	t.Helper()
 	if expected == nil {
 		assert.Nil(t, actual)
@@ -55,14 +58,14 @@ func AssertEqualStoreWithinDuration(t *testing.T, expected, actual *metadb.Store
 
 // AssertEqualRecord is equivalent to
 // AssertEqualRecordWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
-func AssertEqualRecord(t *testing.T, expected, actual *metadb.Record, msgAndArgs ...interface{}) {
+func AssertEqualRecord(t *testing.T, expected, actual *record.Record, msgAndArgs ...interface{}) {
 	t.Helper()
 	AssertEqualRecordWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 }
 
-// AssertEqualRecordWithinDuration compares each field in metadb.Record and asserts the timestamps
+// AssertEqualRecordWithinDuration compares each field in record.Record and asserts the timestamps
 // are within delta.
-func AssertEqualRecordWithinDuration(t *testing.T, expected, actual *metadb.Record, delta time.Duration, msgAndArgs ...interface{}) {
+func AssertEqualRecordWithinDuration(t *testing.T, expected, actual *record.Record, delta time.Duration, msgAndArgs ...interface{}) {
 	t.Helper()
 	if expected == nil {
 		assert.Nil(t, actual)
@@ -81,14 +84,14 @@ func AssertEqualRecordWithinDuration(t *testing.T, expected, actual *metadb.Reco
 
 // AssertEqualBlobRef is equivalent to
 // AssertEqualBlobRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
-func AssertEqualBlobRef(t *testing.T, expected, actual *metadb.BlobRef, msgAndArgs ...interface{}) {
+func AssertEqualBlobRef(t *testing.T, expected, actual *blobref.BlobRef, msgAndArgs ...interface{}) {
 	t.Helper()
 	AssertEqualBlobRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 }
 
 // AssertEqualBlobRefWithinDuration compares each field in metadb.BlobRef and asserts the timestamps
 // are within delta.
-func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *metadb.BlobRef, delta time.Duration, msgAndArgs ...interface{}) {
+func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *blobref.BlobRef, delta time.Duration, msgAndArgs ...interface{}) {
 	t.Helper()
 	if expected == nil {
 		assert.Nil(t, actual)

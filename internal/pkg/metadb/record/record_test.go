@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb_test
+package record
 
 import (
 	"testing"
@@ -21,27 +21,27 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
-	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestPropertyValue_ToProto(t *testing.T) {
-	booleanProperty := &m.PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
+	booleanProperty := &PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
 	booleanExpected := &pb.Property{
 		Type:  pb.Property_BOOLEAN,
 		Value: &pb.Property_BooleanValue{BooleanValue: true},
 	}
 	assert.Equal(t, booleanExpected, booleanProperty.ToProto())
 
-	integerProperty := &m.PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
+	integerProperty := &PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
 	integerExpected := &pb.Property{
 		Type:  pb.Property_INTEGER,
 		Value: &pb.Property_IntegerValue{IntegerValue: 42},
 	}
 	assert.Equal(t, integerExpected, integerProperty.ToProto())
 
-	stringProperty := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
+	stringProperty := &PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
 	stringExpected := &pb.Property{
 		Type:  pb.Property_STRING,
 		Value: &pb.Property_StringValue{StringValue: "string value"},
@@ -50,8 +50,8 @@ func TestPropertyValue_ToProto(t *testing.T) {
 }
 
 func TestPropertyValue_NewPropertyFromProtoNil(t *testing.T) {
-	expected := new(m.PropertyValue)
-	actual := m.NewPropertyValueFromProto(nil)
+	expected := new(PropertyValue)
+	actual := NewPropertyValueFromProto(nil)
 	assert.NotNil(t, expected, actual)
 	assert.Equal(t, expected, actual)
 }
@@ -61,28 +61,28 @@ func TestPropertyValue_NewPropertyFromProto(t *testing.T) {
 		Type:  pb.Property_BOOLEAN,
 		Value: &pb.Property_BooleanValue{BooleanValue: true},
 	}
-	booleanExpected := &m.PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
-	assert.Equal(t, booleanExpected, m.NewPropertyValueFromProto(booleanProto))
+	booleanExpected := &PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
+	assert.Equal(t, booleanExpected, NewPropertyValueFromProto(booleanProto))
 
 	integerProto := &pb.Property{
 		Type:  pb.Property_INTEGER,
 		Value: &pb.Property_IntegerValue{IntegerValue: 42},
 	}
-	integerExpected := &m.PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
-	assert.Equal(t, integerExpected, m.NewPropertyValueFromProto(integerProto))
+	integerExpected := &PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
+	assert.Equal(t, integerExpected, NewPropertyValueFromProto(integerProto))
 
 	stringProto := &pb.Property{
 		Type:  pb.Property_STRING,
 		Value: &pb.Property_StringValue{StringValue: "string value"},
 	}
-	stringExpected := &m.PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
-	assert.Equal(t, stringExpected, m.NewPropertyValueFromProto(stringProto))
+	stringExpected := &PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
+	assert.Equal(t, stringExpected, NewPropertyValueFromProto(stringProto))
 
 }
 
 func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 	// Handles nil
-	assert.Equal(t, make(m.PropertyMap), m.NewPropertyMapFromProto(nil))
+	assert.Equal(t, make(PropertyMap), NewPropertyMapFromProto(nil))
 
 	proto := map[string]*pb.Property{
 		"boolean": {Type: pb.Property_BOOLEAN,
@@ -93,12 +93,12 @@ func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 			Value: &pb.Property_StringValue{StringValue: "abc"},
 		},
 	}
-	expected := m.PropertyMap{
+	expected := PropertyMap{
 		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
 		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
 		"string":  {Type: pb.Property_STRING, StringValue: "abc"},
 	}
-	actual := m.NewPropertyMapFromProto(proto)
+	actual := NewPropertyMapFromProto(proto)
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected, actual)
 	}
@@ -106,10 +106,10 @@ func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 
 func TestPropertyMap_ToProto(t *testing.T) {
 	// Handles nil
-	var nilMap m.PropertyMap
+	var nilMap PropertyMap
 	assert.Nil(t, nilMap.ToProto())
 
-	propertyMap := m.PropertyMap{
+	propertyMap := PropertyMap{
 		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
 		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
 		"string":  {Type: pb.Property_STRING, StringValue: "abc"},
@@ -134,19 +134,19 @@ func TestRecord_Save(t *testing.T) {
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("34E1A605-C0FD-4A3D-A9ED-9BA42CAFAF6E")
-	record := &m.Record{
+	record := &Record{
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: m.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
 		OwnerID:      "owner",
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		Tags:         []string{"a", "b"},
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 			Signature: signature,
@@ -294,23 +294,23 @@ func TestRecord_Load(t *testing.T) {
 			},
 		},
 	}
-	var record m.Record
+	var record Record
 	if err := record.Load(properties); err != nil {
 		t.Fatalf("Load should not return an error: %v", err)
 	}
-	expected := m.Record{
+	expected := Record{
 		Key:          "",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: m.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
 		OwnerID:      "owner",
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		Tags:         []string{"a", "b"},
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 			Signature: signature,
@@ -323,19 +323,19 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
-	record := &m.Record{
+	record := &Record{
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: m.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
 		OwnerID:      "owner",
 		Tags:         []string{"a", "b"},
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 			Signature: uuid.MustParse("70E894AE-1020-42E8-9710-3E2D408BC356"),
@@ -386,35 +386,35 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		CreatedAt:    timestamppb.New(createdAt),
 		UpdatedAt:    timestamppb.New(updatedAt),
 	}
-	expected := &m.Record{
+	expected := &Record{
 		Key:          "key",
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: m.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
 		OwnerID:      "owner",
 		Tags:         []string{"a", "b"},
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-		Timestamps: m.Timestamps{
+		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 		},
 	}
-	actual := m.NewRecordFromProto(proto)
+	actual := NewRecordFromProto(proto)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_NewRecordFromProtoNil(t *testing.T) {
-	expected := new(m.Record)
-	actual := m.NewRecordFromProto(nil)
+	expected := new(Record)
+	actual := NewRecordFromProto(nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_LoadKey(t *testing.T) {
-	record := new(m.Record)
+	record := new(Record)
 	key := datastore.NameKey("kind", "testkey", nil)
 	assert.NoError(t, record.LoadKey(key))
 	assert.Equal(t, "testkey", record.Key)
@@ -422,9 +422,9 @@ func TestRecord_LoadKey(t *testing.T) {
 
 func TestRecord_TestBlobUUID(t *testing.T) {
 	testUUID := uuid.MustParse("F7B0E446-EBBE-48A2-90BA-108C36B44F7C")
-	record := &m.Record{
+	record := &Record{
 		ExternalBlob: testUUID,
-		Properties:   make(m.PropertyMap),
+		Properties:   make(PropertyMap),
 	}
 	properties, err := record.Save()
 	assert.NoError(t, err, "Save should not return error")
@@ -433,7 +433,7 @@ func TestRecord_TestBlobUUID(t *testing.T) {
 	assert.Equal(t, testUUID.String(), properties[idx].Value)
 	assert.Equal(t, false, properties[idx].NoIndex)
 
-	actual := new(m.Record)
+	actual := new(Record)
 	err = actual.Load(properties)
 	assert.NoError(t, err, "Load should not return error")
 	assert.Equal(t, record, actual)

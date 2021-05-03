@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metadb
+package timestamps
 
 import (
 	"time"
@@ -63,7 +63,7 @@ func (t *Timestamps) UpdateTimestamps(d time.Duration) {
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.
 func (t *Timestamps) Load(ps []datastore.Property) error {
-	sig, ps, err := datastoreLoadUUID(ps, signaturePropertyName)
+	sig, ps, err := LoadUUID(ps, signaturePropertyName)
 	if err != nil {
 		return err
 	}
@@ -79,6 +79,6 @@ func (t *Timestamps) Save() ([]datastore.Property, error) {
 		return nil, err
 	}
 
-	ps = append(ps, uuidToDatastoreProperty(signaturePropertyName, t.Signature, true))
+	ps = append(ps, UUIDToDatastoreProperty(signaturePropertyName, t.Signature, true))
 	return ps, nil
 }

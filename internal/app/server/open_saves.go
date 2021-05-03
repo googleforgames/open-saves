@@ -25,6 +25,9 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -82,7 +85,7 @@ func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr s
 }
 
 func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRequest) (*pb.Store, error) {
-	store := metadb.Store{
+	store := store.Store{
 		Key:     req.Store.Key,
 		Name:    req.Store.Name,
 		Tags:    req.Store.Tags,
@@ -98,7 +101,7 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 }
 
 func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
-	record := metadb.NewRecordFromProto(req.Record)
+	record := record.NewRecordFromProto(req.Record)
 	if err := checkRecord(record); err != nil {
 		return nil, err
 	}
@@ -196,18 +199,18 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 }
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
-	record := metadb.NewRecordFromProto(req.GetRecord())
-	if err := checkRecord(record); err != nil {
+	updateTo := record.NewRecordFromProto(req.GetRecord())
+	if err := checkRecord(updateTo); err != nil {
 		return nil, err
 	}
-	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), record.Key,
-		func(r *metadb.Record) (*metadb.Record, error) {
-			r.OwnerID = record.OwnerID
-			r.Properties = record.Properties
-			r.Tags = record.Tags
-			r.Blob = record.Blob
-			r.BlobSize = record.BlobSize
-			r.OpaqueString = record.OpaqueString
+	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), updateTo.Key,
+		func(r *record.Record) (*record.Record, error) {
+			r.OwnerID = updateTo.OwnerID
+			r.Properties = updateTo.Properties
+			r.Tags = updateTo.Tags
+			r.Blob = updateTo.Blob
+			r.BlobSize = updateTo.BlobSize
+			r.OpaqueString = updateTo.OpaqueString
 			return r, nil
 		})
 	if err != nil {
@@ -267,7 +270,7 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 	}
 	blob := buffer.Bytes()
 	record, err := s.metaDB.UpdateRecord(ctx, meta.GetStoreKey(), meta.GetRecordKey(),
-		func(record *metadb.Record) (*metadb.Record, error) {
+		func(record *record.Record) (*record.Record, error) {
 			record.Blob = blob
 			record.BlobSize = size
 			return record, nil
@@ -286,7 +289,7 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 	return stream.SendAndClose(meta)
 }
 
-func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *metadb.BlobRef) {
+func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *blobref.BlobRef) {
 	blobref.Fail()
 	_, err := s.metaDB.UpdateBlobRef(ctx, blobref)
 	if err != nil {
@@ -297,7 +300,7 @@ func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *metadb.BlobR
 func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	log.Debugf("Inserting external blob: %v\n", meta)
 	// Create a blob reference based on the metadata.
-	blobref := metadb.NewBlobRef(meta.GetSize(), meta.GetStoreKey(), meta.GetRecordKey())
+	blobref := blobref.NewBlobRef(meta.GetSize(), meta.GetStoreKey(), meta.GetRecordKey())
 	blobref, err := s.metaDB.InsertBlobRef(ctx, blobref)
 	if err != nil {
 		return err
@@ -394,7 +397,7 @@ func (s *openSavesServer) CreateBlob(stream pb.OpenSaves_CreateBlobServer) error
 	return s.insertExternalBlob(ctx, stream, meta)
 }
 
-func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRequest, stream pb.OpenSaves_GetBlobServer, record *metadb.Record) error {
+func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRequest, stream pb.OpenSaves_GetBlobServer, record *record.Record) error {
 	log.Debugf("Reading external blob %v", record.ExternalBlob)
 	blobref, err := s.metaDB.GetBlobRef(ctx, record.ExternalBlob)
 	if err != nil {
@@ -439,7 +442,7 @@ func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRe
 func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_GetBlobServer) error {
 	ctx := stream.Context()
 
-	var record *metadb.Record
+	var record *record.Record
 	var err error
 	if shouldCheckCache(req.Hint) {
 		record, _ = s.getRecordFromCache(ctx, cache.FormatKey(req.GetStoreKey(), req.GetRecordKey()))
@@ -494,7 +497,7 @@ func (s *openSavesServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.Pi
 	}, nil
 }
 
-func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*metadb.Record, error) {
+func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*record.Record, error) {
 	r, err := s.cacheStore.Get(ctx, key)
 	if err != nil {
 		// cache miss.
@@ -509,7 +512,7 @@ func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*
 	return record, nil
 }
 
-func (s *openSavesServer) storeRecordInCache(ctx context.Context, key string, record *metadb.Record) {
+func (s *openSavesServer) storeRecordInCache(ctx context.Context, key string, record *record.Record) {
 	by, err := cache.EncodeRecord(record)
 	if err != nil {
 		// Cache fails should be logged but not return error.
@@ -548,7 +551,7 @@ func shouldCheckCache(hint *pb.Hint) bool {
 // checkRecord checks a record against size limits.
 // Returns nil if the record satisfies conditions.
 // Returns codes.InvalidArgument if it does not.
-func checkRecord(record *metadb.Record) error {
+func checkRecord(record *record.Record) error {
 	if len(record.OpaqueString) > opaqueStringLimit {
 		return status.Errorf(codes.InvalidArgument, "The length of OpaqueString exceeds %v bytes (actual = %v bytes)",
 			opaqueStringLimit, len(record.OpaqueString))

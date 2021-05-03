@@ -20,7 +20,7 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 )
 
 // Cache interface defines common operations for the cache store.
@@ -38,7 +38,7 @@ func FormatKey(storeKey, recordKey string) string {
 }
 
 // EncodeRecord serializes a Open Saves Record with gob.
-func EncodeRecord(r *m.Record) ([]byte, error) {
+func EncodeRecord(r *record.Record) ([]byte, error) {
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	if err := e.Encode(r); err != nil {
@@ -48,8 +48,8 @@ func EncodeRecord(r *m.Record) ([]byte, error) {
 }
 
 // DecodeRecord deserializes a Open Saves Record with gob.
-func DecodeRecord(by []byte) (*m.Record, error) {
-	r := &m.Record{}
+func DecodeRecord(by []byte) (*record.Record, error) {
+	r := &record.Record{}
 	b := bytes.Buffer{}
 	b.Write(by)
 	d := gob.NewDecoder(&b)

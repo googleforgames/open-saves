@@ -22,6 +22,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 )
@@ -83,17 +84,17 @@ func Run(ctx context.Context, cfg *Config) {
 }
 
 func (c *Collector) run(ctx context.Context) {
-	var statuses = []metadb.BlobRefStatus{
-		metadb.BlobRefStatusPendingDeletion,
-		metadb.BlobRefStatusError,
-		metadb.BlobRefStatusInitializing,
+	var statuses = []blobref.BlobRefStatus{
+		blobref.BlobRefStatusPendingDeletion,
+		blobref.BlobRefStatusError,
+		blobref.BlobRefStatusInitializing,
 	}
 	for _, s := range statuses {
 		c.deleteMatchingBlobRefs(ctx, s, c.cfg.Before)
 	}
 }
 
-func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status metadb.BlobRefStatus, olderThan time.Time) error {
+func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.BlobRefStatus, olderThan time.Time) error {
 	log.Infof("Garbage collecting BlobRef objects with status = %v, and older than %v", status, olderThan)
 	cursor, err := c.metaDB.ListBlobRefsByStatus(ctx, status, olderThan)
 	if err != nil {
@@ -111,7 +112,7 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status metadb.Bl
 		}
 		if err := c.blob.Delete(ctx, blob.ObjectPath()); err != nil {
 			log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
-			if blob.Status != metadb.BlobRefStatusError {
+			if blob.Status != blobref.BlobRefStatusError {
 				blob.Fail()
 				_, err := c.metaDB.UpdateBlobRef(ctx, blob)
 				if err != nil {
