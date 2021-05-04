@@ -88,3 +88,17 @@ func TestUUID_LoadUUID(t *testing.T) {
 	}
 	assert.NoError(t, err, "LoadUUID should not return error when successful.")
 }
+
+func TestUUID_LoadUUIDMalformedString(t *testing.T) {
+	u, ps, err := LoadUUID(
+		[]datastore.Property{
+			{
+				Name:  testName,
+				Value: "not a UUID",
+			},
+		}, testName,
+	)
+	assert.Equal(t, uuid.Nil, u, "LoadUUID should return uuid.Nil in case of parse errors.")
+	assert.Empty(t, ps, "LoadUUID should still remove the UUID property in case of parse errors.")
+	assert.Error(t, err, "LoadUUID should return a non-nil err in case of parse errors.")
+}
