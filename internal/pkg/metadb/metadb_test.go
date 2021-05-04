@@ -397,7 +397,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	blob := &blobref.BlobRef{
 		Key:       blobKey,
 		Size:      12345,
-		Status:    blobref.BlobRefStatusInitializing,
+		Status:    blobref.StatusInitializing,
 		StoreKey:  storeKey,
 		RecordKey: recordKey,
 		Timestamps: timestamps.Timestamps{
@@ -433,7 +433,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		}
 		if assert.NotNil(t, promoBlob) {
 			assert.Equal(t, blobKey, promoBlob.Key)
-			assert.Equal(t, blobref.BlobRefStatusReady, promoBlob.Status)
+			assert.Equal(t, blobref.StatusReady, promoBlob.Status)
 			assert.True(t, beforePromo.Before(promoBlob.Timestamps.UpdatedAt))
 			assert.NotEqual(t, origSig, promoBlob.Timestamps.Signature)
 		}
@@ -462,7 +462,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Zero(t, delPendRecord.BlobSize)
 		}
 		if assert.NotNil(t, delPendBlob) {
-			assert.Equal(t, blobref.BlobRefStatusPendingDeletion, delPendBlob.Status)
+			assert.Equal(t, blobref.StatusPendingDeletion, delPendBlob.Status)
 		}
 	}
 
@@ -489,7 +489,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 
 	blob := &blobref.BlobRef{
 		Key:       uuid.New(),
-		Status:    blobref.BlobRefStatusInitializing,
+		Status:    blobref.StatusInitializing,
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
 	}
@@ -502,7 +502,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 
 	newBlob := &blobref.BlobRef{
 		Key:       uuid.New(),
-		Status:    blobref.BlobRefStatusInitializing,
+		Status:    blobref.StatusInitializing,
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
 	}
@@ -515,7 +515,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 		}
 		if assert.NotNil(t, newCurrBlob) {
 			assert.Equal(t, newBlob.Key, newCurrBlob.Key)
-			assert.Equal(t, blobref.BlobRefStatusReady, newCurrBlob.Status)
+			assert.Equal(t, blobref.StatusReady, newCurrBlob.Status)
 		}
 	}
 
@@ -523,7 +523,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, oldBlob) {
 			assert.Equal(t, blob.Key, oldBlob.Key)
-			assert.Equal(t, blobref.BlobRefStatusPendingDeletion, oldBlob.Status)
+			assert.Equal(t, blobref.StatusPendingDeletion, oldBlob.Status)
 		}
 	}
 
@@ -547,7 +547,7 @@ func TestMetaDB_UpdateBlobRef(t *testing.T) {
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
 	blob := &blobref.BlobRef{
 		Key:       uuid.New(),
-		Status:    blobref.BlobRefStatusInitializing,
+		Status:    blobref.StatusInitializing,
 		StoreKey:  store.Key,
 		RecordKey: record.Key,
 		Timestamps: timestamps.Timestamps{
@@ -618,7 +618,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	blobKey := uuid.New()
 	blob := &blobref.BlobRef{
 		Key:       blobKey,
-		Status:    blobref.BlobRefStatusInitializing,
+		Status:    blobref.StatusInitializing,
 		StoreKey:  storeKey,
 		RecordKey: recordKey,
 		Timestamps: timestamps.Timestamps{
@@ -687,7 +687,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	blob, err = metaDB.GetBlobRef(ctx, blob.Key)
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, blob) {
-			assert.Equal(t, blobref.BlobRefStatusPendingDeletion, blob.Status)
+			assert.Equal(t, blobref.StatusPendingDeletion, blob.Status)
 		}
 	}
 }
@@ -709,11 +709,11 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	}
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
 
-	statuses := []blobref.BlobRefStatus{
-		blobref.BlobRefStatusError,
-		blobref.BlobRefStatusInitializing,
-		blobref.BlobRefStatusPendingDeletion,
-		blobref.BlobRefStatusPendingDeletion}
+	statuses := []blobref.Status{
+		blobref.StatusError,
+		blobref.StatusInitializing,
+		blobref.StatusPendingDeletion,
+		blobref.StatusPendingDeletion}
 	blobs := []*blobref.BlobRef{}
 	for i, s := range statuses {
 		blob := &blobref.BlobRef{
@@ -735,7 +735,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	}
 
 	// Should return iterator.Done and nil when not found
-	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.BlobRefStatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
+	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.StatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		b, err := iter.Next()
@@ -743,7 +743,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		assert.Nil(t, b)
 	}
 
-	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.BlobRefStatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
+	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.StatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		// Should return both of the PendingDeletion entries
@@ -796,7 +796,7 @@ func TestMetaDB_DeleteRecordWithExternalBlob(t *testing.T) {
 	actual, err := metaDB.GetBlobRef(ctx, blob.Key)
 	assert.NoError(t, err, "GetBlobRef should not return error")
 	if assert.NotNil(t, actual) {
-		assert.Equal(t, blobref.BlobRefStatusPendingDeletion, actual.Status)
+		assert.Equal(t, blobref.StatusPendingDeletion, actual.Status)
 	}
 }
 
