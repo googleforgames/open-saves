@@ -39,7 +39,7 @@ func TestBlobRef_Save(t *testing.T) {
 
 	blob := BlobRef{
 		Size:      size,
-		Status:    BlobRefStatusInitializing,
+		Status:    StatusInitializing,
 		StoreKey:  store,
 		RecordKey: record,
 	}
@@ -50,7 +50,7 @@ func TestBlobRef_Save(t *testing.T) {
 		},
 		{
 			Name:  "Status",
-			Value: int64(BlobRefStatusInitializing),
+			Value: int64(StatusInitializing),
 		},
 		{
 			Name:  "StoreKey",
@@ -84,7 +84,7 @@ func TestBlobRef_Load(t *testing.T) {
 		},
 		{
 			Name:  "Status",
-			Value: int64(BlobRefStatusReady),
+			Value: int64(StatusReady),
 		},
 		{
 			Name:  "StoreKey",
@@ -97,7 +97,7 @@ func TestBlobRef_Load(t *testing.T) {
 	}
 	expected := &BlobRef{
 		Size:      123,
-		Status:    BlobRefStatusReady,
+		Status:    StatusReady,
 		StoreKey:  store,
 		RecordKey: record,
 	}
@@ -123,7 +123,7 @@ func newInitBlob(t *testing.T) *BlobRef {
 	}
 	assert.NotEqual(t, uuid.Nil, blob.Key)
 	assert.Equal(t, size, blob.Size)
-	assert.Equal(t, BlobRefStatusInitializing, blob.Status)
+	assert.Equal(t, StatusInitializing, blob.Status)
 	assert.Equal(t, store, blob.StoreKey)
 	assert.Equal(t, record, blob.RecordKey)
 	assert.NotEmpty(t, blob.Timestamps.CreatedAt)
@@ -137,21 +137,21 @@ func TestBlobRef_LifeCycle(t *testing.T) {
 
 	// Mark for deletion
 	assert.NoError(t, blob.MarkForDeletion())
-	assert.Equal(t, BlobRefStatusPendingDeletion, blob.Status)
+	assert.Equal(t, StatusPendingDeletion, blob.Status)
 
 	// Start over
 	blob = newInitBlob(t)
 
 	// Ready
 	assert.NoError(t, blob.Ready())
-	assert.Equal(t, BlobRefStatusReady, blob.Status)
+	assert.Equal(t, StatusReady, blob.Status)
 
 	// Invalid transitions
 	assert.Error(t, blob.Ready())
 
 	// Mark for deletion
 	assert.NoError(t, blob.MarkForDeletion())
-	assert.Equal(t, BlobRefStatusPendingDeletion, blob.Status)
+	assert.Equal(t, StatusPendingDeletion, blob.Status)
 
 	// Invalid transitions
 	assert.Error(t, blob.MarkForDeletion())
@@ -167,16 +167,16 @@ func TestBlobRef_Fail(t *testing.T) {
 	blob = newInitBlob(t)
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = BlobRefStatusInitializing
+	blob.Status = StatusInitializing
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = BlobRefStatusPendingDeletion
+	blob.Status = StatusPendingDeletion
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = BlobRefStatusReady
+	blob.Status = StatusReady
 	assert.NoError(t, blob.Fail())
 
-	blob.Status = BlobRefStatusError
+	blob.Status = StatusError
 	assert.NoError(t, blob.Fail())
 }
 
