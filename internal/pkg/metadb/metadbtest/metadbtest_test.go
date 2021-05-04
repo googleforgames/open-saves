@@ -86,7 +86,7 @@ func TestMetaDBTest_TestAssertEqualBlobRef(t *testing.T) {
 	original := &blobref.BlobRef{
 		Key:       uuid.MustParse("35B7DABC-9523-45E1-995A-D76F3EF29F79"),
 		Size:      12345,
-		Status:    blobref.BlobRefStatusInitializing,
+		Status:    blobref.StatusInitializing,
 		StoreKey:  "storeKey",
 		RecordKey: "recordKey",
 		Timestamps: timestamps.Timestamps{
