@@ -31,8 +31,7 @@ func now() time.Time {
 
 func TestTimestamps_NewTimestamps(t *testing.T) {
 	beforeNew := now()
-	var ts Timestamps
-	ts.NewTimestamps(precision)
+	ts := New(precision)
 	afterNew := now()
 	assert.NotNil(t, ts)
 
@@ -52,14 +51,13 @@ func TestTimestamps_NewTimestamps(t *testing.T) {
 }
 
 func TestTimestamps_Update(t *testing.T) {
-	var ts Timestamps
-	ts.NewTimestamps(precision)
+	ts := New(precision)
 	ocreated := ts.CreatedAt
 	oupdated := ts.UpdatedAt
 	osignature := ts.Signature
 	assert.NotNil(t, ts)
 	beforeUpdate := now()
-	ts.UpdateTimestamps(precision)
+	ts.Update(precision)
 	afterUpdate := now()
 
 	assert.Same(t, time.UTC, ts.UpdatedAt.Location())
@@ -74,8 +72,7 @@ func TestTimestamps_Update(t *testing.T) {
 }
 
 func TestTimestamps_Save(t *testing.T) {
-	var ts Timestamps
-	ts.NewTimestamps(precision)
+	ts := New(precision)
 	actual, err := ts.Save()
 	assert.NoError(t, err)
 	expected := []datastore.Property{

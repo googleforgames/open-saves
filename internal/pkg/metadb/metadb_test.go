@@ -230,7 +230,7 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	expected := cloneRecord(record)
 
 	createdRecord, err := metaDB.InsertRecord(ctx, storeKey, record)
-	expected.Timestamps.NewTimestamps(timestampPrecision)
+	expected.Timestamps = timestamps.New(timestampPrecision)
 	// Copy the new signature as we cannot generate the same UUID.
 	expected.Timestamps.Signature = createdRecord.Timestamps.Signature
 	if err != nil {
@@ -316,7 +316,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 		OwnerID:    "record owner",
 		Tags:       []string{"abc", "def"},
 	}
-	work.Timestamps.NewTimestamps(timestampPrecision)
+	work.Timestamps = timestamps.New(timestampPrecision)
 	expected := cloneRecord(work)
 
 	updated, err := metaDB.UpdateRecord(ctx, storeKey, recordKey,
@@ -330,7 +330,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 	expected.Tags = append(expected.Tags, "ghi")
 	work.OwnerID = "NewOwner"
 	expected.OwnerID = work.OwnerID
-	expected.Timestamps.NewTimestamps(timestampPrecision)
+	expected.Timestamps = timestamps.New(timestampPrecision)
 
 	// Make sure UpdateRecord doesn't update CreatedAt
 	work.Timestamps.CreatedAt = time.Unix(0, 0)

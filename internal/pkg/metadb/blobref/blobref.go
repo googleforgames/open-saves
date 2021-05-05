@@ -113,15 +113,15 @@ func (b *BlobRef) LoadKey(k *datastore.Key) error {
 //	- Set Status to BlobRefStatusInitializing
 //	- Set current time to Timestamps (both created and updated at)
 func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
-	b := new(BlobRef)
-	b.Key = uuid.New()
-	b.Size = size
-	b.Status = StatusInitializing
-	b.StoreKey = storeKey
-	b.RecordKey = recordKey
-	// Nanosecond is fine as it will not be returned to clients.
-	b.Timestamps.NewTimestamps(time.Nanosecond)
-	return b
+	return &BlobRef{
+		Key:       uuid.New(),
+		Size:      size,
+		Status:    StatusInitializing,
+		StoreKey:  storeKey,
+		RecordKey: recordKey,
+		// Nanosecond is fine as it will not be returned to clients.
+		Timestamps: timestamps.New(time.Nanosecond),
+	}
 }
 
 // Ready changes Status to BlobRefStatusReady and updates Timestamps.
@@ -131,7 +131,7 @@ func (b *BlobRef) Ready() error {
 		return errors.New("Ready was called when Status is not Initializing")
 	}
 	b.Status = StatusReady
-	b.Timestamps.UpdateTimestamps(time.Nanosecond)
+	b.Timestamps.Update(time.Nanosecond)
 	return nil
 }
 
@@ -142,7 +142,7 @@ func (b *BlobRef) MarkForDeletion() error {
 		return errors.New("MarkForDeletion was called when Status is not either Initializing or Ready")
 	}
 	b.Status = StatusPendingDeletion
-	b.Timestamps.UpdateTimestamps(time.Nanosecond)
+	b.Timestamps.Update(time.Nanosecond)
 	return nil
 }
 
@@ -150,7 +150,7 @@ func (b *BlobRef) MarkForDeletion() error {
 // Any state can transition to BlobRefStatusError.
 func (b *BlobRef) Fail() error {
 	b.Status = StatusError
-	b.Timestamps.UpdateTimestamps(time.Nanosecond)
+	b.Timestamps.Update(time.Nanosecond)
 	return nil
 }
 
