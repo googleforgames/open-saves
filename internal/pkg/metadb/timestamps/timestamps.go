@@ -23,6 +23,11 @@ import (
 
 const (
 	signaturePropertyName = "Signature"
+
+	// Precision is the effective precision of timestamps.
+	// Currently it's 1 microsecond as it's what Datastore supports.
+	// Datastore: 1 microsecond: https://cloud.google.com/datastore/docs/concepts/entities#date_and_time
+	Precision = time.Millisecond
 )
 
 // Timestamps keeps keeps when each record is created or updated as well as
@@ -45,11 +50,8 @@ var _ datastore.PropertyLoadSaver = new(Timestamps)
 
 // New returns a new Timestamps instance with
 // CreatedAt and UpdatedAt set to time.Now() and Signature set to uuid.New().
-func New(d time.Duration) Timestamps {
-	// This needs to be the lowest precision of all backend that MetaDB currently
-	// supports. Currently it's 1 microsecond.
-	// Datastore: 1 microsecond: https://cloud.google.com/datastore/docs/concepts/entities#date_and_time
-	now := time.Now().UTC().Truncate(d)
+func New() Timestamps {
+	now := time.Now().UTC().Truncate(Precision)
 	return Timestamps{
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -58,8 +60,8 @@ func New(d time.Duration) Timestamps {
 }
 
 // Update updates the UpdatedAt and Signature fields with time.Now() and uuid.New().
-func (t *Timestamps) Update(d time.Duration) {
-	t.UpdatedAt = time.Now().UTC().Truncate(d)
+func (t *Timestamps) Update() {
+	t.UpdatedAt = time.Now().UTC().Truncate(Precision)
 	t.Signature = uuid.New()
 }
 

@@ -38,7 +38,6 @@ const (
 	storeKind          = "store"
 	recordKind         = "record"
 	blobKind           = "blob"
-	timestampPrecision = 1 * time.Microsecond
 	timestampTestDelta = 5 * time.Second
 	testProject        = "triton-for-games-dev"
 	testNamespace      = "datastore-unittests"
@@ -230,7 +229,7 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	expected := cloneRecord(record)
 
 	createdRecord, err := metaDB.InsertRecord(ctx, storeKey, record)
-	expected.Timestamps = timestamps.New(timestampPrecision)
+	expected.Timestamps = timestamps.New()
 	// Copy the new signature as we cannot generate the same UUID.
 	expected.Timestamps.Signature = createdRecord.Timestamps.Signature
 	if err != nil {
@@ -316,7 +315,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 		OwnerID:    "record owner",
 		Tags:       []string{"abc", "def"},
 	}
-	work.Timestamps = timestamps.New(timestampPrecision)
+	work.Timestamps = timestamps.New()
 	expected := cloneRecord(work)
 
 	updated, err := metaDB.UpdateRecord(ctx, storeKey, recordKey,
@@ -330,7 +329,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 	expected.Tags = append(expected.Tags, "ghi")
 	work.OwnerID = "NewOwner"
 	expected.OwnerID = work.OwnerID
-	expected.Timestamps = timestamps.New(timestampPrecision)
+	expected.Timestamps = timestamps.New()
 
 	// Make sure UpdateRecord doesn't update CreatedAt
 	work.Timestamps.CreatedAt = time.Unix(0, 0)
@@ -443,7 +442,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetCurrentBlobRef failed: %v", err)
 	} else {
-		metadbtest.AssertEqualBlobRefWithinDuration(t, promoBlob, currentBlob, timestampPrecision)
+		metadbtest.AssertEqualBlobRefWithinDuration(t, promoBlob, currentBlob, timestamps.Precision)
 	}
 
 	if err := metaDB.DeleteBlobRef(ctx, blobKey); err == nil {
