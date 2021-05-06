@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cache
+package redis
 
 import (
 	"context"
@@ -67,6 +67,7 @@ func TestRedis_SerializeRecord(t *testing.T) {
 	ctx := context.Background()
 
 	red := NewRedis("localhost:6379")
+	t.Cleanup(func() { assert.NoError(t, red.FlushAll(ctx)) })
 
 	rr := []*record.Record{
 		{
@@ -111,20 +112,23 @@ func TestRedis_SerializeRecord(t *testing.T) {
 	}
 
 	for _, r := range rr {
-		e, err := EncodeRecord(r)
-		assert.NoError(t, err)
-		d, err := DecodeRecord(e)
-		assert.NoError(t, err)
-		metadbtest.AssertEqualRecord(t, r, d)
+		encoded, err := r.EncodeBytes()
+		if err != nil {
+			t.Fatalf("EncodedBytes failed: %v", err)
+		}
 
-		red.Set(ctx, r.Key, e)
-		record, err := red.Get(ctx, r.Key)
-		assert.NoError(t, err)
-		assert.Equal(t, e, record)
-		decodedRecord, err := DecodeRecord(record)
-		assert.NoError(t, err)
-		metadbtest.AssertEqualRecord(t, r, decodedRecord)
+		if err := red.Set(ctx, r.Key, encoded); err != nil {
+			t.Fatalf("Set failed: %v", err)
+		}
+		cached, err := red.Get(ctx, r.Key)
+		if assert.NoError(t, err) {
+			assert.Equal(t, encoded, cached)
 
-		assert.NoError(t, red.FlushAll(ctx))
+			decoded := new(record.Record)
+			err := decoded.DecodeBytes(cached)
+			if assert.NoError(t, err) {
+				metadbtest.AssertEqualRecord(t, r, decoded)
+			}
+		}
 	}
 }

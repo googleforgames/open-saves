@@ -21,6 +21,7 @@ import (
 
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	log "github.com/sirupsen/logrus"
@@ -38,7 +39,7 @@ type Config struct {
 
 // Collector is a garbage collector of unused resources in Datastore.
 type Collector struct {
-	cache  cache.Cache
+	cache  *cache.Cache
 	metaDB *metadb.MetaDB
 	blob   blob.BlobStore
 	cfg    *Config
@@ -60,11 +61,11 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := cache.NewRedis(cfg.Cache)
+		redis := redis.NewRedis(cfg.Cache)
 		c := &Collector{
 			blob:   gcs,
 			metaDB: metadb,
-			cache:  redis,
+			cache:  cache.New(redis),
 			cfg:    cfg,
 		}
 		return c, nil

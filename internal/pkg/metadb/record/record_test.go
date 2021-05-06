@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package record
+package record_test
 
 import (
 	"testing"
@@ -21,6 +21,8 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -31,12 +33,12 @@ func TestRecord_Save(t *testing.T) {
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("34E1A605-C0FD-4A3D-A9ED-9BA42CAFAF6E")
-	record := &Record{
+	record := &record.Record{
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: PropertyMap{
+		Properties: record.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -191,16 +193,16 @@ func TestRecord_Load(t *testing.T) {
 			},
 		},
 	}
-	var record Record
-	if err := record.Load(properties); err != nil {
+	var actual record.Record
+	if err := actual.Load(properties); err != nil {
 		t.Fatalf("Load should not return an error: %v", err)
 	}
-	expected := Record{
+	expected := record.Record{
 		Key:          "",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: PropertyMap{
+		Properties: record.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -213,19 +215,19 @@ func TestRecord_Load(t *testing.T) {
 			Signature: signature,
 		},
 	}
-	assert.Equal(t, expected, record)
+	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_ToProtoSimple(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
-	record := &Record{
+	record := &record.Record{
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: PropertyMap{
+		Properties: record.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -283,11 +285,11 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		CreatedAt:    timestamppb.New(createdAt),
 		UpdatedAt:    timestamppb.New(updatedAt),
 	}
-	expected := &Record{
+	expected := &record.Record{
 		Key:          "key",
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: PropertyMap{
+		Properties: record.PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -298,40 +300,102 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 		},
+		StoreKey: "store key",
 	}
-	actual := NewRecordFromProto(proto)
+	actual := record.NewRecordFromProto("store key", proto)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_NewRecordFromProtoNil(t *testing.T) {
-	expected := new(Record)
-	actual := NewRecordFromProto(nil)
+	expected := new(record.Record)
+	actual := record.NewRecordFromProto("", nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_LoadKey(t *testing.T) {
-	record := new(Record)
-	key := datastore.NameKey("kind", "testkey", nil)
+	record := new(record.Record)
+	key := datastore.NameKey("kind", "testkey", datastore.NameKey("store", "teststore", nil))
 	assert.NoError(t, record.LoadKey(key))
 	assert.Equal(t, "testkey", record.Key)
+	assert.Equal(t, "teststore", record.StoreKey)
 }
 
 func TestRecord_TestBlobUUID(t *testing.T) {
 	testUUID := uuid.MustParse("F7B0E446-EBBE-48A2-90BA-108C36B44F7C")
-	record := &Record{
+	original := &record.Record{
 		ExternalBlob: testUUID,
-		Properties:   make(PropertyMap),
+		Properties:   make(record.PropertyMap),
 	}
-	properties, err := record.Save()
+	properties, err := original.Save()
 	assert.NoError(t, err, "Save should not return error")
 	idx := len(properties) - 1
 	assert.Equal(t, "ExternalBlob", properties[idx].Name)
 	assert.Equal(t, testUUID.String(), properties[idx].Value)
 	assert.Equal(t, false, properties[idx].NoIndex)
 
-	actual := new(Record)
+	actual := new(record.Record)
 	err = actual.Load(properties)
 	assert.NoError(t, err, "Load should not return error")
-	assert.Equal(t, record, actual)
+	assert.Equal(t, original, actual)
+}
+
+func TestRecord_CacheKey(t *testing.T) {
+	r := &record.Record{
+		Key:      "abc",
+		StoreKey: "def",
+	}
+	key := r.CacheKey()
+	assert.Equal(t, "def/abc", key)
+}
+
+func TestRecord_SerializeRecord(t *testing.T) {
+	rr := []*record.Record{
+		{
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+		{
+			Key: "some-key",
+			Properties: record.PropertyMap{
+				"prop1": {
+					Type:         pb.Property_BOOLEAN,
+					BooleanValue: false,
+				},
+				"prop2": {
+					Type:         pb.Property_INTEGER,
+					IntegerValue: 200,
+				},
+				"prop3": {
+					Type:        pb.Property_STRING,
+					StringValue: "string value",
+				},
+			},
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+		{
+			Key:      "some-key",
+			Blob:     []byte("some-bytes"),
+			BlobSize: 64,
+			OwnerID:  "new-owner",
+			Tags:     []string{"tag1", "tag2"},
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+	}
+
+	for _, r := range rr {
+		e, err := r.EncodeBytes()
+		assert.NoError(t, err)
+		decoded := new(record.Record)
+		assert.NoError(t, decoded.DecodeBytes(e))
+		metadbtest.AssertEqualRecord(t, r, decoded)
+	}
 }

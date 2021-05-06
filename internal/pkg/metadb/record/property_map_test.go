@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package record
+package record_test
 
 import (
 	"testing"
 
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 	// Handles nil
-	assert.Equal(t, make(PropertyMap), NewPropertyMapFromProto(nil))
+	assert.Equal(t, make(record.PropertyMap), record.NewPropertyMapFromProto(nil))
 
 	proto := map[string]*pb.Property{
 		"boolean": {Type: pb.Property_BOOLEAN,
@@ -34,12 +35,12 @@ func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 			Value: &pb.Property_StringValue{StringValue: "abc"},
 		},
 	}
-	expected := PropertyMap{
+	expected := record.PropertyMap{
 		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
 		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
 		"string":  {Type: pb.Property_STRING, StringValue: "abc"},
 	}
-	actual := NewPropertyMapFromProto(proto)
+	actual := record.NewPropertyMapFromProto(proto)
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected, actual)
 	}
@@ -47,10 +48,10 @@ func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 
 func TestPropertyMap_ToProto(t *testing.T) {
 	// Handles nil
-	var nilMap PropertyMap
+	var nilMap record.PropertyMap
 	assert.Nil(t, nilMap.ToProto())
 
-	propertyMap := PropertyMap{
+	propertyMap := record.PropertyMap{
 		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
 		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
 		"string":  {Type: pb.Property_STRING, StringValue: "abc"},
