@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	cloud.google.com/go/datastore v1.5.0
-	github.com/golang/mock v1.5.0
 	github.com/golang/protobuf v1.5.2
 	github.com/gomodule/redigo v1.8.4
 	github.com/google/uuid v1.2.0

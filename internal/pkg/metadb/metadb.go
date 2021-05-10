@@ -522,3 +522,26 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.BlobRe
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
 }
+
+func (m *MetaDB) GetAggregation(ctx context.Context, aggregation, storeKey, field string) (*record.Record, error) {
+	dsKey := m.createStoreKey(storeKey)
+
+	var orderField string
+	if aggregation == "MIN" {
+		orderField = field
+	} else {
+		orderField = "-" + field
+	}
+
+	q := m.newQuery(recordKind).Ancestor(dsKey).Order(orderField).Limit(1)
+	t := m.client.Run(ctx, q)
+	r := new(record.Record)
+	_, err := t.Next(r)
+	if err == iterator.Done {
+		return nil, status.Error(codes.NotFound, "no records found for that store and field")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}

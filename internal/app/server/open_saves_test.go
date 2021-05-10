@@ -702,3 +702,74 @@ func TestOpenSaves_RecordChecks(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, status.Code(err),
 		"UpdateRecord should return InvalidArgument when OpaqueString is too big.")
 }
+
+func TestOpenSaves_MinMaxRecord(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.New().String()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	const minValue int64 = -10
+	const maxValue int64 = 42
+
+	rec1 := uuid.New().String()
+	createReq := &pb.CreateRecordRequest{
+		StoreKey: storeKey,
+		Record: &pb.Record{
+			Key:     rec1,
+			Tags:    []string{"tag1", "tag2"},
+			OwnerId: "owner",
+			Properties: map[string]*pb.Property{
+				"prop1": {
+					Type:  pb.Property_INTEGER,
+					Value: &pb.Property_IntegerValue{IntegerValue: maxValue},
+				},
+			},
+		},
+	}
+
+	_, err := client.CreateRecord(ctx, createReq)
+	assert.NoError(t, err)
+
+	aggReq := &pb.GetAggregationRequest{
+		StoreKey:    storeKey,
+		Field:       "Properties.prop1",
+		Aggregation: pb.GetAggregationRequest_MIN,
+	}
+	record, err := client.GetAggregation(ctx, aggReq)
+	assert.NoError(t, err)
+	assert.Equal(t, record.Properties["prop1"].Value, &pb.Property_IntegerValue{IntegerValue: maxValue})
+
+	rec2 := uuid.New().String()
+	createReq.Record.Key = rec2
+	createReq.Record.Properties["prop1"].Value = &pb.Property_IntegerValue{
+		IntegerValue: minValue,
+	}
+	_, err = client.CreateRecord(ctx, createReq)
+	assert.NoError(t, err)
+
+	record, err = client.GetAggregation(ctx, aggReq)
+	assert.NoError(t, err)
+	assert.Equal(t, record.Properties["prop1"].Value, &pb.Property_IntegerValue{IntegerValue: minValue})
+
+	aggReq.Aggregation = pb.GetAggregationRequest_MAX
+	record, err = client.GetAggregation(ctx, aggReq)
+	assert.NoError(t, err)
+	assert.Equal(t, record.Properties["prop1"].Value, &pb.Property_IntegerValue{IntegerValue: maxValue})
+
+	deleteReq := &pb.DeleteRecordRequest{
+		StoreKey: storeKey,
+		Key:      rec1,
+	}
+	_, err = client.DeleteRecord(ctx, deleteReq)
+	assert.NoError(t, err)
+
+	deleteReq2 := &pb.DeleteRecordRequest{
+		StoreKey: storeKey,
+		Key:      rec2,
+	}
+	_, err = client.DeleteRecord(ctx, deleteReq2)
+	assert.NoError(t, err)
+}

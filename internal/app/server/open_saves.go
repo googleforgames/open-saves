@@ -232,6 +232,14 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, stream *pb.QueryReco
 	return nil, status.Error(codes.Unimplemented, "QueryRecords is not implemented yet.")
 }
 
+func (s *openSavesServer) GetAggregation(ctx context.Context, req *pb.GetAggregationRequest) (*pb.Record, error) {
+	r, err := s.metaDB.GetAggregation(ctx, req.Aggregation.String(), req.StoreKey, req.Field)
+	if err != nil {
+		return nil, err
+	}
+	return r.ToProto(), nil
+}
+
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	log.Debugf("Inserting inline blob: %v\n", meta)
 	// Receive the blob

@@ -840,3 +840,50 @@ func TestMetaDB_DeleteRecordWithNonExistentBlobRef(t *testing.T) {
 			"GetRecord should return NotFound after DeleteRecord")
 	}
 }
+
+func TestMetaDB_GetAggregation(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+
+	const minValue int64 = -10
+	const maxValue int64 = 42
+
+	storeKey := newStoreKey()
+	store := &store.Store{
+		Key:  storeKey,
+		Name: t.Name(),
+	}
+
+	recordKey := newRecordKey()
+	record := &record.Record{
+		Key: recordKey,
+		Properties: record.PropertyMap{
+			"prop1": {Type: pb.Property_INTEGER, IntegerValue: maxValue},
+		},
+	}
+
+	setupTestStoreRecord(ctx, t, metaDB, store, record)
+
+	res, err := metaDB.GetAggregation(ctx, "MIN", storeKey, "Properties.prop1")
+	assert.NoError(t, err)
+	assert.Equal(t, res.Properties["prop1"].IntegerValue, maxValue)
+
+	recKey2 := uuid.New().String()
+	record.Key = recKey2
+	record.Properties["prop1"].IntegerValue = minValue
+	metaDB.InsertRecord(ctx, storeKey, record)
+
+	res, err = metaDB.GetAggregation(ctx, "MIN", storeKey, "Properties.prop1")
+	assert.NoError(t, err)
+	assert.Equal(t, res.Properties["prop1"].IntegerValue, minValue)
+
+	res, err = metaDB.GetAggregation(ctx, "MAX", storeKey, "Properties.prop1")
+	assert.NoError(t, err)
+	assert.Equal(t, res.Properties["prop1"].IntegerValue, maxValue)
+
+	err = metaDB.DeleteRecord(ctx, storeKey, recordKey)
+	assert.Nilf(t, err, "Failed to delete a record (%s) in store (%s): %v", recordKey, storeKey, err)
+
+	err = metaDB.DeleteRecord(ctx, storeKey, recKey2)
+	assert.Nilf(t, err, "Failed to delete a record (%s) in store (%s): %v", recKey2, storeKey, err)
+}

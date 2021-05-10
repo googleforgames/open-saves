@@ -1,19 +1,20 @@
 # Deployment Guide
 
-- [Before you begin](#before-you-begin)
-- [Setting up backend services on Google Cloud](#setting-up-backend-services-on-google-cloud)
-  - [Starting the cache store](#starting-the-cache-store)
-  - [Set up Serverless VPC access](#set-up-serverless-vpc-access)
-  - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
-  - [Cloud Storage](#cloud-storage)
-  - [Deploying to Cloud Run](#deploying-to-cloud-run-recommended) (recommended)
-  - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
-- [Check to see everything worked](#check-to-see-everything-worked)
-  - [Check Datastore](#check-datastore)
-  - [Check Memorystore](#check-memorystore)
-  - [Check Cloud Storage](#check-cloud-storage)
-- [Set up the garbage collector](#set-up-the-garbage-collector)
-- [Next steps](#next-steps)
+- [Deployment Guide](#deployment-guide)
+  - [Before you begin](#before-you-begin)
+  - [Setting up backend services on Google Cloud](#setting-up-backend-services-on-google-cloud)
+    - [Starting the cache store](#starting-the-cache-store)
+    - [Set up Serverless VPC access](#set-up-serverless-vpc-access)
+    - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
+    - [Cloud Storage](#cloud-storage)
+    - [Deploying to Cloud Run (recommended)](#deploying-to-cloud-run-recommended)
+    - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
+  - [Check to see everything worked](#check-to-see-everything-worked)
+    - [Check Datastore](#check-datastore)
+    - [Check Memorystore](#check-memorystore)
+    - [Check Cloud Storage](#check-cloud-storage)
+  - [Set up the garbage collector](#set-up-the-garbage-collector)
+  - [Next steps](#next-steps)
 
 <!-- /TOC -->
 
@@ -144,6 +145,9 @@ You may choose whichever region you like, however, it can only be specified once
 and cannot be undone. Google Cloud Platform currently allows only one Datastore
 database per project, so you would need to create a new project to change the
 database location.
+
+For certain operations like querying and record aggregation, you may need to create composite indexes for working with multiple fields at once. As an example, you may need to create a composite index if you are using the min or max aggregation method. For more information, see [Index Configuration](https://cloud.google.com/datastore/docs/concepts/indexes#index_configuration). An example of this can also be found
+in `examples/datastore/index.yaml`.
 
 ### Cloud Storage
 
