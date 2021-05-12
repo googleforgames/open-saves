@@ -27,7 +27,7 @@ const (
 	// Precision is the effective precision of timestamps.
 	// Currently it's 1 microsecond as it's what Datastore supports.
 	// Datastore: 1 microsecond: https://cloud.google.com/datastore/docs/concepts/entities#date_and_time
-	Precision = time.Millisecond
+	Precision = time.Microsecond
 )
 
 // Timestamps keeps keeps when each record is created or updated as well as
