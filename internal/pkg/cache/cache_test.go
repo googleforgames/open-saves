@@ -13,3 +13,86 @@
 // limitations under the License.
 
 package cache
+
+import (
+	"bytes"
+	"context"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	mock_cache "github.com/googleforgames/open-saves/internal/pkg/cache/mock"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestCache_Simple(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	cacheable := mock_cache.NewMockCacheable(ctrl)
+	driver := mock_cache.NewMockDriver(ctrl)
+	const testCacheKey = "testcache/key"
+	testBinary := []byte{0x42, 0x24, 0x00, 0x12}
+	ctx := context.Background()
+
+	cache := New(driver)
+	if cache == nil {
+		t.Fatal("cache.New returned nil")
+	}
+
+	cacheable.EXPECT().CacheKey().Return(testCacheKey)
+	cacheable.EXPECT().EncodeBytes().Return(testBinary, nil)
+	driver.EXPECT().Set(ctx, testCacheKey, testBinary).Return(nil)
+
+	assert.NoError(t, cache.Set(ctx, cacheable))
+
+	cacheable.EXPECT().DecodeBytes(testBinary).Return(nil)
+	driver.EXPECT().Get(ctx, testCacheKey).Return(testBinary, nil)
+
+	assert.NoError(t, cache.Get(ctx, testCacheKey, cacheable))
+
+	driver.EXPECT().Delete(ctx, testCacheKey).Return(nil)
+	assert.NoError(t, cache.Delete(ctx, testCacheKey))
+
+	driver.EXPECT().FlushAll(ctx).Return(nil)
+	assert.NoError(t, cache.FlushAll(ctx))
+}
+
+func TestCache_TooBigToCache(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	cacheable := mock_cache.NewMockCacheable(ctrl)
+	driver := mock_cache.NewMockDriver(ctrl)
+	const testCacheKey = "testcache/key"
+	ctx := context.Background()
+
+	cache := New(driver)
+	if cache == nil {
+		t.Fatal("cache.New returned nil")
+	}
+	cache.MaxSizeToCache = 100
+
+	testBinaryBuf := new(bytes.Buffer)
+	testBinaryBuf.Grow(cache.MaxSizeToCache + 1)
+	for i := 0; i < cache.MaxSizeToCache; i++ {
+		if err := testBinaryBuf.WriteByte(byte(i)); err != nil {
+			t.Fatalf("test internal error: Buffer.WriteByte returned error: %v", err)
+		}
+	}
+
+	testBytes := testBinaryBuf.Bytes()
+
+	cacheable.EXPECT().EncodeBytes().Return(testBytes, nil)
+	cacheable.EXPECT().CacheKey().Return(testCacheKey)
+	driver.EXPECT().Set(ctx, testCacheKey, testBytes).Return(nil)
+
+	assert.NoError(t, cache.Set(ctx, cacheable))
+
+	// Add one byte
+	if err := testBinaryBuf.WriteByte(0x42); err != nil {
+		t.Fatalf("test internal error: Buffer.WriteByte returned error: %v", err)
+	}
+	testBytes = testBinaryBuf.Bytes()
+
+	cacheable.EXPECT().EncodeBytes().Return(testBytes, nil)
+	cacheable.EXPECT().CacheKey().Return(testCacheKey)
+	driver.EXPECT().Delete(ctx, testCacheKey).Return(nil)
+
+	assert.NoError(t, cache.Set(ctx, cacheable))
+}

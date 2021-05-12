@@ -17,12 +17,7 @@ package redis
 import (
 	"context"
 	"testing"
-	"time"
 
-	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,74 +56,4 @@ func TestRedis_All(t *testing.T) {
 	keys, err = r.ListKeys(ctx)
 	assert.NoError(t, err)
 	assert.Empty(t, keys)
-}
-
-func TestRedis_SerializeRecord(t *testing.T) {
-	ctx := context.Background()
-
-	red := NewRedis("localhost:6379")
-	t.Cleanup(func() { assert.NoError(t, red.FlushAll(ctx)) })
-
-	rr := []*record.Record{
-		{
-			Key: "key1",
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-		{
-			Key: "key2",
-			Properties: record.PropertyMap{
-				"prop1": {
-					Type:         pb.Property_BOOLEAN,
-					BooleanValue: false,
-				},
-				"prop2": {
-					Type:         pb.Property_INTEGER,
-					IntegerValue: 200,
-				},
-				"prop3": {
-					Type:        pb.Property_STRING,
-					StringValue: "string value",
-				},
-			},
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-		{
-			Key:      "key3",
-			Blob:     []byte("some-bytes"),
-			BlobSize: 64,
-			OwnerID:  "new-owner",
-			Tags:     []string{"tag1", "tag2"},
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-	}
-
-	for _, r := range rr {
-		encoded, err := r.EncodeBytes()
-		if err != nil {
-			t.Fatalf("EncodedBytes failed: %v", err)
-		}
-
-		if err := red.Set(ctx, r.Key, encoded); err != nil {
-			t.Fatalf("Set failed: %v", err)
-		}
-		cached, err := red.Get(ctx, r.Key)
-		if assert.NoError(t, err) {
-			assert.Equal(t, encoded, cached)
-
-			decoded := new(record.Record)
-			err := decoded.DecodeBytes(cached)
-			if assert.NoError(t, err) {
-				metadbtest.AssertEqualRecord(t, r, decoded)
-			}
-		}
-	}
 }

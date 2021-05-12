@@ -21,12 +21,10 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-// Assert PropertyMap implements PropertyLoadSave.
-var _ datastore.PropertyLoadSaver = new(PropertyMap)
 
 // Record represents a Open Saves record in the metadata database.
 // See the Open Saves API definition for details.
@@ -53,6 +51,9 @@ type Record struct {
 // Assert Record implements both PropertyLoadSave and KeyLoader.
 var _ datastore.PropertyLoadSaver = new(Record)
 var _ datastore.KeyLoader = new(Record)
+
+// Assert Record implements Cacheable.
+var _ cache.Cacheable = new(Record)
 
 const externalBlobPropertyName = "ExternalBlob"
 
