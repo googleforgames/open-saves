@@ -24,6 +24,7 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
@@ -71,7 +72,7 @@ func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr s
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := cache.NewRedis(cacheAddr)
+		redis := redis.NewRedis(cacheAddr)
 		server := &openSavesServer{
 			cloud:      cloud,
 			blobStore:  gcs,
