@@ -15,63 +15,84 @@
 package cache
 
 import (
+	"bytes"
+	"context"
 	"testing"
-	"time"
 
-	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
+	"github.com/golang/mock/gomock"
+	mock_cache "github.com/googleforgames/open-saves/internal/pkg/cache/mock"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCache_SerializeRecord(t *testing.T) {
-	rr := []*record.Record{
-		{
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-		{
-			Key: "some-key",
-			Properties: record.PropertyMap{
-				"prop1": {
-					Type:         pb.Property_BOOLEAN,
-					BooleanValue: false,
-				},
-				"prop2": {
-					Type:         pb.Property_INTEGER,
-					IntegerValue: 200,
-				},
-				"prop3": {
-					Type:        pb.Property_STRING,
-					StringValue: "string value",
-				},
-			},
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-		{
-			Key:      "some-key",
-			Blob:     []byte("some-bytes"),
-			BlobSize: 64,
-			OwnerID:  "new-owner",
-			Tags:     []string{"tag1", "tag2"},
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
+func TestCache_Simple(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	cacheable := mock_cache.NewMockCacheable(ctrl)
+	driver := mock_cache.NewMockDriver(ctrl)
+	const testCacheKey = "testcache/key"
+	testBinary := []byte{0x42, 0x24, 0x00, 0x12}
+	ctx := context.Background()
+
+	cache := New(driver)
+	if cache == nil {
+		t.Fatal("cache.New returned nil")
 	}
 
-	for _, r := range rr {
-		e, err := EncodeRecord(r)
-		assert.NoError(t, err)
-		d, err := DecodeRecord(e)
-		assert.NoError(t, err)
-		metadbtest.AssertEqualRecord(t, r, d)
+	cacheable.EXPECT().CacheKey().Return(testCacheKey)
+	cacheable.EXPECT().EncodeBytes().Return(testBinary, nil)
+	driver.EXPECT().Set(ctx, testCacheKey, testBinary).Return(nil)
+
+	assert.NoError(t, cache.Set(ctx, cacheable))
+
+	cacheable.EXPECT().DecodeBytes(testBinary).Return(nil)
+	driver.EXPECT().Get(ctx, testCacheKey).Return(testBinary, nil)
+
+	assert.NoError(t, cache.Get(ctx, testCacheKey, cacheable))
+
+	driver.EXPECT().Delete(ctx, testCacheKey).Return(nil)
+	assert.NoError(t, cache.Delete(ctx, testCacheKey))
+
+	driver.EXPECT().FlushAll(ctx).Return(nil)
+	assert.NoError(t, cache.FlushAll(ctx))
+}
+
+func TestCache_TooBigToCache(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	cacheable := mock_cache.NewMockCacheable(ctrl)
+	driver := mock_cache.NewMockDriver(ctrl)
+	const testCacheKey = "testcache/key"
+	ctx := context.Background()
+
+	cache := New(driver)
+	if cache == nil {
+		t.Fatal("cache.New returned nil")
 	}
+	cache.MaxSizeToCache = 100
+
+	testBinaryBuf := new(bytes.Buffer)
+	testBinaryBuf.Grow(cache.MaxSizeToCache + 1)
+	for i := 0; i < cache.MaxSizeToCache; i++ {
+		if err := testBinaryBuf.WriteByte(byte(i)); err != nil {
+			t.Fatalf("test internal error: Buffer.WriteByte returned error: %v", err)
+		}
+	}
+
+	testBytes := testBinaryBuf.Bytes()
+
+	cacheable.EXPECT().EncodeBytes().Return(testBytes, nil)
+	cacheable.EXPECT().CacheKey().Return(testCacheKey)
+	driver.EXPECT().Set(ctx, testCacheKey, testBytes).Return(nil)
+
+	assert.NoError(t, cache.Set(ctx, cacheable))
+
+	// Add one byte
+	if err := testBinaryBuf.WriteByte(0x42); err != nil {
+		t.Fatalf("test internal error: Buffer.WriteByte returned error: %v", err)
+	}
+	testBytes = testBinaryBuf.Bytes()
+
+	cacheable.EXPECT().EncodeBytes().Return(testBytes, nil)
+	cacheable.EXPECT().CacheKey().Return(testCacheKey)
+	driver.EXPECT().Delete(ctx, testCacheKey).Return(nil)
+
+	assert.NoError(t, cache.Set(ctx, cacheable))
 }

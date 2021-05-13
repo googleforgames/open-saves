@@ -17,12 +17,7 @@ package cache
 import (
 	"context"
 	"testing"
-	"time"
 
-	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,70 +56,4 @@ func TestRedis_All(t *testing.T) {
 	keys, err = r.ListKeys(ctx)
 	assert.NoError(t, err)
 	assert.Empty(t, keys)
-}
-
-func TestRedis_SerializeRecord(t *testing.T) {
-	ctx := context.Background()
-
-	red := NewRedis("localhost:6379")
-
-	rr := []*record.Record{
-		{
-			Key: "key1",
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-		{
-			Key: "key2",
-			Properties: record.PropertyMap{
-				"prop1": {
-					Type:         pb.Property_BOOLEAN,
-					BooleanValue: false,
-				},
-				"prop2": {
-					Type:         pb.Property_INTEGER,
-					IntegerValue: 200,
-				},
-				"prop3": {
-					Type:        pb.Property_STRING,
-					StringValue: "string value",
-				},
-			},
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-		{
-			Key:      "key3",
-			Blob:     []byte("some-bytes"),
-			BlobSize: 64,
-			OwnerID:  "new-owner",
-			Tags:     []string{"tag1", "tag2"},
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Unix(100, 0),
-				UpdatedAt: time.Unix(110, 0),
-			},
-		},
-	}
-
-	for _, r := range rr {
-		e, err := EncodeRecord(r)
-		assert.NoError(t, err)
-		d, err := DecodeRecord(e)
-		assert.NoError(t, err)
-		metadbtest.AssertEqualRecord(t, r, d)
-
-		red.Set(ctx, r.Key, e)
-		record, err := red.Get(ctx, r.Key)
-		assert.NoError(t, err)
-		assert.Equal(t, e, record)
-		decodedRecord, err := DecodeRecord(record)
-		assert.NoError(t, err)
-		metadbtest.AssertEqualRecord(t, r, decodedRecord)
-
-		assert.NoError(t, red.FlushAll(ctx))
-	}
 }
