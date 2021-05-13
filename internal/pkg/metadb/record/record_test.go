@@ -299,13 +299,13 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 			UpdatedAt: updatedAt,
 		},
 	}
-	actual := NewRecordFromProto(proto)
+	actual := FromProto(proto)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_NewRecordFromProtoNil(t *testing.T) {
 	expected := new(Record)
-	actual := NewRecordFromProto(nil)
+	actual := FromProto(nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
 }
