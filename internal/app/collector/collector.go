@@ -108,7 +108,7 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 		}
 		if err != nil {
 			log.Errorf("cursor.Next() returned error: %v", err)
-			continue
+			break
 		}
 		if err := c.blob.Delete(ctx, blob.ObjectPath()); err != nil {
 			log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
