@@ -25,6 +25,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	log "github.com/sirupsen/logrus"
+	"gocloud.dev/gcerrors"
 	"google.golang.org/api/iterator"
 )
 
@@ -112,15 +113,19 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 			break
 		}
 		if err := c.blob.Delete(ctx, blob.ObjectPath()); err != nil {
-			log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
-			if blob.Status != blobref.StatusError {
-				blob.Fail()
-				_, err := c.metaDB.UpdateBlobRef(ctx, blob)
-				if err != nil {
-					log.Errorf("MetaDB.UpdateBlobRef failed for key(%v): %v", blob.Key, err)
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
+				if blob.Status != blobref.StatusError {
+					blob.Fail()
+					_, err := c.metaDB.UpdateBlobRef(ctx, blob)
+					if err != nil {
+						log.Errorf("MetaDB.UpdateBlobRef failed for key(%v): %v", blob.Key, err)
+					}
 				}
+				continue
+			} else {
+				log.Warnf("Blob (%v) was not found. Deleting BlobRef (%v) anyway.", blob.ObjectPath(), blob.Key)
 			}
-			continue
 		}
 		if err := c.metaDB.DeleteBlobRef(ctx, blob.Key); err != nil {
 			log.Errorf("DeleteBlobRef failed for key(%v): %v", blob.Key, err)
