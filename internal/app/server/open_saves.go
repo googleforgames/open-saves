@@ -102,7 +102,7 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 }
 
 func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
-	record := record.NewRecordFromProto(req.Record)
+	record := record.FromProto(req.Record)
 	if err := checkRecord(record); err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 }
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
-	updateTo := record.NewRecordFromProto(req.GetRecord())
+	updateTo := record.FromProto(req.GetRecord())
 	if err := checkRecord(updateTo); err != nil {
 		return nil, err
 	}
