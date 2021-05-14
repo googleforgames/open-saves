@@ -23,23 +23,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const precision = time.Nanosecond
-
 func now() time.Time {
-	return time.Now().UTC().Truncate(precision)
+	return time.Now().UTC().Truncate(Precision)
 }
 
 func TestTimestamps_NewTimestamps(t *testing.T) {
 	beforeNew := now()
-	ts := New(precision)
+	ts := New()
 	afterNew := now()
 	assert.NotNil(t, ts)
 
 	// Check the uuid
 	assert.NotEmpty(t, ts.Signature)
 
-	assert.True(t, ts.CreatedAt.Equal(ts.CreatedAt.Truncate(precision)))
-	assert.True(t, ts.UpdatedAt.Equal(ts.UpdatedAt.Truncate(precision)))
+	assert.True(t, ts.CreatedAt.Equal(ts.CreatedAt.Truncate(Precision)))
+	assert.True(t, ts.UpdatedAt.Equal(ts.UpdatedAt.Truncate(Precision)))
 	assert.Same(t, time.UTC, ts.CreatedAt.Location())
 	assert.Same(t, time.UTC, ts.UpdatedAt.Location())
 
@@ -51,18 +49,18 @@ func TestTimestamps_NewTimestamps(t *testing.T) {
 }
 
 func TestTimestamps_Update(t *testing.T) {
-	ts := New(precision)
+	ts := New()
 	ocreated := ts.CreatedAt
 	oupdated := ts.UpdatedAt
 	osignature := ts.Signature
 	assert.NotNil(t, ts)
 	beforeUpdate := now()
-	ts.Update(precision)
+	ts.Update()
 	afterUpdate := now()
 
 	assert.Same(t, time.UTC, ts.UpdatedAt.Location())
 
-	assert.True(t, ts.UpdatedAt.Equal(ts.UpdatedAt.Truncate(precision)))
+	assert.True(t, ts.UpdatedAt.Equal(ts.UpdatedAt.Truncate(Precision)))
 
 	assert.True(t, ocreated.Equal(ts.CreatedAt))
 	assert.True(t, oupdated.Before(ts.UpdatedAt) || oupdated.Equal(ts.UpdatedAt))
@@ -72,7 +70,7 @@ func TestTimestamps_Update(t *testing.T) {
 }
 
 func TestTimestamps_Save(t *testing.T) {
-	ts := New(precision)
+	ts := New()
 	actual, err := ts.Save()
 	assert.NoError(t, err)
 	expected := []datastore.Property{

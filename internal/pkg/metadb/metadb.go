@@ -31,10 +31,9 @@ import (
 )
 
 const (
-	storeKind          = "store"
-	recordKind         = "record"
-	blobKind           = "blob"
-	timestampPrecision = 1 * time.Microsecond
+	storeKind  = "store"
+	recordKind = "record"
+	blobKind   = "blob"
 )
 
 // MetaDB is a metadata database manager of Open Saves.
@@ -116,7 +115,7 @@ func (m *MetaDB) markBlobRefForDeletion(_ context.Context, tx *ds.Transaction,
 		return nil, status.Error(codes.FailedPrecondition, "the record doesn't have an external blob associated")
 	}
 	record.ExternalBlob = newBlobKey
-	record.Timestamps.Update(timestampPrecision)
+	record.Timestamps.Update()
 	if blob.MarkForDeletion() != nil && blob.Fail() != nil {
 		return nil, status.Errorf(codes.Internal, "failed to transition the blob state for deletion: current = %v", blob.Status)
 	}
@@ -170,7 +169,7 @@ func (m *MetaDB) Disconnect(ctx context.Context) error {
 
 // CreateStore creates a new store.
 func (m *MetaDB) CreateStore(ctx context.Context, store *store.Store) (*store.Store, error) {
-	store.Timestamps = timestamps.New(timestampPrecision)
+	store.Timestamps = timestamps.New()
 	key := m.createStoreKey(store.Key)
 	mut := ds.NewInsert(key, store)
 	if err := m.mutateSingle(ctx, mut); err != nil {
@@ -229,7 +228,7 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
 func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *record.Record) (*record.Record, error) {
-	record.Timestamps = timestamps.New(timestampPrecision)
+	record.Timestamps = timestamps.New()
 	rkey := m.createRecordKey(storeKey, record.Key)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		dskey := m.createStoreKey(storeKey)
@@ -293,7 +292,7 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 			}
 		}
 
-		toUpdate.Timestamps.Update(timestampPrecision)
+		toUpdate.Timestamps.Update()
 		return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, toUpdate))
 	})
 	if err != nil {
@@ -344,7 +343,7 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 
 // InsertBlobRef inserts a new BlobRef object to the datastore.
 func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blobref.BlobRef, error) {
-	blob.Timestamps = timestamps.New(timestampPrecision)
+	blob.Timestamps = timestamps.New()
 	rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		if exists, err := m.recordExists(ctx, tx, rkey); err != nil {
@@ -421,7 +420,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 		if record.ExternalBlob == uuid.Nil {
 			// Simply add the new blob if previously didn't have a blob
 			record.Blob = nil
-			record.Timestamps.Update(timestampPrecision)
+			record.Timestamps.Update()
 		} else {
 			// Mark previous blob for deletion
 			oldBlob, err := m.getBlobRef(ctx, tx, record.ExternalBlob)
@@ -476,7 +475,7 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 		if record.ExternalBlob == uuid.Nil && len(record.Blob) > 0 {
 			// Delete the inline blob
 			record.Blob = nil
-			record.Timestamps.Update(timestampPrecision)
+			record.Timestamps.Update()
 			return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
 		}
 
