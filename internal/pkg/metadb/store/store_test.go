@@ -27,7 +27,7 @@ import (
 )
 
 func TestStore_NewStoreFromProtoNil(t *testing.T) {
-	actual := NewStoreFromProto(nil)
+	actual := FromProto(nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, new(Store), actual)
 }
@@ -78,7 +78,7 @@ func TestStore_NewStoreFromProtoSimple(t *testing.T) {
 			UpdatedAt: updatedAt,
 		},
 	}
-	actual := NewStoreFromProto(proto)
+	actual := FromProto(proto)
 	assert.Equal(t, expected, actual)
 }
 
