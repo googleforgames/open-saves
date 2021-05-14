@@ -99,9 +99,9 @@ func (r *Record) ToProto() *pb.Record {
 	return ret
 }
 
-// NewRecordFromProto creates a new Record instance from a proto.
+// FromProto creates a new Record instance from a proto.
 // Passing nil returns a zero-initialized proto.
-func NewRecordFromProto(p *pb.Record) *Record {
+func FromProto(p *pb.Record) *Record {
 	if p == nil {
 		return new(Record)
 	}
