@@ -73,9 +73,9 @@ func (s *Store) LoadKey(k *datastore.Key) error {
 	return nil
 }
 
-// NewStoreFromProto creates a new Store instance from a proto.
+// FromProto creates a new Store instance from a proto.
 // Passing nil returns a zero-initialized Store.
-func NewStoreFromProto(p *pb.Store) *Store {
+func FromProto(p *pb.Store) *Store {
 	if p == nil {
 		return new(Store)
 	}
