@@ -21,9 +21,11 @@ import (
 
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	log "github.com/sirupsen/logrus"
+	"gocloud.dev/gcerrors"
 	"google.golang.org/api/iterator"
 )
 
@@ -60,7 +62,7 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := cache.NewRedis(cfg.Cache)
+		redis := redis.NewRedis(cfg.Cache)
 		c := &Collector{
 			blob:   gcs,
 			metaDB: metadb,
@@ -108,18 +110,22 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 		}
 		if err != nil {
 			log.Errorf("cursor.Next() returned error: %v", err)
-			continue
+			break
 		}
 		if err := c.blob.Delete(ctx, blob.ObjectPath()); err != nil {
-			log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
-			if blob.Status != blobref.StatusError {
-				blob.Fail()
-				_, err := c.metaDB.UpdateBlobRef(ctx, blob)
-				if err != nil {
-					log.Errorf("MetaDB.UpdateBlobRef failed for key(%v): %v", blob.Key, err)
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
+				if blob.Status != blobref.StatusError {
+					blob.Fail()
+					_, err := c.metaDB.UpdateBlobRef(ctx, blob)
+					if err != nil {
+						log.Errorf("MetaDB.UpdateBlobRef failed for key(%v): %v", blob.Key, err)
+					}
 				}
+				continue
+			} else {
+				log.Warnf("Blob (%v) was not found. Deleting BlobRef (%v) anyway.", blob.ObjectPath(), blob.Key)
 			}
-			continue
 		}
 		if err := c.metaDB.DeleteBlobRef(ctx, blob.Key); err != nil {
 			log.Errorf("DeleteBlobRef failed for key(%v): %v", blob.Key, err)
