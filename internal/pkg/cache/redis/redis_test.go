@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cache
+package redis
 
 import (
 	"context"
@@ -20,6 +20,7 @@ import (
 	"time"
 
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -111,9 +112,9 @@ func TestRedis_SerializeRecord(t *testing.T) {
 	}
 
 	for _, r := range rr {
-		e, err := EncodeRecord(r)
+		e, err := cache.EncodeRecord(r)
 		assert.NoError(t, err)
-		d, err := DecodeRecord(e)
+		d, err := cache.DecodeRecord(e)
 		assert.NoError(t, err)
 		metadbtest.AssertEqualRecord(t, r, d)
 
@@ -121,7 +122,7 @@ func TestRedis_SerializeRecord(t *testing.T) {
 		record, err := red.Get(ctx, r.Key)
 		assert.NoError(t, err)
 		assert.Equal(t, e, record)
-		decodedRecord, err := DecodeRecord(record)
+		decodedRecord, err := cache.DecodeRecord(record)
 		assert.NoError(t, err)
 		metadbtest.AssertEqualRecord(t, r, decodedRecord)
 
