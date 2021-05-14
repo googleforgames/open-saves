@@ -300,13 +300,13 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		},
 		StoreKey: "test store key",
 	}
-	actual := NewRecordFromProto("test store key", proto)
+	actual := FromProto("test store key", proto)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_NewRecordFromProtoNil(t *testing.T) {
 	expected := new(Record)
-	actual := NewRecordFromProto("", nil)
+	actual := FromProto("", nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
 }

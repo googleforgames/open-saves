@@ -173,3 +173,36 @@ func TestCollector_DeletesBlobs(t *testing.T) {
 		}
 	}
 }
+
+func TestCollector_DeletesUnlinkedBlobRefs(t *testing.T) {
+	ctx := context.Background()
+	collector := newTestCollector(ctx, t)
+	store := setupTestStore(ctx, t, collector)
+	record := setupTestRecord(ctx, t, collector, store.Key)
+	const numBlobRefs = 3
+	blobRefs := make([]*blobref.BlobRef, 0, numBlobRefs)
+	ds := newDatastoreClient(ctx, t)
+	for i := 0; i < numBlobRefs; i++ {
+		blobRef := blobref.NewBlobRef(0, store.Key, record.Key)
+		blobRef.Fail() // Fail() updates Timestamps so needs to come here.
+		blobRef.Timestamps.CreatedAt = collector.cfg.Before.Add(-1 * time.Second)
+		blobRef.Timestamps.UpdatedAt = collector.cfg.Before.Add(-1 * time.Second)
+		setupTestBlobRef(ctx, t, ds, blobRef)
+		blobRefs = append(blobRefs, blobRef)
+	}
+
+	// Create an external blob for just one item and test if it's deleted too
+	setupExternalBlob(ctx, t, collector, blobRefs[1].ObjectPath())
+
+	collector.run(ctx)
+
+	for _, b := range blobRefs {
+		ref, err := collector.metaDB.GetBlobRef(ctx, b.Key)
+		assert.Nil(t, ref)
+		assert.Equal(t, codes.NotFound, status.Code(err))
+
+		blob, err := collector.blob.Get(ctx, b.ObjectPath())
+		assert.Nil(t, blob)
+		assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err))
+	}
+}

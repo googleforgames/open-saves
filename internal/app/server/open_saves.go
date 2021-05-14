@@ -24,6 +24,7 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
@@ -71,7 +72,7 @@ func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr s
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := cache.New(cache.NewRedis(cacheAddr))
+		redis := cache.New(redis.NewRedis(cacheAddr))
 		server := &openSavesServer{
 			cloud:      cloud,
 			blobStore:  gcs,
@@ -101,7 +102,7 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 }
 
 func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
-	record := record.NewRecordFromProto(req.GetStoreKey(), req.GetRecord())
+	record := record.FromProto(req.GetStoreKey(), req.GetRecord())
 	if err := checkRecord(record); err != nil {
 		return nil, err
 	}
@@ -198,7 +199,7 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 }
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
-	updateTo := record.NewRecordFromProto(req.GetStoreKey(), req.GetRecord())
+	updateTo := record.FromProto(req.GetStoreKey(), req.GetRecord())
 	if err := checkRecord(updateTo); err != nil {
 		return nil, err
 	}
