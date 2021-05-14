@@ -16,7 +16,6 @@ package blobref
 
 import (
 	"errors"
-	"time"
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
@@ -114,13 +113,12 @@ func (b *BlobRef) LoadKey(k *datastore.Key) error {
 //	- Set current time to Timestamps (both created and updated at)
 func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 	return &BlobRef{
-		Key:       uuid.New(),
-		Size:      size,
-		Status:    StatusInitializing,
-		StoreKey:  storeKey,
-		RecordKey: recordKey,
-		// Nanosecond is fine as it will not be returned to clients.
-		Timestamps: timestamps.New(time.Nanosecond),
+		Key:        uuid.New(),
+		Size:       size,
+		Status:     StatusInitializing,
+		StoreKey:   storeKey,
+		RecordKey:  recordKey,
+		Timestamps: timestamps.New(),
 	}
 }
 
@@ -131,7 +129,7 @@ func (b *BlobRef) Ready() error {
 		return errors.New("Ready was called when Status is not Initializing")
 	}
 	b.Status = StatusReady
-	b.Timestamps.Update(time.Nanosecond)
+	b.Timestamps.Update()
 	return nil
 }
 
@@ -142,7 +140,7 @@ func (b *BlobRef) MarkForDeletion() error {
 		return errors.New("MarkForDeletion was called when Status is not either Initializing or Ready")
 	}
 	b.Status = StatusPendingDeletion
-	b.Timestamps.Update(time.Nanosecond)
+	b.Timestamps.Update()
 	return nil
 }
 
@@ -150,7 +148,7 @@ func (b *BlobRef) MarkForDeletion() error {
 // Any state can transition to BlobRefStatusError.
 func (b *BlobRef) Fail() error {
 	b.Status = StatusError
-	b.Timestamps.Update(time.Nanosecond)
+	b.Timestamps.Update()
 	return nil
 }
 
