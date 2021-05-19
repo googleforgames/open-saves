@@ -298,14 +298,15 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 		},
+		StoreKey: "test store key",
 	}
-	actual := FromProto(proto)
+	actual := FromProto("test store key", proto)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_NewRecordFromProtoNil(t *testing.T) {
 	expected := new(Record)
-	actual := FromProto(nil)
+	actual := FromProto("", nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
 }
@@ -315,6 +316,12 @@ func TestRecord_LoadKey(t *testing.T) {
 	key := datastore.NameKey("kind", "testkey", nil)
 	assert.NoError(t, record.LoadKey(key))
 	assert.Equal(t, "testkey", record.Key)
+	assert.Empty(t, record.StoreKey)
+
+	key = datastore.NameKey("kind", "testkey2", datastore.NameKey("parent", "parentkey", nil))
+	assert.NoError(t, record.LoadKey(key))
+	assert.Equal(t, "testkey2", record.Key)
+	assert.Equal(t, "parentkey", record.StoreKey)
 }
 
 func TestRecord_TestBlobUUID(t *testing.T) {
@@ -334,4 +341,64 @@ func TestRecord_TestBlobUUID(t *testing.T) {
 	err = actual.Load(properties)
 	assert.NoError(t, err, "Load should not return error")
 	assert.Equal(t, record, actual)
+}
+
+func TestRecord_CacheKey(t *testing.T) {
+	r := &Record{
+		Key:      "abc",
+		StoreKey: "def",
+	}
+	key := r.CacheKey()
+	assert.Equal(t, "def/abc", key)
+}
+
+func TestRecord_SerializeRecord(t *testing.T) {
+	rr := []*Record{
+		{
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+		{
+			Key: "some-key",
+			Properties: PropertyMap{
+				"prop1": {
+					Type:         pb.Property_BOOLEAN,
+					BooleanValue: false,
+				},
+				"prop2": {
+					Type:         pb.Property_INTEGER,
+					IntegerValue: 200,
+				},
+				"prop3": {
+					Type:        pb.Property_STRING,
+					StringValue: "string value",
+				},
+			},
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+		{
+			Key:      "some-key",
+			Blob:     []byte("some-bytes"),
+			BlobSize: 64,
+			OwnerID:  "new-owner",
+			Tags:     []string{"tag1", "tag2"},
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+	}
+
+	for _, r := range rr {
+		e, err := r.EncodeBytes()
+		assert.NoError(t, err)
+		decoded := new(Record)
+		assert.NoError(t, decoded.DecodeBytes(e))
+		assert.Equal(t, r, decoded)
+	}
 }
