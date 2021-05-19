@@ -25,7 +25,6 @@ import (
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
-	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/stretchr/testify/assert"
@@ -406,7 +405,7 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	assert.Equal(t, created.GetCreatedAt(), created.GetUpdatedAt())
 
 	// Check do not cache hint was honored.
-	key := cache.FormatKey(storeKey, recordKey)
+	key := record.CacheKey(storeKey, recordKey)
 	recFromCache, _ := server.getRecordFromCache(ctx, key)
 	assert.Nil(t, recFromCache, "should not have retrieved record from cache after Create with DoNotCache hint")
 

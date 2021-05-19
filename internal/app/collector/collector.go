@@ -40,7 +40,7 @@ type Config struct {
 
 // Collector is a garbage collector of unused resources in Datastore.
 type Collector struct {
-	cache  cache.Cache
+	cache  *cache.Cache
 	metaDB *metadb.MetaDB
 	blob   blob.BlobStore
 	cfg    *Config
@@ -62,7 +62,7 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := redis.NewRedis(cfg.Cache)
+		redis := cache.New(redis.NewRedis(cfg.Cache))
 		c := &Collector{
 			blob:   gcs,
 			metaDB: metadb,

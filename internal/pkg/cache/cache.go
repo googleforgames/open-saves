@@ -15,46 +15,75 @@
 package cache
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
-	"fmt"
-
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 )
 
-// Cache interface defines common operations for the cache store.
-type Cache interface {
+const defaultMaxSizeToCache int = 10 * 1024 * 1024 // 10 MB
+
+// Cache defines operations for a cache service.
+type Cache struct {
+	driver         Driver
+	MaxSizeToCache int
+}
+
+func New(driver Driver) *Cache {
+	return &Cache{
+		driver:         driver,
+		MaxSizeToCache: defaultMaxSizeToCache,
+	}
+}
+
+// Set takes a Cacheable object, encodes it into binary, checks the length, and
+// set the value into the cache if it's under MaxSizeToCache.
+// If the object exceeds MaxSizeToCache, Set deletes the object from the cache.
+func (c *Cache) Set(ctx context.Context, object Cacheable) error {
+	encoded, err := object.EncodeBytes()
+	if err != nil {
+		return err
+	}
+	if len(encoded) > c.MaxSizeToCache {
+		return c.Delete(ctx, object.CacheKey())
+	}
+	return c.driver.Set(ctx, object.CacheKey(), encoded)
+}
+
+// Get takes a key string, and a Cacheable object. It fetches an object from the cache,
+// and decodes the binary into dest if it is found. Otherwise it returns a error from
+// Driver.Get.
+func (c *Cache) Get(ctx context.Context, key string, dest Cacheable) error {
+	stored, err := c.driver.Get(ctx, key)
+	if err != nil {
+		return err
+	}
+	return dest.DecodeBytes(stored)
+}
+
+// Deletes deletes an object identified by key from the cache.
+func (c *Cache) Delete(ctx context.Context, key string) error {
+	return c.driver.Delete(ctx, key)
+}
+
+// FlushAll clears all entries in the cache.
+func (c *Cache) FlushAll(ctx context.Context) error {
+	return c.driver.FlushAll(ctx)
+}
+
+// Cacheable is an interface that objects implement to support caching.
+type Cacheable interface {
+	// CacheKey returns a cache key string to manage cached entries.
+	CacheKey() string
+	// DecodeBytes deserializes the byte slice given by by.
+	// It can assume ownership and destroy the content of by.
+	DecodeBytes(by []byte) error
+	// EncodeBytes returns a serialized byte slice of the object.
+	EncodeBytes() ([]byte, error)
+}
+
+// Driver interface defines common operations for the cache store.
+type Driver interface {
 	Set(ctx context.Context, key string, value []byte) error
 	Get(ctx context.Context, key string) ([]byte, error)
 	Delete(ctx context.Context, key string) error
 	ListKeys(ctx context.Context) ([]string, error)
 	FlushAll(ctx context.Context) error
-}
-
-// FormatKey concatenates store and record keys separated by a backslash.
-func FormatKey(storeKey, recordKey string) string {
-	return fmt.Sprintf("%s/%s", storeKey, recordKey)
-}
-
-// EncodeRecord serializes a Open Saves Record with gob.
-func EncodeRecord(r *record.Record) ([]byte, error) {
-	b := bytes.Buffer{}
-	e := gob.NewEncoder(&b)
-	if err := e.Encode(r); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
-}
-
-// DecodeRecord deserializes a Open Saves Record with gob.
-func DecodeRecord(by []byte) (*record.Record, error) {
-	r := &record.Record{}
-	b := bytes.Buffer{}
-	b.Write(by)
-	d := gob.NewDecoder(&b)
-	if err := d.Decode(&r); err != nil {
-		return nil, err
-	}
-	return r, nil
 }
