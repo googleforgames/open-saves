@@ -87,10 +87,12 @@ func (r *Record) Load(ps []datastore.Property) error {
 	return datastore.LoadStruct(r, ps)
 }
 
-// LoadKey implements the KeyLoader interface and sets the value to the Key field.
+// LoadKey implements the KeyLoader interface and sets the value to the Key and StoreKey fields.
 func (r *Record) LoadKey(k *datastore.Key) error {
 	r.Key = k.Name
-	r.StoreKey = k.Parent.Name
+	if k.Parent != nil {
+		r.StoreKey = k.Parent.Name
+	}
 	return nil
 }
 
@@ -107,6 +109,27 @@ func (r *Record) ToProto() *pb.Record {
 		UpdatedAt:    timestamppb.New(r.Timestamps.UpdatedAt),
 	}
 	return ret
+}
+
+// FromProto creates a new Record instance from a proto.
+// Passing nil returns a zero-initialized proto.
+func FromProto(storeKey string, p *pb.Record) *Record {
+	if p == nil {
+		return new(Record)
+	}
+	return &Record{
+		Key:          p.GetKey(),
+		BlobSize:     p.GetBlobSize(),
+		OwnerID:      p.GetOwnerId(),
+		Tags:         p.GetTags(),
+		Properties:   NewPropertyMapFromProto(p.GetProperties()),
+		OpaqueString: p.GetOpaqueString(),
+		Timestamps: timestamps.Timestamps{
+			CreatedAt: p.GetCreatedAt().AsTime(),
+			UpdatedAt: p.GetUpdatedAt().AsTime(),
+		},
+		StoreKey: storeKey,
+	}
 }
 
 // CacheKey returns a cache key string to manage cached entries.
@@ -138,25 +161,4 @@ func (r *Record) EncodeBytes() ([]byte, error) {
 		return nil, err
 	}
 	return b.Bytes(), nil
-}
-
-// NewRecordFromProto creates a new Record instance from a proto.
-// Passing nil returns a zero-initialized proto.
-func NewRecordFromProto(storeKey string, p *pb.Record) *Record {
-	if p == nil {
-		return new(Record)
-	}
-	return &Record{
-		Key:          p.GetKey(),
-		BlobSize:     p.GetBlobSize(),
-		OwnerID:      p.GetOwnerId(),
-		Tags:         p.GetTags(),
-		Properties:   NewPropertyMapFromProto(p.GetProperties()),
-		OpaqueString: p.GetOpaqueString(),
-		Timestamps: timestamps.Timestamps{
-			CreatedAt: p.GetCreatedAt().AsTime(),
-			UpdatedAt: p.GetUpdatedAt().AsTime(),
-		},
-		StoreKey: storeKey,
-	}
 }

@@ -72,12 +72,12 @@ func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr s
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := redis.NewRedis(cacheAddr)
+		cache := cache.New(redis.NewRedis(cacheAddr))
 		server := &openSavesServer{
 			cloud:      cloud,
 			blobStore:  gcs,
 			metaDB:     metadb,
-			cacheStore: cache.New(redis),
+			cacheStore: cache,
 		}
 		return server, nil
 	default:
@@ -102,7 +102,7 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 }
 
 func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
-	record := record.NewRecordFromProto(req.GetStoreKey(), req.Record)
+	record := record.FromProto(req.GetStoreKey(), req.GetRecord())
 	if err := checkRecord(record); err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 }
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
-	updateTo := record.NewRecordFromProto(req.GetStoreKey(), req.GetRecord())
+	updateTo := record.FromProto(req.GetStoreKey(), req.GetRecord())
 	if err := checkRecord(updateTo); err != nil {
 		return nil, err
 	}
@@ -428,12 +428,12 @@ func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_Ge
 }
 
 func (s *openSavesServer) DeleteBlob(ctx context.Context, req *pb.DeleteBlobRequest) (*empty.Empty, error) {
-	record, _, err := s.metaDB.RemoveBlobFromRecord(ctx, req.GetStoreKey(), req.GetRecordKey())
+	rr, _, err := s.metaDB.RemoveBlobFromRecord(ctx, req.GetStoreKey(), req.GetRecordKey())
 	if err != nil {
 		log.Errorf("DeleteBlob: RemoveBlobFromRecord failed, store = %v, record = %v: %v",
 			req.GetStoreKey(), req.GetRecordKey(), err)
 	} else {
-		s.cacheRecord(ctx, record, req.GetHint())
+		s.cacheRecord(ctx, rr, req.GetHint())
 	}
 	return new(empty.Empty), err
 }

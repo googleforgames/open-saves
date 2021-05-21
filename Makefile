@@ -50,7 +50,7 @@ clean:
 
 test: all
 	go test -race -v ./...
-
+	
 protos: ${OPENSAVES_GO_PROTOS}
 
 ${OPENSAVES_GO_PROTOS}: ${API_DIR}/open_saves.proto

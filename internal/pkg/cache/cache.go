@@ -20,6 +20,7 @@ import (
 
 const defaultMaxSizeToCache int = 10 * 1024 * 1024 // 10 MB
 
+// Cache defines operations for a cache service.
 type Cache struct {
 	driver         Driver
 	MaxSizeToCache int
@@ -32,6 +33,9 @@ func New(driver Driver) *Cache {
 	}
 }
 
+// Set takes a Cacheable object, encodes it into binary, checks the length, and
+// set the value into the cache if it's under MaxSizeToCache.
+// If the object exceeds MaxSizeToCache, Set deletes the object from the cache.
 func (c *Cache) Set(ctx context.Context, object Cacheable) error {
 	encoded, err := object.EncodeBytes()
 	if err != nil {
@@ -43,6 +47,9 @@ func (c *Cache) Set(ctx context.Context, object Cacheable) error {
 	return c.driver.Set(ctx, object.CacheKey(), encoded)
 }
 
+// Get takes a key string, and a Cacheable object. It fetches an object from the cache,
+// and decodes the binary into dest if it is found. Otherwise it returns a error from
+// Driver.Get.
 func (c *Cache) Get(ctx context.Context, key string, dest Cacheable) error {
 	stored, err := c.driver.Get(ctx, key)
 	if err != nil {
@@ -51,21 +58,14 @@ func (c *Cache) Get(ctx context.Context, key string, dest Cacheable) error {
 	return dest.DecodeBytes(stored)
 }
 
+// Deletes deletes an object identified by key from the cache.
 func (c *Cache) Delete(ctx context.Context, key string) error {
 	return c.driver.Delete(ctx, key)
 }
 
+// FlushAll clears all entries in the cache.
 func (c *Cache) FlushAll(ctx context.Context) error {
 	return c.driver.FlushAll(ctx)
-}
-
-// Cache interface defines common operations for the cache store.
-type Driver interface {
-	Set(ctx context.Context, key string, value []byte) error
-	Get(ctx context.Context, key string) ([]byte, error)
-	Delete(ctx context.Context, key string) error
-	ListKeys(ctx context.Context) ([]string, error)
-	FlushAll(ctx context.Context) error
 }
 
 // Cacheable is an interface that objects implement to support caching.
@@ -77,4 +77,13 @@ type Cacheable interface {
 	DecodeBytes(by []byte) error
 	// EncodeBytes returns a serialized byte slice of the object.
 	EncodeBytes() ([]byte, error)
+}
+
+// Driver interface defines common operations for the cache store.
+type Driver interface {
+	Set(ctx context.Context, key string, value []byte) error
+	Get(ctx context.Context, key string) ([]byte, error)
+	Delete(ctx context.Context, key string) error
+	ListKeys(ctx context.Context) ([]string, error)
+	FlushAll(ctx context.Context) error
 }

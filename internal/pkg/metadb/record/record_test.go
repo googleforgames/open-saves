@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package record_test
+package record
 
 import (
 	"testing"
@@ -21,8 +21,6 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -33,12 +31,12 @@ func TestRecord_Save(t *testing.T) {
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("34E1A605-C0FD-4A3D-A9ED-9BA42CAFAF6E")
-	record := &record.Record{
+	record := &Record{
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: record.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -193,16 +191,16 @@ func TestRecord_Load(t *testing.T) {
 			},
 		},
 	}
-	var actual record.Record
+	var actual Record
 	if err := actual.Load(properties); err != nil {
 		t.Fatalf("Load should not return an error: %v", err)
 	}
-	expected := record.Record{
+	expected := Record{
 		Key:          "",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: record.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -222,12 +220,12 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
-	record := &record.Record{
+	record := &Record{
 		Key:          "key",
 		Blob:         testBlob,
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: record.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -285,11 +283,11 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		CreatedAt:    timestamppb.New(createdAt),
 		UpdatedAt:    timestamppb.New(updatedAt),
 	}
-	expected := &record.Record{
+	expected := &Record{
 		Key:          "key",
 		BlobSize:     int64(len(testBlob)),
 		ExternalBlob: uuid.Nil,
-		Properties: record.PropertyMap{
+		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
 		},
@@ -300,15 +298,15 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 		},
-		StoreKey: "store key",
+		StoreKey: "test store key",
 	}
-	actual := record.NewRecordFromProto("store key", proto)
+	actual := FromProto("test store key", proto)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRecord_NewRecordFromProtoNil(t *testing.T) {
-	expected := new(record.Record)
-	actual := record.NewRecordFromProto("", nil)
+	expected := new(Record)
+	actual := FromProto("", nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
 }
@@ -318,14 +316,19 @@ func TestRecord_LoadKey(t *testing.T) {
 	key := datastore.NameKey("kind", "testkey", datastore.NameKey("store", "teststore", nil))
 	assert.NoError(t, record.LoadKey(key))
 	assert.Equal(t, "testkey", record.Key)
-	assert.Equal(t, "teststore", record.StoreKey)
+	assert.Empty(t, record.StoreKey)
+
+	key = datastore.NameKey("kind", "testkey2", datastore.NameKey("parent", "parentkey", nil))
+	assert.NoError(t, record.LoadKey(key))
+	assert.Equal(t, "testkey2", record.Key)
+	assert.Equal(t, "parentkey", record.StoreKey)
 }
 
 func TestRecord_TestBlobUUID(t *testing.T) {
 	testUUID := uuid.MustParse("F7B0E446-EBBE-48A2-90BA-108C36B44F7C")
-	original := &record.Record{
+	original := &Record{
 		ExternalBlob: testUUID,
-		Properties:   make(record.PropertyMap),
+		Properties:   make(PropertyMap),
 	}
 	properties, err := original.Save()
 	assert.NoError(t, err, "Save should not return error")
@@ -334,14 +337,14 @@ func TestRecord_TestBlobUUID(t *testing.T) {
 	assert.Equal(t, testUUID.String(), properties[idx].Value)
 	assert.Equal(t, false, properties[idx].NoIndex)
 
-	actual := new(record.Record)
+	actual := new(Record)
 	err = actual.Load(properties)
 	assert.NoError(t, err, "Load should not return error")
 	assert.Equal(t, original, actual)
 }
 
 func TestRecord_CacheKey(t *testing.T) {
-	r := &record.Record{
+	r := &Record{
 		Key:      "abc",
 		StoreKey: "def",
 	}
@@ -350,7 +353,7 @@ func TestRecord_CacheKey(t *testing.T) {
 }
 
 func TestRecord_SerializeRecord(t *testing.T) {
-	rr := []*record.Record{
+	rr := []*Record{
 		{
 			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
@@ -359,7 +362,7 @@ func TestRecord_SerializeRecord(t *testing.T) {
 		},
 		{
 			Key: "some-key",
-			Properties: record.PropertyMap{
+			Properties: PropertyMap{
 				"prop1": {
 					Type:         pb.Property_BOOLEAN,
 					BooleanValue: false,
@@ -394,8 +397,8 @@ func TestRecord_SerializeRecord(t *testing.T) {
 	for _, r := range rr {
 		e, err := r.EncodeBytes()
 		assert.NoError(t, err)
-		decoded := new(record.Record)
+		decoded := new(Record)
 		assert.NoError(t, decoded.DecodeBytes(e))
-		metadbtest.AssertEqualRecord(t, r, decoded)
+		assert.Equal(t, r, decoded)
 	}
 }

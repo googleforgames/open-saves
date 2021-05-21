@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package record_test
+package record
 
 import (
 	"testing"
 
 	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 	// Handles nil
-	assert.Equal(t, make(record.PropertyMap), record.NewPropertyMapFromProto(nil))
+	assert.Equal(t, make(PropertyMap), record.NewPropertyMapFromProto(nil))
 
 	proto := map[string]*pb.Property{
 		"boolean": {Type: pb.Property_BOOLEAN,
