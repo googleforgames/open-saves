@@ -191,8 +191,8 @@ func TestRecord_Load(t *testing.T) {
 			},
 		},
 	}
-	var actual Record
-	if err := actual.Load(properties); err != nil {
+	var record Record
+	if err := record.Load(properties); err != nil {
 		t.Fatalf("Load should not return an error: %v", err)
 	}
 	expected := Record{
@@ -213,7 +213,7 @@ func TestRecord_Load(t *testing.T) {
 			Signature: signature,
 		},
 	}
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, expected, record)
 }
 
 func TestRecord_ToProtoSimple(t *testing.T) {
@@ -312,8 +312,8 @@ func TestRecord_NewRecordFromProtoNil(t *testing.T) {
 }
 
 func TestRecord_LoadKey(t *testing.T) {
-	record := new(record.Record)
-	key := datastore.NameKey("kind", "testkey", datastore.NameKey("store", "teststore", nil))
+	record := new(Record)
+	key := datastore.NameKey("kind", "testkey", nil)
 	assert.NoError(t, record.LoadKey(key))
 	assert.Equal(t, "testkey", record.Key)
 	assert.Empty(t, record.StoreKey)
@@ -326,11 +326,11 @@ func TestRecord_LoadKey(t *testing.T) {
 
 func TestRecord_TestBlobUUID(t *testing.T) {
 	testUUID := uuid.MustParse("F7B0E446-EBBE-48A2-90BA-108C36B44F7C")
-	original := &Record{
+	record := &Record{
 		ExternalBlob: testUUID,
 		Properties:   make(PropertyMap),
 	}
-	properties, err := original.Save()
+	properties, err := record.Save()
 	assert.NoError(t, err, "Save should not return error")
 	idx := len(properties) - 1
 	assert.Equal(t, "ExternalBlob", properties[idx].Name)
@@ -340,7 +340,7 @@ func TestRecord_TestBlobUUID(t *testing.T) {
 	actual := new(Record)
 	err = actual.Load(properties)
 	assert.NoError(t, err, "Load should not return error")
-	assert.Equal(t, original, actual)
+	assert.Equal(t, record, actual)
 }
 
 func TestRecord_CacheKey(t *testing.T) {

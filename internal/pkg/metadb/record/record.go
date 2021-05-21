@@ -26,6 +26,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// Assert PropertyMap implements PropertyLoadSave.
+var _ datastore.PropertyLoadSaver = new(PropertyMap)
+
 // Record represents a Open Saves record in the metadata database.
 // See the Open Saves API definition for details.
 type Record struct {

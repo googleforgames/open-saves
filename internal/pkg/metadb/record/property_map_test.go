@@ -23,7 +23,7 @@ import (
 
 func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 	// Handles nil
-	assert.Equal(t, make(PropertyMap), record.NewPropertyMapFromProto(nil))
+	assert.Equal(t, make(PropertyMap), NewPropertyMapFromProto(nil))
 
 	proto := map[string]*pb.Property{
 		"boolean": {Type: pb.Property_BOOLEAN,
@@ -34,12 +34,12 @@ func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 			Value: &pb.Property_StringValue{StringValue: "abc"},
 		},
 	}
-	expected := record.PropertyMap{
+	expected := PropertyMap{
 		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
 		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
 		"string":  {Type: pb.Property_STRING, StringValue: "abc"},
 	}
-	actual := record.NewPropertyMapFromProto(proto)
+	actual := NewPropertyMapFromProto(proto)
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected, actual)
 	}
@@ -47,10 +47,10 @@ func TestPropertyMap_NewPropertyMapFromProto(t *testing.T) {
 
 func TestPropertyMap_ToProto(t *testing.T) {
 	// Handles nil
-	var nilMap record.PropertyMap
+	var nilMap PropertyMap
 	assert.Nil(t, nilMap.ToProto())
 
-	propertyMap := record.PropertyMap{
+	propertyMap := PropertyMap{
 		"boolean": {Type: pb.Property_BOOLEAN, BooleanValue: true},
 		"int":     {Type: pb.Property_INTEGER, IntegerValue: -50},
 		"string":  {Type: pb.Property_STRING, StringValue: "abc"},

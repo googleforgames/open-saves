@@ -12,32 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package record_test
+package record
 
 import (
 	"testing"
 
 	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPropertyValue_ToProto(t *testing.T) {
-	booleanProperty := &record.PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
+	booleanProperty := &PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
 	booleanExpected := &pb.Property{
 		Type:  pb.Property_BOOLEAN,
 		Value: &pb.Property_BooleanValue{BooleanValue: true},
 	}
 	assert.Equal(t, booleanExpected, booleanProperty.ToProto())
 
-	integerProperty := &record.PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
+	integerProperty := &PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
 	integerExpected := &pb.Property{
 		Type:  pb.Property_INTEGER,
 		Value: &pb.Property_IntegerValue{IntegerValue: 42},
 	}
 	assert.Equal(t, integerExpected, integerProperty.ToProto())
 
-	stringProperty := &record.PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
+	stringProperty := &PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
 	stringExpected := &pb.Property{
 		Type:  pb.Property_STRING,
 		Value: &pb.Property_StringValue{StringValue: "string value"},
@@ -46,8 +45,8 @@ func TestPropertyValue_ToProto(t *testing.T) {
 }
 
 func TestPropertyValue_NewPropertyFromProtoNil(t *testing.T) {
-	expected := new(record.PropertyValue)
-	actual := record.NewPropertyValueFromProto(nil)
+	expected := new(PropertyValue)
+	actual := NewPropertyValueFromProto(nil)
 	assert.NotNil(t, expected, actual)
 	assert.Equal(t, expected, actual)
 }
@@ -57,21 +56,21 @@ func TestPropertyValue_NewPropertyFromProto(t *testing.T) {
 		Type:  pb.Property_BOOLEAN,
 		Value: &pb.Property_BooleanValue{BooleanValue: true},
 	}
-	booleanExpected := &record.PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
-	assert.Equal(t, booleanExpected, record.NewPropertyValueFromProto(booleanProto))
+	booleanExpected := &PropertyValue{Type: pb.Property_BOOLEAN, BooleanValue: true}
+	assert.Equal(t, booleanExpected, NewPropertyValueFromProto(booleanProto))
 
 	integerProto := &pb.Property{
 		Type:  pb.Property_INTEGER,
 		Value: &pb.Property_IntegerValue{IntegerValue: 42},
 	}
-	integerExpected := &record.PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
-	assert.Equal(t, integerExpected, record.NewPropertyValueFromProto(integerProto))
+	integerExpected := &PropertyValue{Type: pb.Property_INTEGER, IntegerValue: 42}
+	assert.Equal(t, integerExpected, NewPropertyValueFromProto(integerProto))
 
 	stringProto := &pb.Property{
 		Type:  pb.Property_STRING,
 		Value: &pb.Property_StringValue{StringValue: "string value"},
 	}
-	stringExpected := &record.PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
-	assert.Equal(t, stringExpected, record.NewPropertyValueFromProto(stringProto))
+	stringExpected := &PropertyValue{Type: pb.Property_STRING, StringValue: "string value"}
+	assert.Equal(t, stringExpected, NewPropertyValueFromProto(stringProto))
 
 }
