@@ -20,6 +20,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
@@ -35,6 +36,9 @@ type ChunkRef struct {
 // Assert ChunkRef implements both PropertyLoadSave and KeyLoader.
 var _ datastore.PropertyLoadSaver = new(ChunkRef)
 var _ datastore.KeyLoader = new(ChunkRef)
+
+// Assert ChunkRef implements Cacheable
+var _ cache.Cacheable = new(ChunkRef)
 
 func (c *ChunkRef) LoadKey(k *datastore.Key) error {
 	if uuidKey, err := uuid.Parse(k.Name); err == nil {
