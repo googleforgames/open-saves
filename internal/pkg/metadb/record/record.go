@@ -15,9 +15,13 @@
 package record
 
 import (
+	"bytes"
+	"encoding/gob"
+
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -40,11 +44,19 @@ type Record struct {
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
 	Timestamps timestamps.Timestamps
+
+	// StoreKey is used to generate a cache key and needs to be set
+	// before calling the CacheKey function.
+	// It is automatically set when read from Datastore.
+	StoreKey string `datastore:"-"`
 }
 
 // Assert Record implements both PropertyLoadSave and KeyLoader.
 var _ datastore.PropertyLoadSaver = new(Record)
 var _ datastore.KeyLoader = new(Record)
+
+// Assert Record implements Cacheable.
+var _ cache.Cacheable = new(Record)
 
 const externalBlobPropertyName = "ExternalBlob"
 
@@ -78,9 +90,12 @@ func (r *Record) Load(ps []datastore.Property) error {
 	return datastore.LoadStruct(r, ps)
 }
 
-// LoadKey implements the KeyLoader interface and sets the value to the Key field.
+// LoadKey implements the KeyLoader interface and sets the value to the Key and StoreKey fields.
 func (r *Record) LoadKey(k *datastore.Key) error {
 	r.Key = k.Name
+	if k.Parent != nil {
+		r.StoreKey = k.Parent.Name
+	}
 	return nil
 }
 
@@ -101,7 +116,7 @@ func (r *Record) ToProto() *pb.Record {
 
 // FromProto creates a new Record instance from a proto.
 // Passing nil returns a zero-initialized proto.
-func FromProto(p *pb.Record) *Record {
+func FromProto(storeKey string, p *pb.Record) *Record {
 	if p == nil {
 		return new(Record)
 	}
@@ -116,5 +131,37 @@ func FromProto(p *pb.Record) *Record {
 			CreatedAt: p.GetCreatedAt().AsTime(),
 			UpdatedAt: p.GetUpdatedAt().AsTime(),
 		},
+		StoreKey: storeKey,
 	}
+}
+
+// CacheKey returns a cache key string to manage cached entries.
+// concatenates store and record keys separated by a slash.
+func CacheKey(storeKey, key string) string {
+	return storeKey + "/" + key
+}
+
+// Cacheable implementations.
+
+// CacheKey returns a cache key string to manage cached entries.
+// concatenates store and record keys separated by a slash.
+func (r *Record) CacheKey() string {
+	return CacheKey(r.StoreKey, r.Key)
+}
+
+// DecodeBytes deserializes the byte slice given by by.
+func (r *Record) DecodeBytes(by []byte) error {
+	b := bytes.NewBuffer(by)
+	d := gob.NewDecoder(b)
+	return d.Decode(r)
+}
+
+// EncodeBytes returns a serialized byte slice of the object.
+func (r *Record) EncodeBytes() ([]byte, error) {
+	b := new(bytes.Buffer)
+	e := gob.NewEncoder(b)
+	if err := e.Encode(r); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
