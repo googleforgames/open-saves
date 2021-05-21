@@ -71,6 +71,13 @@ func TestChunkRef_LoadKey(t *testing.T) {
 	}
 }
 
+func TestChunkRef_CacheKey(t *testing.T) {
+	testUUID := uuid.New()
+	assert.Equal(t, testUUID.String(), CacheKey(testUUID))
+	c := New(uuid.Nil, 0, 0)
+	assert.Equal(t, c.Key.String(), c.CacheKey())
+}
+
 func TestChunkRef_EncodeDecodeBytes(t *testing.T) {
 	c := New(uuid.New(), 42, 24)
 	encoded, err := c.EncodeBytes()

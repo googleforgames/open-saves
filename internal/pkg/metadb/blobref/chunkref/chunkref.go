@@ -81,12 +81,18 @@ func New(blobRef uuid.UUID, number, size int32) *ChunkRef {
 	}
 }
 
+// CacheKey returns a cache key string to store in the cache.
+// It returns a string representation of the uuid key.
+func CacheKey(u uuid.UUID) string {
+	return u.String()
+}
+
 // Cacheable implementations.
 
 // CacheKey returns a cache key string to store in the cache.
 // It returns a string representation of the uuid key.
 func (c ChunkRef) CacheKey() string {
-	return c.Key.String()
+	return CacheKey(c.Key)
 }
 
 // EncodeBytes returns a serialized byte slice of the object.
