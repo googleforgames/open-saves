@@ -169,12 +169,12 @@ func (s *openSavesServer) DeleteStore(ctx context.Context, req *pb.DeleteStoreRe
 }
 
 func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordRequest) (*pb.Record, error) {
-	r, err := s.getRecordAndCache(ctx, req.GetStoreKey(), req.GetKey(), req.GetHint())
+	record, err := s.getRecordAndCache(ctx, req.GetStoreKey(), req.GetKey(), req.GetHint())
 	if err != nil {
 		return nil, err
 	}
 
-	return r.ToProto(), nil
+	return record.ToProto(), nil
 }
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
@@ -404,7 +404,7 @@ func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRe
 func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_GetBlobServer) error {
 	ctx := stream.Context()
 
-	r, err := s.getRecordAndCache(ctx, req.GetStoreKey(), req.GetRecordKey(), req.GetHint())
+	rr, err := s.getRecordAndCache(ctx, req.GetStoreKey(), req.GetRecordKey(), req.GetHint())
 	if err != nil {
 		log.Errorf("Failed to get record for store (%s), record(%s): %v",
 			req.GetStoreKey(), req.GetRecordKey(), err)
@@ -413,16 +413,16 @@ func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_Ge
 
 	meta := &pb.BlobMetadata{
 		StoreKey:  req.GetStoreKey(),
-		RecordKey: r.Key,
-		Size:      r.BlobSize,
+		RecordKey: rr.Key,
+		Size:      rr.BlobSize,
 	}
 	stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Metadata{Metadata: meta}})
-	if r.ExternalBlob != uuid.Nil {
-		return s.getExternalBlob(ctx, req, stream, r)
+	if rr.ExternalBlob != uuid.Nil {
+		return s.getExternalBlob(ctx, req, stream, rr)
 	}
-	err = stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Content{Content: r.Blob}})
+	err = stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Content{Content: rr.Blob}})
 	if err != nil {
-		log.Errorf("GetBlob: Stream send error for store (%v), record (%v): %v", req.GetRecordKey(), r.Key, err)
+		log.Errorf("GetBlob: Stream send error for store (%v), record (%v): %v", req.GetRecordKey(), rr.Key, err)
 	}
 	return err
 }

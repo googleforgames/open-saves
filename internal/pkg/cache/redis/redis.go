@@ -18,15 +18,12 @@ import (
 	"context"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/googleforgames/open-saves/internal/pkg/cache"
 )
 
 // Redis is an implementation of the cache.Cache interface.
 type Redis struct {
 	redisPool *redis.Pool
 }
-
-var _ cache.Driver = new(Redis)
 
 // NewRedis creates a new Redis instance.
 func NewRedis(address string, opts ...redis.DialOption) *Redis {
