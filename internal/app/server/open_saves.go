@@ -72,12 +72,12 @@ func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr s
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := cache.New(redis.NewRedis(cacheAddr))
+		cache := cache.New(redis.NewRedis(cacheAddr))
 		server := &openSavesServer{
 			cloud:      cloud,
 			blobStore:  gcs,
 			metaDB:     metadb,
-			cacheStore: redis,
+			cacheStore: cache,
 		}
 		return server, nil
 	default:
@@ -113,9 +113,7 @@ func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecord
 		return nil, status.Convert(err).Err()
 	}
 
-	if shouldCache(req.Hint) {
-		s.storeRecordInCache(ctx, newRecord.CacheKey(), newRecord)
-	}
+	s.cacheRecord(ctx, newRecord, req.GetHint())
 	return newRecord.ToProto(), nil
 }
 
@@ -130,9 +128,9 @@ func (s *openSavesServer) DeleteRecord(ctx context.Context, req *pb.DeleteRecord
 		req.GetStoreKey(), req.GetKey())
 
 	// Purge record from cache store.
-	k := record.CacheKey(req.GetStoreKey(), req.GetKey())
-	if err := s.cacheStore.Delete(ctx, k); err != nil {
-		log.Errorf("failed to purge cache for key (%s): %v", k, err)
+	if err := s.cacheStore.Delete(ctx, record.CacheKey(req.GetStoreKey(), req.GetKey())); err != nil {
+		log.Errorf("failed to purge cache for store (%s), record (%s): %v",
+			req.GetStoreKey(), req.GetKey(), err)
 	}
 
 	return new(empty.Empty), nil
@@ -171,28 +169,9 @@ func (s *openSavesServer) DeleteStore(ctx context.Context, req *pb.DeleteStoreRe
 }
 
 func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordRequest) (*pb.Record, error) {
-	k := record.CacheKey(req.GetStoreKey(), req.GetKey())
-
-	if shouldCheckCache(req.Hint) {
-		r, err := s.getRecordFromCache(ctx, k)
-		if err != nil {
-			log.Debug("cache miss")
-		} else if r != nil {
-			return r.ToProto(), nil
-		}
-	}
-
-	record, err := s.metaDB.GetRecord(ctx, req.GetStoreKey(), req.GetKey())
+	record, err := s.getRecordAndCache(ctx, req.GetStoreKey(), req.GetKey(), req.GetHint())
 	if err != nil {
-		log.Warnf("GetRecord failed for store (%s), record (%s): %v",
-			req.GetStoreKey(), req.GetKey(), err)
-		return nil, status.Convert(err).Err()
-	}
-	log.Debugf("Got record %+v", record)
-
-	// Update cache store.
-	if shouldCache(req.Hint) {
-		s.storeRecordInCache(ctx, k, record)
+		return nil, err
 	}
 
 	return record.ToProto(), nil
@@ -220,9 +199,7 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	}
 
 	// Update cache store.
-	if shouldCache(req.Hint) {
-		s.storeRecordInCache(ctx, newRecord.CacheKey(), newRecord)
-	}
+	s.cacheRecord(ctx, newRecord, req.GetHint())
 
 	return newRecord.ToProto(), nil
 }
@@ -277,14 +254,7 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 	if err != nil {
 		return nil
 	}
-	cacheKey := record.CacheKey()
-	if shouldCache(meta.Hint) {
-		s.storeRecordInCache(ctx, cacheKey, record)
-	} else {
-		if err := s.cacheStore.Delete(ctx, cacheKey); err != nil {
-			log.Errorf("failed to purge cache for key (%s): %v", cacheKey, err)
-		}
-	}
+	s.cacheRecord(ctx, record, meta.GetHint())
 	return stream.SendAndClose(meta)
 }
 
@@ -360,14 +330,7 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 		// Do not delete the blob object here. Leave it to the garbage collector.
 		return err
 	}
-	cacheKey := record.CacheKey()
-	if shouldCache(meta.Hint) {
-		s.storeRecordInCache(ctx, cacheKey, record)
-	} else {
-		if err := s.cacheStore.Delete(ctx, cacheKey); err != nil {
-			log.Errorf("failed to purge cache for key (%s): %v", cacheKey, err)
-		}
-	}
+	s.cacheRecord(ctx, record, meta.GetHint())
 	return stream.SendAndClose(meta)
 }
 
@@ -441,21 +404,13 @@ func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRe
 func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_GetBlobServer) error {
 	ctx := stream.Context()
 
-	var rr *record.Record
-	var err error
-	if shouldCheckCache(req.Hint) {
-		rr, _ = s.getRecordFromCache(ctx, record.CacheKey(req.GetStoreKey(), req.GetRecordKey()))
+	rr, err := s.getRecordAndCache(ctx, req.GetStoreKey(), req.GetRecordKey(), req.GetHint())
+	if err != nil {
+		log.Errorf("Failed to get record for store (%s), record(%s): %v",
+			req.GetStoreKey(), req.GetRecordKey(), err)
+		return err
 	}
-	if rr != nil {
-		rr, err = s.metaDB.GetRecord(ctx, req.GetStoreKey(), req.GetRecordKey())
-		if err != nil {
-			log.Errorf("GetBlob: GetRecord failed for store (%v), record (%v): %v",
-				req.GetStoreKey(), req.GetRecordKey(), err)
-		}
-		if shouldCache(req.Hint) {
-			s.storeRecordInCache(ctx, record.CacheKey(req.GetStoreKey(), req.GetRecordKey()), rr)
-		}
-	}
+
 	meta := &pb.BlobMetadata{
 		StoreKey:  req.GetStoreKey(),
 		RecordKey: rr.Key,
@@ -478,14 +433,7 @@ func (s *openSavesServer) DeleteBlob(ctx context.Context, req *pb.DeleteBlobRequ
 		log.Errorf("DeleteBlob: RemoveBlobFromRecord failed, store = %v, record = %v: %v",
 			req.GetStoreKey(), req.GetRecordKey(), err)
 	} else {
-		k := rr.CacheKey()
-		if shouldCache(req.Hint) {
-			s.storeRecordInCache(ctx, k, rr)
-		} else {
-			if err := s.cacheStore.Delete(ctx, k); err != nil {
-				log.Errorf("failed to purge cache for key (%s): %v", k, err)
-			}
-		}
+		s.cacheRecord(ctx, rr, req.GetHint())
 	}
 	return new(empty.Empty), err
 }
@@ -496,25 +444,41 @@ func (s *openSavesServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.Pi
 	}, nil
 }
 
-func (s *openSavesServer) getRecordFromCache(ctx context.Context, key string) (*record.Record, error) {
-	var r = new(record.Record)
-	err := s.cacheStore.Get(ctx, key, r)
-	if err != nil {
-		// cache miss.
-		return nil, err
+func (s *openSavesServer) getRecordAndCache(ctx context.Context, storeKey, key string, hint *pb.Hint) (*record.Record, error) {
+	if shouldCheckCache(hint) {
+		r := new(record.Record)
+		if err := s.cacheStore.Get(ctx, record.CacheKey(storeKey, key), r); err == nil {
+			log.Debug("cache hit")
+			return r, nil
+		}
+		log.Debug("cache miss")
 	}
-	// cache hit, use value from cache store.
-	log.Debugf("cache hit: %+v", r)
+
+	r, err := s.metaDB.GetRecord(ctx, storeKey, key)
+	if err != nil {
+		log.Warnf("GetRecord failed for store (%s), record (%s): %v",
+			storeKey, key, err)
+		return nil, status.Convert(err).Err()
+	}
+	log.Tracef("Got record %+v", r)
+	s.cacheRecord(ctx, r, hint)
 	return r, nil
 }
 
-func (s *openSavesServer) storeRecordInCache(ctx context.Context, key string, record *record.Record) {
-	if err := s.cacheStore.Set(ctx, record); err != nil {
-		// Cache fails should be logged but not return error.
-		log.Warnf("failed to encode record for cache for key (%s): %v", key, err)
+func (s *openSavesServer) cacheRecord(ctx context.Context, r *record.Record, hint *pb.Hint) error {
+	var err error
+	if shouldCache(hint) {
+		if err = s.cacheStore.Set(ctx, r); err != nil {
+			log.Warnf("failed to encode record for cache for store (%s), record(%s): %v",
+				r.StoreKey, r.Key, err)
+		}
+	} else {
+		if err = s.cacheStore.Delete(ctx, r.CacheKey()); err != nil {
+			log.Errorf("failed to purge cache for store (%s), record (%s): %v",
+				r.StoreKey, r.Key, err)
+		}
 	}
-	// TODO(yuryu): should delete the entry anyway in the case
-	// record size grows and gets too big to cache but still needs to be invalidated.
+	return err
 }
 
 // shouldCache returns whether or not Open Saves should try to store
