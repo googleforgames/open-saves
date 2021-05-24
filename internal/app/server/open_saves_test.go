@@ -405,9 +405,10 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	assert.Equal(t, created.GetCreatedAt(), created.GetUpdatedAt())
 
 	// Check do not cache hint was honored.
-	key := record.CacheKey(storeKey, recordKey)
-	recFromCache, _ := server.getRecordFromCache(ctx, key)
-	assert.Nil(t, recFromCache, "should not have retrieved record from cache after Create with DoNotCache hint")
+	cacheKey := record.CacheKey(storeKey, recordKey)
+	recFromCache := new(record.Record)
+	err = server.cacheStore.Get(ctx, cacheKey, recFromCache)
+	assert.Error(t, err, "should not have retrieved record from cache after Create with DoNotCache hint")
 
 	getReq := &pb.GetRecordRequest{
 		StoreKey: storeKey,
@@ -420,8 +421,9 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 		t.Errorf("GetRecord failed: %v", err)
 	}
 
-	recFromCache2, _ := server.getRecordFromCache(ctx, key)
-	assert.Nil(t, recFromCache2, "should not have retrieved record from cache after Get with DoNotCache hint")
+	recFromCache2 := new(record.Record)
+	err = server.cacheStore.Get(ctx, cacheKey, recFromCache2)
+	assert.Error(t, err, "should not have retrieved record from cache after Get with DoNotCache hint")
 
 	// Modify GetRecordRequest to not use the hint.
 	getReq.Hint = nil
@@ -429,16 +431,18 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 		t.Errorf("GetRecord failed: %v", err)
 	}
 
-	recFromCache3, _ := server.getRecordFromCache(ctx, key)
-	assert.NotNil(t, recFromCache3, "should have retrieved record from cache after Get without hints")
-	assertEqualRecord(t, expected, recFromCache3.ToProto())
+	recFromCache3 := new(record.Record)
+	err = server.cacheStore.Get(ctx, cacheKey, recFromCache3)
+	if assert.NoError(t, err, "should have retrieved record from cache after Get without hints") {
+		assertEqualRecord(t, expected, recFromCache3.ToProto())
+	}
 
 	// Insert some bad data directly into the cache store.
 	// Check that the SkipCache hint successfully skips the
 	// cache and retrieves the correct data directly.
-	server.storeRecordInCache(ctx, key, &record.Record{
+	server.cacheRecord(ctx, &record.Record{
 		Key: "bad record",
-	})
+	}, nil)
 	getReqSkipCache := &pb.GetRecordRequest{
 		StoreKey: storeKey,
 		Key:      recordKey,
@@ -461,8 +465,9 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 		t.Errorf("DeleteRecord failed: %v", err)
 	}
 
-	recFromCache4, _ := server.getRecordFromCache(ctx, key)
-	assert.Nil(t, recFromCache4, "should not have retrieved record from cache post-delete")
+	recFromCache4 := new(record.Record)
+	err = server.cacheStore.Get(ctx, cacheKey, recFromCache4)
+	assert.Error(t, err, "should not have retrieved record from cache post-delete")
 }
 
 func TestOpenSaves_Ping(t *testing.T) {
