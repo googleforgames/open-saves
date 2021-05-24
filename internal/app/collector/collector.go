@@ -62,11 +62,11 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		redis := cache.New(redis.NewRedis(cfg.Cache))
+		cache := cache.New(redis.NewRedis(cfg.Cache))
 		c := &Collector{
 			blob:   gcs,
 			metaDB: metadb,
-			cache:  redis,
+			cache:  cache,
 			cfg:    cfg,
 		}
 		return c, nil
