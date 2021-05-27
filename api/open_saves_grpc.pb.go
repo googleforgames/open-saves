@@ -34,6 +34,9 @@ type OpenSavesClient interface {
 	GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*Record, error)
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(ctx context.Context, in *QueryRecordsRequest, opts ...grpc.CallOption) (*QueryRecordsResponse, error)
+	// GetAggregation returns an aggregation of records.
+	// Currently, this supports min and max aggregation.
+	GetAggregation(ctx context.Context, in *GetAggregationRequest, opts ...grpc.CallOption) (*Record, error)
 	// UpdateRecord updates an existing record. This returns an error and
 	// does not create a new record if the key doesn't exist.
 	UpdateRecord(ctx context.Context, in *UpdateRecordRequest, opts ...grpc.CallOption) (*Record, error)
@@ -133,6 +136,15 @@ func (c *openSavesClient) GetRecord(ctx context.Context, in *GetRecordRequest, o
 func (c *openSavesClient) QueryRecords(ctx context.Context, in *QueryRecordsRequest, opts ...grpc.CallOption) (*QueryRecordsResponse, error) {
 	out := new(QueryRecordsResponse)
 	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/QueryRecords", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) GetAggregation(ctx context.Context, in *GetAggregationRequest, opts ...grpc.CallOption) (*Record, error) {
+	out := new(Record)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/GetAggregation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +365,9 @@ type OpenSavesServer interface {
 	GetRecord(context.Context, *GetRecordRequest) (*Record, error)
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error)
+	// GetAggregation returns an aggregation of records.
+	// Currently, this supports min and max aggregation.
+	GetAggregation(context.Context, *GetAggregationRequest) (*Record, error)
 	// UpdateRecord updates an existing record. This returns an error and
 	// does not create a new record if the key doesn't exist.
 	UpdateRecord(context.Context, *UpdateRecordRequest) (*Record, error)
@@ -412,6 +427,9 @@ func (UnimplementedOpenSavesServer) GetRecord(context.Context, *GetRecordRequest
 }
 func (UnimplementedOpenSavesServer) QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryRecords not implemented")
+}
+func (UnimplementedOpenSavesServer) GetAggregation(context.Context, *GetAggregationRequest) (*Record, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAggregation not implemented")
 }
 func (UnimplementedOpenSavesServer) UpdateRecord(context.Context, *UpdateRecordRequest) (*Record, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRecord not implemented")
@@ -581,6 +599,24 @@ func _OpenSaves_QueryRecords_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OpenSavesServer).QueryRecords(ctx, req.(*QueryRecordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_GetAggregation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAggregationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).GetAggregation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/GetAggregation",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).GetAggregation(ctx, req.(*GetAggregationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -839,6 +875,10 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "QueryRecords",
 			Handler:    _OpenSaves_QueryRecords_Handler,
+		},
+		{
+			MethodName: "GetAggregation",
+			Handler:    _OpenSaves_GetAggregation_Handler,
 		},
 		{
 			MethodName: "UpdateRecord",

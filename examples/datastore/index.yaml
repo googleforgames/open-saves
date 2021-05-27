@@ -1,0 +1,11 @@
+indexes:
+- kind: record
+  ancestor: yes
+  properties:
+  - name: Properties.prop1
+    direction: desc
+- kind: record
+  ancestor: yes
+  properties:
+  - name: Properties.prop1
+
