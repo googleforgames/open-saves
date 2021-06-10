@@ -11,7 +11,7 @@ Open Saves.
 
 ## Proto documentation
 
-To generate the [reference](../docs/reference.md) page using the proto, do
+To generate the [reference](../docs/reference.md) page from `open_saves.proto`, do
 the following:
 
 1. Download the latest release of [Protocol Buffers](https://github.com/protocolbuffers/protobuf/releases/).
