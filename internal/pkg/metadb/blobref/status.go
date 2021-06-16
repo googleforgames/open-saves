@@ -50,11 +50,16 @@ const (
 	StatusError
 )
 
+var (
+	ErrReadyNotInitializing    = errors.New("Ready was called when Status is not Initializing")
+	ErrMarkForDeletionNotReady = errors.New("MarkForDeletion was called when Status is not either Initializing or Ready")
+)
+
 // Ready changes Status to StatusReady.
 // It returns an error if the current Status is not StatusInitializing.
 func (s *Status) Ready() error {
 	if *s != StatusInitializing {
-		return errors.New("Ready was called when Status is not Initializing")
+		return ErrReadyNotInitializing
 	}
 	*s = StatusReady
 	return nil
@@ -64,7 +69,7 @@ func (s *Status) Ready() error {
 // Returns an error if the current Status is not StatusReady.
 func (s *Status) MarkForDeletion() error {
 	if *s != StatusInitializing && *s != StatusReady {
-		return errors.New("MarkForDeletion was called when Status is not either Initializing or Ready")
+		return ErrMarkForDeletionNotReady
 	}
 	*s = StatusPendingDeletion
 	return nil
