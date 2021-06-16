@@ -557,7 +557,7 @@ func TestMetaDB_UpdateBlobRef(t *testing.T) {
 
 	setupTestBlobRef(ctx, t, metaDB, blob)
 
-	assert.NoError(t, blob.Fail())
+	blob.Fail()
 	blob.Timestamps.UpdatedAt = time.Unix(234, 0)
 
 	updatedBlob, err := metaDB.UpdateBlobRef(ctx, blob)
