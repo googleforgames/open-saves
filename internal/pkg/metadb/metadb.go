@@ -116,7 +116,8 @@ func (m *MetaDB) markBlobRefForDeletion(_ context.Context, tx *ds.Transaction,
 	}
 	record.ExternalBlob = newBlobKey
 	record.Timestamps.Update()
-	if blob.MarkForDeletion() != nil && blob.Fail() != nil {
+	if blob.MarkForDeletion() != nil {
+		blob.Fail()
 		return nil, status.Errorf(codes.Internal, "failed to transition the blob state for deletion: current = %v", blob.Status)
 	}
 	_, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob))
@@ -442,6 +443,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 			if blob.Ready() != nil {
 				return status.Error(codes.Internal, "blob is not ready to become current")
 			}
+			blob.Timestamps.Update()
 			if _, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob)); err != nil {
 				return err
 			}
