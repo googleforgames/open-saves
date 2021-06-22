@@ -212,7 +212,7 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 	log.Debugf("Inserting inline blob: %v\n", meta)
 	// Receive the blob
 	size := meta.GetSize()
-	buffer := bytes.NewBuffer(make([]byte, 0, size))
+	buffer := new(bytes.Buffer)
 	recvd := 0
 	for {
 		if int64(recvd) > size {
