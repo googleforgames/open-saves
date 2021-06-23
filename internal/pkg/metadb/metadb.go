@@ -16,6 +16,7 @@ package metadb
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	ds "cloud.google.com/go/datastore"
@@ -28,6 +29,8 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	pb "github.com/googleforgames/open-saves/api"
 )
 
 const (
@@ -523,4 +526,44 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 		Filter("Timestamps.UpdatedAt <", olderThan)
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
+}
+
+func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) *ds.Query {
+	switch f.Operator {
+	case pb.FilterOperator_EQUAL:
+		return q.Filter(fmt.Sprintf("Properties.%s=", f.PropertyName), record.ExtractValue(f.Value))
+	default:
+		// TODO(hongalex): implement inequality filters
+	}
+	return q
+}
+
+// QueryRecords returns a list of records that match the given filters and their stores.
+func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey string) ([]*pb.Record, []string, error) {
+	query := m.newQuery(recordKind)
+	if storeKey != "" {
+		dsKey := m.createStoreKey(storeKey)
+		query = query.Ancestor(dsKey)
+	}
+	for _, f := range filters {
+		query = addPropertyFilter(query, f)
+	}
+	iter := m.client.Run(ctx, query)
+
+	var match []*pb.Record
+	var keys []string
+	for {
+		var r record.Record
+		key, err := iter.Next(&r)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, nil, status.Errorf(codes.Internal,
+				"metadb QueryRecords: %v", err)
+		}
+		match = append(match, r.ToProto())
+		keys = append(keys, key.Parent.Name)
+	}
+	return match, keys, nil
 }

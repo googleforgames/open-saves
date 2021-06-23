@@ -204,8 +204,15 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	return newRecord.ToProto(), nil
 }
 
-func (s *openSavesServer) QueryRecords(ctx context.Context, stream *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "QueryRecords is not implemented yet.")
+func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
+	records, storeKeys, err := s.metaDB.QueryRecords(ctx, req.GetFilters(), req.StoreKey)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.QueryRecordsResponse{
+		Records:   records,
+		StoreKeys: storeKeys,
+	}, nil
 }
 
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {

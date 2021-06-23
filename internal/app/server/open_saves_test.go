@@ -706,3 +706,77 @@ func TestOpenSaves_RecordChecks(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, status.Code(err),
 		"UpdateRecord should return InvalidArgument when OpaqueString is too big.")
 }
+
+func TestOpenSaves_QueryRecords(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.New().String()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	recordKey1 := uuid.New().String()
+	createReq := &pb.CreateRecordRequest{
+		StoreKey: storeKey,
+		Record: &pb.Record{
+			Key:     recordKey1,
+			OwnerId: "owner",
+			Properties: map[string]*pb.Property{
+				"prop1": {
+					Type:  pb.Property_STRING,
+					Value: &pb.Property_StringValue{StringValue: "foo"},
+				},
+			},
+		},
+	}
+	_, err := client.CreateRecord(ctx, createReq)
+	if err != nil {
+		t.Fatalf("CreateRecord failed: %v", err)
+	}
+	t.Cleanup(func() {
+		deleteReq := &pb.DeleteRecordRequest{StoreKey: storeKey, Key: recordKey1}
+		_, err := client.DeleteRecord(ctx, deleteReq)
+		assert.NoError(t, err)
+	})
+
+	recordKey2 := uuid.New().String()
+	createReq.Record.Key = recordKey2
+	createReq.Record.Properties = map[string]*pb.Property{
+		"prop1": {
+			Type:  pb.Property_STRING,
+			Value: &pb.Property_StringValue{StringValue: "bar"},
+		},
+	}
+	_, err = client.CreateRecord(ctx, createReq)
+	if err != nil {
+		t.Fatalf("CreateRecord failed: %v", err)
+	}
+	t.Cleanup(func() {
+		deleteReq := &pb.DeleteRecordRequest{StoreKey: storeKey, Key: recordKey2}
+		_, err := client.DeleteRecord(ctx, deleteReq)
+		assert.NoError(t, err)
+	})
+
+	queryReq := &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		Filters: []*pb.QueryFilter{
+			{
+				PropertyName: "prop1",
+				Operator:     pb.FilterOperator_EQUAL,
+				Value: &pb.Property{
+					Type: pb.Property_STRING,
+					Value: &pb.Property_StringValue{
+						StringValue: "foo",
+					},
+				},
+			},
+		},
+	}
+	resp, err := client.QueryRecords(ctx, queryReq)
+	assert.NoError(t, err)
+	// Only one record matches the query.
+	assert.Equal(t, 1, len(resp.Records))
+	assert.Equal(t, 1, len(resp.StoreKeys))
+
+	assert.Equal(t, storeKey, resp.StoreKeys[0])
+}
