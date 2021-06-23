@@ -207,6 +207,8 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
 	records, storeKeys, err := s.metaDB.QueryRecords(ctx, req.Filters, req.StoreKey, req.OwnerId, req.Tags)
 	if err != nil {
+		log.Warnf("QueryRecords failed for store(%s), filters(%+v): %v",
+			req.StoreKey, req.Filters, err)
 		return nil, err
 	}
 	return &pb.QueryRecordsResponse{

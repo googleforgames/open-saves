@@ -528,14 +528,14 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 	return iter, nil
 }
 
-func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) *ds.Query {
+func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 	switch f.Operator {
 	case pb.FilterOperator_EQUAL:
-		return q.Filter(fmt.Sprintf("Properties.%s =", f.PropertyName), record.ExtractValue(f.Value))
+		return q.Filter(fmt.Sprintf("Properties.%s =", f.PropertyName), record.ExtractValue(f.Value)), nil
 	default:
 		// TODO(hongalex): implement inequality filters
+		return nil, status.Errorf(codes.Unimplemented, "only the equality operator is supported currently")
 	}
-	return q
 }
 
 // QueryRecords returns a list of records that match the given filters and their stores.
@@ -549,7 +549,11 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 		query = query.Filter("OwnerID =", owner)
 	}
 	for _, f := range filters {
-		query = addPropertyFilter(query, f)
+		q, err := addPropertyFilter(query, f)
+		if err != nil {
+			return nil, nil, err
+		}
+		query = q
 	}
 	for _, t := range tags {
 		query = query.Filter("Tags =", t)
