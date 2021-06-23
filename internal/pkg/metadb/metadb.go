@@ -531,7 +531,7 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) *ds.Query {
 	switch f.Operator {
 	case pb.FilterOperator_EQUAL:
-		return q.Filter(fmt.Sprintf("Properties.%s=", f.PropertyName), record.ExtractValue(f.Value))
+		return q.Filter(fmt.Sprintf("Properties.%s =", f.PropertyName), record.ExtractValue(f.Value))
 	default:
 		// TODO(hongalex): implement inequality filters
 	}
@@ -539,14 +539,20 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) *ds.Query {
 }
 
 // QueryRecords returns a list of records that match the given filters and their stores.
-func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey string) ([]*pb.Record, []string, error) {
+func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey, owner string, tags []string) ([]*pb.Record, []string, error) {
 	query := m.newQuery(recordKind)
 	if storeKey != "" {
 		dsKey := m.createStoreKey(storeKey)
 		query = query.Ancestor(dsKey)
 	}
+	if owner != "" {
+		query = query.Filter("OwnerID =", owner)
+	}
 	for _, f := range filters {
 		query = addPropertyFilter(query, f)
+	}
+	for _, t := range tags {
+		query = query.Filter("Tags =", t)
 	}
 	iter := m.client.Run(ctx, query)
 

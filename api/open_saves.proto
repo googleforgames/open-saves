@@ -273,7 +273,7 @@ message QueryRecordsRequest {
   // List of filters
   repeated QueryFilter filters = 2;
 
-  // List of tags. Not supported at the moment.
+  // List of tags
   repeated string tags = 3;
 
   // owner_id is the owner of records, represented as an external user ID.

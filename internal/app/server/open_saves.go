@@ -205,7 +205,7 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 }
 
 func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
-	records, storeKeys, err := s.metaDB.QueryRecords(ctx, req.GetFilters(), req.StoreKey)
+	records, storeKeys, err := s.metaDB.QueryRecords(ctx, req.Filters, req.StoreKey, req.OwnerId, req.Tags)
 	if err != nil {
 		return nil, err
 	}
