@@ -211,8 +211,12 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecords
 			req.StoreKey, req.Filters, err)
 		return nil, err
 	}
+	var rr []*pb.Record
+	for _, r := range records {
+		rr = append(rr, r.ToProto())
+	}
 	return &pb.QueryRecordsResponse{
-		Records:   records,
+		Records:   rr,
 		StoreKeys: storeKeys,
 	}, nil
 }

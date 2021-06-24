@@ -37,6 +37,10 @@ const (
 	storeKind  = "store"
 	recordKind = "record"
 	blobKind   = "blob"
+
+	propertiesField = "Properties"
+	tagsField       = "Tags"
+	ownerField      = "OwnerID"
 )
 
 // MetaDB is a metadata database manager of Open Saves.
@@ -531,7 +535,7 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 	switch f.Operator {
 	case pb.FilterOperator_EQUAL:
-		return q.Filter(fmt.Sprintf("Properties.%s =", f.PropertyName), record.ExtractValue(f.Value)), nil
+		return q.Filter(fmt.Sprintf("%s.%s =", propertiesField, f.PropertyName), record.ExtractValue(f.Value)), nil
 	default:
 		// TODO(hongalex): implement inequality filters
 		return nil, status.Errorf(codes.Unimplemented, "only the equality operator is supported currently")
@@ -539,14 +543,14 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 }
 
 // QueryRecords returns a list of records that match the given filters and their stores.
-func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey, owner string, tags []string) ([]*pb.Record, []string, error) {
+func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey, owner string, tags []string) ([]*record.Record, []string, error) {
 	query := m.newQuery(recordKind)
 	if storeKey != "" {
 		dsKey := m.createStoreKey(storeKey)
 		query = query.Ancestor(dsKey)
 	}
 	if owner != "" {
-		query = query.Filter("OwnerID =", owner)
+		query = query.Filter(fmt.Sprintf("%s =", ownerField), owner)
 	}
 	for _, f := range filters {
 		q, err := addPropertyFilter(query, f)
@@ -556,11 +560,11 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 		query = q
 	}
 	for _, t := range tags {
-		query = query.Filter("Tags =", t)
+		query = query.Filter(fmt.Sprintf("%s =", tagsField), t)
 	}
 	iter := m.client.Run(ctx, query)
 
-	var match []*pb.Record
+	var match []*record.Record
 	var keys []string
 	for {
 		var r record.Record
@@ -572,7 +576,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 			return nil, nil, status.Errorf(codes.Internal,
 				"metadb QueryRecords: %v", err)
 		}
-		match = append(match, r.ToProto())
+		match = append(match, &r)
 		keys = append(keys, key.Parent.Name)
 	}
 	return match, keys, nil
