@@ -21,6 +21,7 @@ import (
 	ds "cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -34,6 +35,7 @@ const (
 	storeKind  = "store"
 	recordKind = "record"
 	blobKind   = "blob"
+	chunkKind  = "chunk"
 )
 
 // MetaDB is a metadata database manager of Open Saves.
@@ -91,6 +93,13 @@ func (d *MetaDB) createBlobKey(key uuid.UUID) *ds.Key {
 	return k
 }
 
+func (m *MetaDB) createChunkRefKey(blobRefKey, key uuid.UUID) *ds.Key {
+	bk := m.createBlobKey(blobRefKey)
+	ck := ds.NameKey(chunkKind, key.String(), bk)
+	ck.Namespace = m.Namespace
+	return ck
+}
+
 func (m *MetaDB) getBlobRef(ctx context.Context, tx *ds.Transaction, key uuid.UUID) (*blobref.BlobRef, error) {
 	if key == uuid.Nil {
 		return nil, status.Error(codes.FailedPrecondition, "there is no an external blob associated")
@@ -109,8 +118,8 @@ func (m *MetaDB) getBlobRef(ctx context.Context, tx *ds.Transaction, key uuid.UU
 }
 
 // Returns a modified Record and the caller must commit the change.
-func (m *MetaDB) markBlobRefForDeletion(_ context.Context, tx *ds.Transaction,
-	storeKey string, record *record.Record, blob *blobref.BlobRef, newBlobKey uuid.UUID) (*record.Record, error) {
+func (m *MetaDB) markBlobRefForDeletion(tx *ds.Transaction,
+	record *record.Record, blob *blobref.BlobRef, newBlobKey uuid.UUID) (*record.Record, error) {
 	if record.ExternalBlob == uuid.Nil {
 		return nil, status.Error(codes.FailedPrecondition, "the record doesn't have an external blob associated")
 	}
@@ -149,6 +158,21 @@ func (m *MetaDB) mutateSingle(ctx context.Context, mut *ds.Mutation) error {
 func (m *MetaDB) recordExists(ctx context.Context, tx *ds.Transaction, key *ds.Key) (bool, error) {
 	query := ds.NewQuery(recordKind).Namespace(m.Namespace).
 		KeysOnly().Filter("__key__ = ", key).Limit(1)
+	if tx != nil {
+		query = query.Transaction(tx)
+	}
+	iter := m.client.Run(ctx, query)
+	if _, err := iter.Next(nil); err == iterator.Done {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *MetaDB) blobRefExists(ctx context.Context, tx *ds.Transaction, key uuid.UUID) (bool, error) {
+	bk := m.createBlobKey(key)
+	query := m.newQuery(blobKind).KeysOnly().Filter("__key__ = ", bk).Limit(1)
 	if tx != nil {
 		query = query.Transaction(tx)
 	}
@@ -287,7 +311,7 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 			if err != nil {
 				return err
 			}
-			toUpdate, err = m.markBlobRefForDeletion(ctx, tx, storeKey, toUpdate, oldBlob, uuid.Nil)
+			toUpdate, err = m.markBlobRefForDeletion(tx, toUpdate, oldBlob, uuid.Nil)
 			if err != nil {
 				return err
 			}
@@ -329,7 +353,7 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 		if record.ExternalBlob != uuid.Nil {
 			blob, err := m.getBlobRef(ctx, tx, record.ExternalBlob)
 			if err == nil {
-				_, err = m.markBlobRefForDeletion(ctx, tx, storeKey, record, blob, uuid.Nil)
+				_, err = m.markBlobRefForDeletion(tx, record, blob, uuid.Nil)
 				if err != nil {
 					return err
 				}
@@ -388,6 +412,16 @@ func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*blobref.BlobRe
 	return m.getBlobRef(ctx, nil, key)
 }
 
+func (m *MetaDB) getCurrentBlobRef(ctx context.Context, tx *ds.Transaction, storeKey, recordKey string) (*blobref.BlobRef, error) {
+	record := new(record.Record)
+	err := tx.Get(m.createRecordKey(storeKey, recordKey), record)
+	if err != nil {
+		return nil, err
+	}
+	blob, err := m.getBlobRef(ctx, tx, record.ExternalBlob)
+	return blob, err
+}
+
 // GetCurrentBlobRef gets a BlobRef object associated with a record.
 // Returned errors:
 // 	- NotFound: the record is not found.
@@ -395,15 +429,40 @@ func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*blobref.BlobRe
 func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*blobref.BlobRef, error) {
 	var blob *blobref.BlobRef
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		record := new(record.Record)
-		err := tx.Get(m.createRecordKey(storeKey, recordKey), record)
-		if err != nil {
-			return err
-		}
-		blob, err = m.getBlobRef(ctx, tx, record.ExternalBlob)
+		var err error
+		blob, err = m.getCurrentBlobRef(ctx, tx, storeKey, recordKey)
 		return err
-	})
+	}, ds.ReadOnly)
 	return blob, datastoreErrToGRPCStatus(err)
+}
+
+func (m *MetaDB) getReadyChunks(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) ([]*chunkref.ChunkRef, error) {
+	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blob.Key)).Filter("Status =", blobref.StatusReady)
+	iter := m.client.Run(ctx, query)
+	chunks := []*chunkref.ChunkRef{}
+	for {
+		chunk := new(chunkref.ChunkRef)
+		_, err := iter.Next(chunk)
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		chunks = append(chunks, chunk)
+	}
+	return chunks, nil
+}
+
+func (m *MetaDB) chunkObjectsSizeSum(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) (int64, error) {
+	chunks, err := m.getReadyChunks(ctx, tx, blob)
+	if err != nil {
+		return 0, err
+	}
+	size := int64(0)
+	for _, chunk := range chunks {
+		size += int64(chunk.Size)
+	}
+	return size, nil
 }
 
 // PromoteBlobRefToCurrent promotes the provided BlobRef object as a current
@@ -428,26 +487,37 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 			if err != nil {
 				return err
 			}
-			record, err = m.markBlobRefForDeletion(ctx, tx, blob.StoreKey, record, oldBlob, blob.Key)
+			record, err = m.markBlobRefForDeletion(tx, record, oldBlob, blob.Key)
 			if err != nil {
 				return err
 			}
 		}
+
+		// Update the blob size for chunked uploads
+		if blob.Chunked {
+			// TODO(yuryu): should check if chunks are continuous?
+			size, err := m.chunkObjectsSizeSum(ctx, tx, blob)
+			if err != nil {
+				return err
+			}
+			blob.Size = size
+		}
+		if blob.Status != blobref.StatusReady {
+			if blob.Ready() != nil {
+				return status.Error(codes.Internal, "blob is not ready to become current")
+			}
+		}
+		blob.Timestamps.Update()
+		if _, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob)); err != nil {
+			return err
+		}
+
 		record.BlobSize = blob.Size
 		record.ExternalBlob = blob.Key
 		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record)); err != nil {
 			return err
 		}
 
-		if blob.Status != blobref.StatusReady {
-			if blob.Ready() != nil {
-				return status.Error(codes.Internal, "blob is not ready to become current")
-			}
-			blob.Timestamps.Update()
-			if _, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob)); err != nil {
-				return err
-			}
-		}
 		return nil
 	})
 	if err != nil {
@@ -486,7 +556,7 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 		if err != nil {
 			return err
 		}
-		record, err = m.markBlobRefForDeletion(ctx, tx, storeKey, record, blob, uuid.Nil)
+		record, err = m.markBlobRefForDeletion(tx, record, blob, uuid.Nil)
 		if err != nil {
 			return err
 		}
@@ -496,6 +566,24 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 		return nil, nil, datastoreErrToGRPCStatus(err)
 	}
 	return record, blob, nil
+}
+
+func (m *MetaDB) deleteChildChunkRefs(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) error {
+	query := m.newQuery(chunkKind).Ancestor(m.createBlobKey(blob.Key)).Transaction(tx).KeysOnly()
+	iter := m.client.Run(ctx, query)
+	for {
+		key, err := iter.Next(nil)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if err := tx.Delete(key); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DeleteBlobRef deletes the BlobRef object from the database.
@@ -511,6 +599,11 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 		if blob.Status == blobref.StatusReady {
 			return status.Error(codes.FailedPrecondition, "blob is currently marked as ready. mark it for deletion first")
 		}
+		if blob.Chunked {
+			if err := m.deleteChildChunkRefs(ctx, tx, blob); err != nil {
+				return err
+			}
+		}
 		return tx.Delete(m.createBlobKey(key))
 	})
 	return datastoreErrToGRPCStatus(err)
@@ -523,4 +616,159 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 		Filter("Timestamps.UpdatedAt <", olderThan)
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
+}
+
+func (m *MetaDB) getChunkRef(ctx context.Context, tx *ds.Transaction, blobKey, key uuid.UUID) (*chunkref.ChunkRef, error) {
+	k := m.createChunkRefKey(blobKey, key)
+	chunk := new(chunkref.ChunkRef)
+	var err error
+	if tx != nil {
+		err = tx.Get(k, chunk)
+	} else {
+		err = m.client.Get(ctx, k, chunk)
+	}
+	if err != nil {
+		return nil, datastoreErrToGRPCStatus(err)
+	}
+	return chunk, nil
+}
+
+func (m *MetaDB) GetChunkRef(ctx context.Context, blobKey, key uuid.UUID) (*chunkref.ChunkRef, error) {
+	return m.getChunkRef(ctx, nil, blobKey, key)
+}
+
+func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, storeKey, recordKey string, number int32) ([]*chunkref.ChunkRef, error) {
+	blob, err := m.getCurrentBlobRef(ctx, tx, storeKey, recordKey)
+	if err != nil {
+		return nil, err
+	}
+	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blob.Key)).Filter("Number = ", number)
+	iter := m.client.Run(ctx, query)
+
+	chunks := []*chunkref.ChunkRef{}
+	for {
+		chunk := new(chunkref.ChunkRef)
+		_, err = iter.Next(chunk)
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		chunks = append(chunks, chunk)
+	}
+	return chunks, nil
+}
+
+func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey string, number int32) (*chunkref.ChunkRef, error) {
+	chunks := []*chunkref.ChunkRef{}
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		var err error
+		chunks, err = m.findChunkRefsByNumber(ctx, tx, storeKey, recordKey, number)
+		return err
+
+	}, ds.ReadOnly)
+	if err != nil {
+		return nil, datastoreErrToGRPCStatus(err)
+	}
+	for _, c := range chunks {
+		if c.Status == blobref.StatusReady {
+			return c, nil
+		}
+	}
+	return nil, status.Errorf(codes.NotFound, "chunk number (%v) was not found for record (%v)", number, recordKey)
+}
+
+func (m *MetaDB) MarkChunkRefReady(ctx context.Context, chunk *chunkref.ChunkRef) error {
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		blob, err := m.getBlobRef(ctx, tx, chunk.BlobRef)
+		if err != nil {
+			return err
+		}
+
+		// Mark the chunk ready (Datastore's transaction isolation guarantees this is not visible until
+		// we commit the transaction).
+		if err := chunk.Ready(); err != nil {
+			return err
+		}
+		chunk.Timestamps.Update()
+		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createChunkRefKey(blob.Key, chunk.Key), chunk)); err != nil {
+			return err
+		}
+
+		// Mark any other (should be at most one though) Ready chunks for deletion.
+		otherChunks, err := m.findChunkRefsByNumber(ctx, tx, blob.StoreKey, blob.RecordKey, chunk.Number)
+		if err != nil {
+			return err
+		}
+		for _, o := range otherChunks {
+			if o.Status == blobref.StatusReady {
+				if err := o.MarkForDeletion(); err != nil {
+					return err
+				}
+				o.Timestamps.Update()
+				if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createChunkRefKey(blob.Key, o.Key), o)); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	return err
+}
+
+func (m *MetaDB) InsertChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) error {
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		if found, err := m.blobRefExists(ctx, tx, chunk.BlobRef); err != nil {
+			return err
+		} else {
+			if !found {
+				return status.Error(codes.FailedPrecondition, "BlobRef does not exist")
+			}
+		}
+		mut := ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
+		return m.mutateSingleInTransaction(tx, mut)
+	})
+	return err
+}
+
+func (m *MetaDB) UpdateChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) error {
+	mut := ds.NewUpdate(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
+	return m.mutateSingle(ctx, mut)
+}
+
+func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) error {
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		blob, err := m.getBlobRef(ctx, tx, blobKey)
+		if err != nil {
+			// TODO(yuryu): Provide a way to fix inconsistent data
+			return err
+		}
+		if blob.Status == blobref.StatusReady {
+			return status.Error(codes.FailedPrecondition, "blob is currently marked as ready. mark it for deletion first")
+		}
+		k := m.createChunkRefKey(blobKey, key)
+		return m.mutateSingleInTransaction(tx, ds.NewDelete(k))
+	})
+	return err
+}
+
+func (m *MetaDB) MarkUncommittedChunkedBlobForDeletion(ctx context.Context, key uuid.UUID) error {
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		blob, err := m.getBlobRef(ctx, tx, key)
+		if err != nil {
+			return err
+		}
+		if !blob.Chunked {
+			return status.Error(codes.InvalidArgument, "provided session ID is not valid")
+		}
+		if blob.Status != blobref.StatusInitializing {
+			return status.Errorf(codes.FailedPrecondition, "blob object is not in initialization state (state = %v)", blob.Status)
+		}
+		if err := blob.MarkForDeletion(); err != nil {
+			return err
+		}
+		blob.Timestamps.Update()
+		return m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createBlobKey(key), blob))
+	})
+	return err
 }

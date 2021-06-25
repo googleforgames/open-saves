@@ -17,6 +17,7 @@ package blobref
 import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
@@ -34,6 +35,7 @@ type BlobRef struct {
 	// It can be non-existent (e.g. deleted already) but then the Status
 	// should not be Blob StatusReady.
 	RecordKey string
+	Chunked   bool
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
@@ -86,7 +88,25 @@ func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 	}
 }
 
+// NewChunkedBlobRef creates a new BlobRef object with Size and Chunked
+// set 0 and true, respectively.
+// Other behaviors are the same as NewBlobRef
+func NewChunkedBlobRef(storeKey, recordKey string) *BlobRef {
+	b := NewBlobRef(0, storeKey, recordKey)
+	b.Chunked = true
+	return b
+}
+
 // ObjectPath returns an object path for the backend blob storage.
 func (b *BlobRef) ObjectPath() string {
 	return b.Key.String()
+}
+
+// ToProto returns a BlobMetadata representation of the object.
+func (b *BlobRef) ToProto() *pb.BlobMetadata {
+	return &pb.BlobMetadata{
+		StoreKey:  b.StoreKey,
+		RecordKey: b.RecordKey,
+		Size:      b.Size,
+	}
 }

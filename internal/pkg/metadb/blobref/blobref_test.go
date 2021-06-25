@@ -60,13 +60,18 @@ func TestBlobRef_Save(t *testing.T) {
 			Name:  "RecordKey",
 			Value: record,
 		},
+		{
+			Name:  "Chunked",
+			Value: false,
+		},
 	}
 	actual, err := blob.Save()
 	assert.NoError(t, err)
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected, actual[:len(expected)])
-		assert.Equal(t, 5, len(actual))
-		assert.Equal(t, "Timestamps", actual[4].Name)
+		if assert.Equal(t, 6, len(actual)) {
+			assert.Equal(t, "Timestamps", actual[5].Name)
+		}
 	}
 }
 
@@ -112,4 +117,20 @@ func TestBlobRef_GetObjectPath(t *testing.T) {
 	blob := NewBlobRef(0, "", "")
 
 	assert.Equal(t, blob.Key.String(), blob.ObjectPath())
+}
+
+func TestBlobRef_ToProto(t *testing.T) {
+	const (
+		size   = int64(123)
+		store  = "store"
+		record = "record"
+	)
+	b := NewBlobRef(size, store, record)
+
+	proto := b.ToProto()
+	if assert.NotNil(t, proto) {
+		assert.Equal(t, b.StoreKey, proto.GetStoreKey())
+		assert.Equal(t, b.RecordKey, proto.GetRecordKey())
+		assert.Equal(t, b.Size, proto.GetSize())
+	}
 }
