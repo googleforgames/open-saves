@@ -14,7 +14,9 @@
 
 package record
 
-import pb "github.com/googleforgames/open-saves/api"
+import (
+	pb "github.com/googleforgames/open-saves/api"
+)
 
 // PropertyValue is an internal representation of the user-defined property.
 // See the Open Saves API definition for details.
@@ -59,4 +61,17 @@ func NewPropertyValueFromProto(proto *pb.Property) *PropertyValue {
 		ret.StringValue = proto.GetStringValue()
 	}
 	return ret
+}
+
+// ExtractValue returns the value that is held by the property.
+func ExtractValue(p *pb.Property) interface{} {
+	switch p.Type {
+	case pb.Property_BOOLEAN:
+		return p.GetBooleanValue()
+	case pb.Property_INTEGER:
+		return p.GetIntegerValue()
+	case pb.Property_STRING:
+		return p.GetStringValue()
+	}
+	return nil
 }
