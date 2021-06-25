@@ -16,7 +16,6 @@ package metadb
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	ds "cloud.google.com/go/datastore"
@@ -535,7 +534,7 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 	switch f.Operator {
 	case pb.FilterOperator_EQUAL:
-		return q.Filter(fmt.Sprintf("%s.%s =", propertiesField, f.PropertyName), record.ExtractValue(f.Value)), nil
+		return q.Filter(propertiesField+"."+f.PropertyName+"=", record.ExtractValue(f.Value)), nil
 	default:
 		// TODO(hongalex): implement inequality filters
 		return nil, status.Errorf(codes.Unimplemented, "only the equality operator is supported currently")
@@ -550,7 +549,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 		query = query.Ancestor(dsKey)
 	}
 	if owner != "" {
-		query = query.Filter(fmt.Sprintf("%s =", ownerField), owner)
+		query = query.Filter(ownerField+"=", owner)
 	}
 	for _, f := range filters {
 		q, err := addPropertyFilter(query, f)
@@ -560,7 +559,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 		query = q
 	}
 	for _, t := range tags {
-		query = query.Filter(fmt.Sprintf("%s =", tagsField), t)
+		query = query.Filter(tagsField+"=", t)
 	}
 	iter := m.client.Run(ctx, query)
 
