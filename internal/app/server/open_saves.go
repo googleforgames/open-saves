@@ -206,15 +206,28 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	return newRecord.ToProto(), nil
 }
 
-func (s *openSavesServer) QueryRecords(ctx context.Context, stream *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "QueryRecords is not implemented yet.")
+func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
+	records, storeKeys, err := s.metaDB.QueryRecords(ctx, req.Filters, req.StoreKey, req.OwnerId, req.Tags)
+	if err != nil {
+		log.Warnf("QueryRecords failed for store(%s), filters(%+v): %v",
+			req.StoreKey, req.Filters, err)
+		return nil, err
+	}
+	var rr []*pb.Record
+	for _, r := range records {
+		rr = append(rr, r.ToProto())
+	}
+	return &pb.QueryRecordsResponse{
+		Records:   rr,
+		StoreKeys: storeKeys,
+	}, nil
 }
 
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	log.Debugf("Inserting inline blob: %v\n", meta)
 	// Receive the blob
 	size := meta.GetSize()
-	buffer := bytes.NewBuffer(make([]byte, 0, size))
+	buffer := new(bytes.Buffer)
 	recvd := 0
 	for {
 		if int64(recvd) > size {
