@@ -119,7 +119,7 @@ func (c *ChunkRef) DecodeBytes(by []byte) error {
 // ChunkRef object.
 func (c *ChunkRef) ToProto() *pb.ChunkMetadata {
 	return &pb.ChunkMetadata{
-		SessionId: c.Key.String(),
+		SessionId: c.BlobRef.String(),
 		Number:    int64(c.Number),
 		Size:      int64(c.Size),
 	}
