@@ -80,6 +80,7 @@ func New(blobRef uuid.UUID, number int32) *ChunkRef {
 		Key:     uuid.New(),
 		BlobRef: blobRef,
 		Number:  number,
+		Status:  blobref.StatusInitializing,
 	}
 }
 

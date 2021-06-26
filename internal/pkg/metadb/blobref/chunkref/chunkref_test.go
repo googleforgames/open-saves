@@ -19,6 +19,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,6 +30,7 @@ func TestChunkRef_New(t *testing.T) {
 	assert.Equal(t, blobuuid, c.BlobRef)
 	assert.Equal(t, int32(42), c.Number)
 	assert.Equal(t, int32(0), c.Size)
+	assert.Equal(t, blobref.StatusInitializing, c.Status)
 }
 
 func TestChunkRef_ObjectPath(t *testing.T) {

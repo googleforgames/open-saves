@@ -24,6 +24,7 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
@@ -38,6 +39,7 @@ const (
 	storeKind          = "store"
 	recordKind         = "record"
 	blobKind           = "blob"
+	chunkKind          = "chunk"
 	timestampTestDelta = 5 * time.Second
 	testProject        = "triton-for-games-dev"
 	testNamespace      = "datastore-unittests"
@@ -96,6 +98,18 @@ func cloneRecord(r *record.Record) *record.Record {
 	return &ret
 }
 
+func blobRefKey(key uuid.UUID) *datastore.Key {
+	dsKey := datastore.NameKey(blobKind, key.String(), nil)
+	dsKey.Namespace = testNamespace
+	return dsKey
+}
+
+func chunkRefKey(blobKey, key uuid.UUID) *datastore.Key {
+	dsKey := datastore.NameKey(chunkKind, key.String(), blobRefKey(blobKey))
+	dsKey.Namespace = testNamespace
+	return dsKey
+}
+
 // setupTestStoreRecord creates a new store and inserts a record into it, then registers
 // cleanup functions to delete these test store and record.
 // Passing a nil to record will skip the record insertion.
@@ -130,15 +144,58 @@ func setupTestBlobRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob 
 		t.Fatalf("InsertBlobRef failed: %v", err)
 	}
 	metadbtest.AssertEqualBlobRef(t, blob, newBlob)
-	// save the current namespace as it might change between now and when we delete
-	namespace := metaDB.Namespace
+
 	t.Cleanup(func() {
 		// Call the Datastore method directly to avoid Status checking
-		key := datastore.NameKey(blobKind, blob.Key.String(), nil)
-		key.Namespace = namespace
+		key := blobRefKey(blob.Key)
 		newDatastoreClient(ctx, t).Delete(ctx, key)
 	})
 	return newBlob
+}
+
+func setupTestChunkRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, chunk *chunkref.ChunkRef) {
+	t.Helper()
+	if err := metaDB.InsertChunkRef(ctx, chunk); err != nil {
+		t.Fatalf("InsertChunkRef failed for chunk key (%v): %v", chunk.Key, err)
+	}
+
+	t.Cleanup(func() {
+		// Call the Datastore functions directly to avoid Status checks
+		newDatastoreClient(ctx, t).Delete(ctx, chunkRefKey(chunk.BlobRef, chunk.Key))
+	})
+}
+
+func setupTestStoreRecordBlobSet(ctx context.Context, t *testing.T, metaDB *m.MetaDB) (*store.Store, *record.Record, *blobref.BlobRef) {
+	t.Helper()
+
+	storeKey := newStoreKey()
+	store := &store.Store{
+		Key:  storeKey,
+		Name: t.Name(),
+	}
+
+	recordKey := newRecordKey()
+	record := &record.Record{
+		Key:          recordKey,
+		OpaqueString: t.Name(),
+		Properties:   make(record.PropertyMap),
+	}
+	setupTestStoreRecord(ctx, t, metaDB, store, record)
+
+	blobKey := uuid.New()
+	blob := &blobref.BlobRef{
+		Key:       blobKey,
+		Status:    blobref.StatusInitializing,
+		StoreKey:  storeKey,
+		RecordKey: recordKey,
+		Chunked:   true,
+		Timestamps: timestamps.Timestamps{
+			CreatedAt: time.Unix(123, 0),
+			UpdatedAt: time.Unix(123, 0),
+		},
+	}
+	setupTestBlobRef(ctx, t, metaDB, blob)
+	return store, record, blob
 }
 
 func TestMetaDB_Disconnect(t *testing.T) {
@@ -726,8 +783,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 
 		// Update the timestamps here because MetaDB automatically sets UpdatesAt
 		blob.Timestamps.UpdatedAt = time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC)
-		bKey := datastore.NameKey(blobKind, blob.Key.String(), nil)
-		bKey.Namespace = metaDB.Namespace
+		bKey := blobRefKey(blob.Key)
 		if _, err := client.Put(ctx, bKey, blob); err != nil {
 			t.Fatalf("Failed to change UpdatedAt for %v: %v", blob.Key, err)
 		}
@@ -837,5 +893,126 @@ func TestMetaDB_DeleteRecordWithNonExistentBlobRef(t *testing.T) {
 	if assert.Error(t, err, "GetRecord should return error after DeleteRecord") {
 		assert.Equal(t, codes.NotFound, status.Code(err),
 			"GetRecord should return NotFound after DeleteRecord")
+	}
+}
+
+func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
+	const (
+		testChunkCount = 3
+		testChunKSize  = int32(42)
+	)
+
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+	ds := newDatastoreClient(ctx, t)
+
+	store, record, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB)
+
+	// Create Chunks with Initializing state
+	chunks := []*chunkref.ChunkRef{}
+	for i := 0; i < testChunkCount; i++ {
+		chunk := chunkref.New(blob.Key, int32(i))
+		setupTestChunkRef(ctx, t, metaDB, chunk)
+		chunks = append(chunks, chunk)
+	}
+
+	// Mark the chunks ready
+	for _, chunk := range chunks {
+		chunk.Size = testChunKSize
+		now := time.Now()
+		if err := metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
+			t.Fatalf("MarkChunkRefReady failed for chunk (%v): %v", chunk.Key, err)
+		}
+		dsKey := chunkRefKey(chunk.BlobRef, chunk.Key)
+		got := new(chunkref.ChunkRef)
+		if err := ds.Get(ctx, dsKey, got); err != nil {
+			t.Errorf("Failed to get updated ChunkRef (%v): %v", dsKey, err)
+		} else {
+			assert.True(t, now.Before(got.Timestamps.UpdatedAt))
+			assert.Equal(t, blobref.StatusReady, got.Status)
+		}
+	}
+	_, blobRetrieved, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
+	if err != nil {
+		t.Fatalf("PromoteBlobRefToCurrent failed: %v", err)
+	}
+	if assert.NotNil(t, blobRetrieved) {
+		assert.EqualValues(t, testChunKSize*testChunkCount, blobRetrieved.Size)
+	}
+
+	// Verify blob and chunk metadata
+	if blobRetrieved, err := metaDB.GetCurrentBlobRef(ctx, store.Key, record.Key); err != nil {
+		t.Errorf("GetCurrentBlobRef failed: %v", err)
+	} else {
+		assert.EqualValues(t, testChunKSize*testChunkCount, blobRetrieved.Size)
+		assert.Equal(t, blob.Key, blobRetrieved.Key)
+		assert.True(t, blobRetrieved.Chunked)
+	}
+	for i := 0; i < testChunkCount; i++ {
+		got, err := metaDB.FindChunkRefByNumber(ctx, store.Key, record.Key, int32(i))
+		if assert.NoError(t, err, "FindChunkRefByNumber should not return error") {
+			metadbtest.AssertEqualChunkRef(t, chunks[i], got)
+		}
+	}
+
+	// Delete chunks and blob
+	if _, _, err := metaDB.RemoveBlobFromRecord(ctx, store.Key, record.Key); err != nil {
+		t.Fatalf("RemoveBlobFromRecord should work with Chunked blobs")
+	}
+	if err := metaDB.DeleteBlobRef(ctx, blob.Key); err != nil {
+		t.Fatalf("DeleteBlobRef failed: %v", err)
+	}
+
+	for _, chunk := range chunks {
+		dsKey := chunkRefKey(chunk.BlobRef, chunk.Key)
+		got := new(chunkref.ChunkRef)
+		if err := ds.Get(ctx, dsKey, got); err != datastore.ErrNoSuchEntity {
+			t.Errorf("ChunkRef was not deleted for key (%v): %v", chunk.Key, err)
+		}
+	}
+}
+
+func TestMetaDB_MarkUncommittedBlobForDeletion(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+
+	store, record, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB)
+
+	chunk := chunkref.New(blob.Key, 0)
+	setupTestChunkRef(ctx, t, metaDB, chunk)
+
+	assert.NoError(t, metaDB.MarkUncommittedBlobForDeletion(ctx, blob.Key))
+
+	// Should fail if blob is live
+	blob = blobref.NewChunkedBlobRef(store.Key, record.Key)
+	setupTestBlobRef(ctx, t, metaDB, blob)
+	_, _, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
+	if assert.NoError(t, err) {
+		err = metaDB.MarkUncommittedBlobForDeletion(ctx, blob.Key)
+		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+	}
+
+	// Should fail if not found
+	err = metaDB.MarkUncommittedBlobForDeletion(ctx, uuid.New())
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestMetaDB_UpdateChunkRef(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+
+	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB)
+
+	chunk := chunkref.New(blob.Key, 0)
+	setupTestChunkRef(ctx, t, metaDB, chunk)
+
+	chunk.Fail()
+	assert.NoError(t, metaDB.UpdateChunkRef(ctx, chunk))
+
+	ds := newDatastoreClient(ctx, t)
+	got := new(chunkref.ChunkRef)
+	err := ds.Get(ctx, chunkRefKey(chunk.BlobRef, chunk.Key), got)
+	if assert.NoError(t, err) {
+		metadbtest.AssertEqualChunkRef(t, chunk, got)
 	}
 }
