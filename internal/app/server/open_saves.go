@@ -572,7 +572,7 @@ func (s *openSavesServer) AbortChunkedUpload(ctx context.Context, req *pb.AbortC
 		log.Errorf("SessionId is not a valid UUID: %v", err)
 		return new(empty.Empty), status.Errorf(codes.InvalidArgument, "SessionId is not a valid UUID: %v", err)
 	}
-	err = s.metaDB.MarkUncommittedChunkedBlobForDeletion(ctx, id)
+	err = s.metaDB.MarkUncommittedBlobForDeletion(ctx, id)
 	if err != nil {
 		log.Errorf("AbortChunkedUpload failed for session (%v): %v", id, err)
 	}
