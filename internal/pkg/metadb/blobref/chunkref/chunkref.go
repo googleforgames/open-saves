@@ -20,7 +20,6 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"

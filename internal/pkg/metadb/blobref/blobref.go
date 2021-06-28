@@ -17,7 +17,6 @@ package blobref
 import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
-	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
