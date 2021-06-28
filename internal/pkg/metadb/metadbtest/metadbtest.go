@@ -110,8 +110,16 @@ func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *blobref.Bl
 	}
 }
 
-// AssertEqualChunkRef compares each field in chunkref.ChunkRef and asserts they are equal.
+// AssertEqualChunkRef is equivalent to
+// AssertEqualChunkRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 func AssertEqualChunkRef(t *testing.T, expected, actual *chunkref.ChunkRef, msgAndArgs ...interface{}) {
+	t.Helper()
+	AssertEqualChunkRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
+}
+
+// AssertEqualChunkRefWithinDuration compares each field in chunkref.ChunkRef and asserts they are equal
+// (timestamps are within delta).
+func AssertEqualChunkRefWithinDuration(t *testing.T, expected, actual *chunkref.ChunkRef, delta time.Duration, msgAndArgs ...interface{}) {
 	t.Helper()
 	if expected == nil {
 		assert.Nil(t, actual)
@@ -123,6 +131,6 @@ func AssertEqualChunkRef(t *testing.T, expected, actual *chunkref.ChunkRef, msgA
 		assert.Equal(t, expected.Number, actual.Number, msgAndArgs...)
 		assert.Equal(t, expected.Size, actual.Size, msgAndArgs...)
 		assert.Equal(t, expected.Status, actual.Status, msgAndArgs...)
-		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, time.Duration(0), msgAndArgs...)
+		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
 	}
 }

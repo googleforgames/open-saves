@@ -679,6 +679,8 @@ func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, 
 	return chunks, nil
 }
 
+// FindChunkRefByNumber returns a ChunkRef object for the specified store, record, and number.
+// The ChunkRef must be Ready and the chunk upload session must be committed.
 func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey string, number int32) (*chunkref.ChunkRef, error) {
 	chunks := []*chunkref.ChunkRef{}
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -700,6 +702,8 @@ func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey s
 	return nil, status.Errorf(codes.NotFound, "chunk number (%v) was not found for record (%v)", number, recordKey)
 }
 
+// MarkChunkRefReady marks the specified chunk as Ready. If the current session has another chunk
+// with the same Number, it will be marked for deletion.
 func (m *MetaDB) MarkChunkRefReady(ctx context.Context, chunk *chunkref.ChunkRef) error {
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		blob, err := m.getBlobRef(ctx, tx, chunk.BlobRef)
@@ -738,6 +742,7 @@ func (m *MetaDB) MarkChunkRefReady(ctx context.Context, chunk *chunkref.ChunkRef
 	return err
 }
 
+// InsertChunkRef inserts a new ChunkRef object to the datastore.
 func (m *MetaDB) InsertChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) error {
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		if blob, err := m.getBlobRef(ctx, tx, chunk.BlobRef); err != nil {
@@ -753,11 +758,16 @@ func (m *MetaDB) InsertChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) e
 	return err
 }
 
+// UpdateChunkRef updates a ChunkRef object with the new property values.
+// Returns a NotFound error if the key is not found.
 func (m *MetaDB) UpdateChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) error {
 	mut := ds.NewUpdate(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
 	return m.mutateSingle(ctx, mut)
 }
 
+// MarkUncommittedBlobForDeletion marks the BlobRef specified by key for deletion
+// if the current status is StatusInitializing.
+// Returns FailedPrecondition is Status is not StatusInitializing.
 func (m *MetaDB) MarkUncommittedBlobForDeletion(ctx context.Context, key uuid.UUID) error {
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		blob, err := m.getBlobRef(ctx, tx, key)

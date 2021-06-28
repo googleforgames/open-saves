@@ -77,10 +77,11 @@ func (c *ChunkRef) ObjectPath() string {
 // New creates a new ChunkRef instance with the input parameters.
 func New(blobRef uuid.UUID, number int32) *ChunkRef {
 	return &ChunkRef{
-		Key:     uuid.New(),
-		BlobRef: blobRef,
-		Number:  number,
-		Status:  blobref.StatusInitializing,
+		Key:        uuid.New(),
+		BlobRef:    blobRef,
+		Number:     number,
+		Status:     blobref.StatusInitializing,
+		Timestamps: timestamps.New(),
 	}
 }
 
