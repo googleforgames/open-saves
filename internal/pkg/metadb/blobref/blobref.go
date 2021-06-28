@@ -35,7 +35,8 @@ type BlobRef struct {
 	// It can be non-existent (e.g. deleted already) but then the Status
 	// should not be Blob StatusReady.
 	RecordKey string
-	Chunked   bool
+	// Chunked is whether the BlobRef is chunked or not.
+	Chunked bool
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.

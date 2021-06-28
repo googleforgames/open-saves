@@ -26,13 +26,22 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
+// ChunkRef is a metadata entity to keep track of chunks stored in an external blob store.
+// It is a child entity of and always associated to a BlobRef.
 type ChunkRef struct {
-	Key     uuid.UUID `datastore:"-"`
+	// Key is the primary key of the ChunkRef
+	Key uuid.UUID `datastore:"-"`
+	// BlobRef is the key of parent BlobRef
 	BlobRef uuid.UUID `datastore:"-"`
 
+	// Number is a position of the chunk in the BlobRef
 	Number int32
-	Size   int32
+	// Size is a byte size of the chunk
+	Size int32
+	// Status is the current status of the chunk
 	blobref.Status
+	// Timestamps keeps track of creation and modification times and stores a randomly
+	// generated UUID to maintain consistency.
 	Timestamps timestamps.Timestamps
 }
 
