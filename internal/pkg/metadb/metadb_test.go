@@ -959,6 +959,19 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	if _, _, err := metaDB.RemoveBlobFromRecord(ctx, store.Key, record.Key); err != nil {
 		t.Fatalf("RemoveBlobFromRecord should work with Chunked blobs")
 	}
+
+	// Check if child chunks are marked as well
+	for _, chunk := range chunks {
+		got := new(chunkref.ChunkRef)
+		if err := ds.Get(ctx, chunkRefKey(chunk.BlobRef, chunk.Key), got); err != nil {
+			t.Errorf("Couldn't get chunk (%v) after RemoveBlobFromRecord: %v", chunk.Key, err)
+		} else {
+			assert.Equal(t, chunk.Key, got.Key)
+			assert.True(t, got.Timestamps.UpdatedAt.After(chunk.Timestamps.UpdatedAt))
+			assert.Equal(t, blobref.StatusPendingDeletion, got.Status)
+		}
+	}
+
 	if err := metaDB.DeleteBlobRef(ctx, blob.Key); err != nil {
 		t.Fatalf("DeleteBlobRef failed: %v", err)
 	}

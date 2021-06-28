@@ -31,6 +31,7 @@ func TestChunkRef_New(t *testing.T) {
 	assert.Equal(t, int32(42), c.Number)
 	assert.Equal(t, int32(0), c.Size)
 	assert.Equal(t, blobref.StatusInitializing, c.Status)
+	assert.NotEqual(t, uuid.Nil, c.Timestamps.Signature)
 }
 
 func TestChunkRef_ObjectPath(t *testing.T) {

@@ -549,6 +549,26 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 		if err != nil {
 			return err
 		}
+
+		if blob.Chunked {
+			// Mark child chunks as well
+			chunks, err := m.getReadyChunks(ctx, tx, blob)
+			if err != nil {
+				return err
+			}
+			muts := []*ds.Mutation{}
+			for _, chunk := range chunks {
+				if err := chunk.MarkForDeletion(); err != nil {
+					return err
+				}
+				chunk.Timestamps.Update()
+				muts = append(muts, ds.NewUpdate(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk))
+			}
+			if _, err := tx.Mutate(muts...); err != nil {
+				return err
+			}
+		}
+
 		record, err = m.markBlobRefForDeletion(tx, record, blob, uuid.Nil)
 		if err != nil {
 			return err
