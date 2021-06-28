@@ -60,13 +60,18 @@ func TestBlobRef_Save(t *testing.T) {
 			Name:  "RecordKey",
 			Value: record,
 		},
+		{
+			Name:  "Chunked",
+			Value: false,
+		},
 	}
 	actual, err := blob.Save()
 	assert.NoError(t, err)
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected, actual[:len(expected)])
-		assert.Equal(t, 5, len(actual))
-		assert.Equal(t, "Timestamps", actual[4].Name)
+		if assert.Equal(t, 6, len(actual)) {
+			assert.Equal(t, "Timestamps", actual[5].Name)
+		}
 	}
 }
 

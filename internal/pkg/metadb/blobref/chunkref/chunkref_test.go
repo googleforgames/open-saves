@@ -19,30 +19,33 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestChunkRef_New(t *testing.T) {
 	blobuuid := uuid.New()
-	c := New(blobuuid, 42, 123450)
+	c := New(blobuuid, 42)
 	assert.NotEqual(t, uuid.Nil, c.Key)
 	assert.Equal(t, blobuuid, c.BlobRef)
 	assert.Equal(t, int32(42), c.Number)
-	assert.Equal(t, int32(123450), c.Size)
+	assert.Equal(t, int32(0), c.Size)
+	assert.Equal(t, blobref.StatusInitializing, c.Status)
+	assert.NotEqual(t, uuid.Nil, c.Timestamps.Signature)
 }
 
 func TestChunkRef_ObjectPath(t *testing.T) {
-	c := New(uuid.Nil, 0, 0)
+	c := New(uuid.Nil, 0)
 	assert.Equal(t, c.Key.String(), c.ObjectPath())
 }
 
 func TestChunkRef_SaveLoad(t *testing.T) {
-	c := New(uuid.New(), 42, 24)
+	c := New(uuid.New(), 42)
 	ps, err := c.Save()
 	if err != nil {
 		t.Fatalf("Save returned error: %v", err)
 	}
-	assert.Len(t, ps, 3)
+	assert.Len(t, ps, 4)
 	loaded := new(ChunkRef)
 	if err := loaded.Load(ps); err != nil {
 		t.Fatalf("Load returned error: %v", err)
@@ -74,12 +77,12 @@ func TestChunkRef_LoadKey(t *testing.T) {
 func TestChunkRef_CacheKey(t *testing.T) {
 	testUUID := uuid.New()
 	assert.Equal(t, testUUID.String(), CacheKey(testUUID))
-	c := New(uuid.Nil, 0, 0)
+	c := New(uuid.Nil, 0)
 	assert.Equal(t, c.Key.String(), c.CacheKey())
 }
 
 func TestChunkRef_EncodeDecodeBytes(t *testing.T) {
-	c := New(uuid.New(), 42, 24)
+	c := New(uuid.New(), 42)
 	encoded, err := c.EncodeBytes()
 	if err != nil {
 		t.Fatalf("EncodeBytes failed with error: %v", err)
