@@ -17,5 +17,4 @@ steps:
   args: ['build', '-t', 'gcr.io/triton-for-games-dev/open-saves-server', '.']
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'gcr.io/triton-for-games-dev/open-saves-collector', '--target', 'collector', '.']
-images: ['gcr.io/triton-for-games-dev/open-saves-server']
-images: ['gcr.io/triton-for-games-dev/open-saves-collector']
+images: ['gcr.io/triton-for-games-dev/open-saves-server', 'gcr.io/triton-for-games-dev/open-saves-collector']
