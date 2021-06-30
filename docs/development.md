@@ -186,9 +186,9 @@ docker push gcr.io/open-saves-dev/open-saves-builder-base:latest
 Cloud Build detects changes to the main branch and kicks off the build and deployment
 of the `open-saves-server:testing` and `open-saves-collector:testing` images to Google
 Container Registry. This is done by a Cloud Build Trigger with the Github App, and the
-file that configures this is `cloudbuild_push_main.yaml`. In addition,
-`cloudbuild_tag_release.yaml` builds and pushes images for the server and collector
-with the `:latest` tag.
+file that configures this is `cloudbuild_update_images.yaml`, using the substitution
+variable "TAG_NAME = testing". A similar trigger tags images with `:latest` when new
+releases are detected, currently any new tags pushed.
 
 These are not to be confused with `cloudbuild.yaml` which configures continuous
 integration when pull requests are opened.
