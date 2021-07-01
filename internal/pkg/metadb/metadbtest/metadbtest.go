@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -89,7 +90,7 @@ func AssertEqualBlobRef(t *testing.T, expected, actual *blobref.BlobRef, msgAndA
 	AssertEqualBlobRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
 }
 
-// AssertEqualBlobRefWithinDuration compares each field in metadb.BlobRef and asserts the timestamps
+// AssertEqualBlobRefWithinDuration compares each field in blobref.BlobRef and asserts the timestamps
 // are within delta.
 func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *blobref.BlobRef, delta time.Duration, msgAndArgs ...interface{}) {
 	t.Helper()
@@ -104,6 +105,32 @@ func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *blobref.Bl
 		assert.Equal(t, expected.Status, actual.Status, msgAndArgs...)
 		assert.Equal(t, expected.StoreKey, actual.StoreKey, msgAndArgs...)
 		assert.Equal(t, expected.RecordKey, actual.RecordKey, msgAndArgs...)
+		assert.Equal(t, expected.Chunked, actual.Chunked, msgAndArgs...)
+		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
+	}
+}
+
+// AssertEqualChunkRef is equivalent to
+// AssertEqualChunkRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
+func AssertEqualChunkRef(t *testing.T, expected, actual *chunkref.ChunkRef, msgAndArgs ...interface{}) {
+	t.Helper()
+	AssertEqualChunkRefWithinDuration(t, expected, actual, time.Duration(0), msgAndArgs...)
+}
+
+// AssertEqualChunkRefWithinDuration compares each field in chunkref.ChunkRef and asserts they are equal
+// (timestamps are within delta).
+func AssertEqualChunkRefWithinDuration(t *testing.T, expected, actual *chunkref.ChunkRef, delta time.Duration, msgAndArgs ...interface{}) {
+	t.Helper()
+	if expected == nil {
+		assert.Nil(t, actual)
+		return
+	}
+	if assert.NotNil(t, actual) {
+		assert.Equal(t, expected.BlobRef, actual.BlobRef, msgAndArgs...)
+		assert.Equal(t, expected.Key, actual.Key, msgAndArgs...)
+		assert.Equal(t, expected.Number, actual.Number, msgAndArgs...)
+		assert.Equal(t, expected.Size, actual.Size, msgAndArgs...)
+		assert.Equal(t, expected.Status, actual.Status, msgAndArgs...)
 		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
 	}
 }
