@@ -21,15 +21,26 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
+// ChunkRef is a metadata entity to keep track of chunks stored in an external blob store.
+// It is a child entity of and always associated to a BlobRef.
 type ChunkRef struct {
-	Key     uuid.UUID `datastore:"-"`
+	// Key is the primary key of the ChunkRef.
+	Key uuid.UUID `datastore:"-"`
+	// BlobRef is the key of parent BlobRef.
 	BlobRef uuid.UUID `datastore:"-"`
 
-	Number     int32
-	Size       int32
+	// Number is the position of the chunk in the BlobRef.
+	Number int32
+	// Size is the byte size of the chunk.
+	Size int32
+	// Status is the current status of the chunk.
+	blobref.Status
+	// Timestamps keeps track of creation and modification times and stores a randomly
+	// generated UUID to maintain consistency.
 	Timestamps timestamps.Timestamps
 }
 
@@ -72,12 +83,13 @@ func (c *ChunkRef) ObjectPath() string {
 }
 
 // New creates a new ChunkRef instance with the input parameters.
-func New(blobRef uuid.UUID, number, size int32) *ChunkRef {
+func New(blobRef uuid.UUID, number int32) *ChunkRef {
 	return &ChunkRef{
-		Key:     uuid.New(),
-		BlobRef: blobRef,
-		Number:  number,
-		Size:    size,
+		Key:        uuid.New(),
+		BlobRef:    blobRef,
+		Number:     number,
+		Status:     blobref.StatusInitializing,
+		Timestamps: timestamps.New(),
 	}
 }
 
