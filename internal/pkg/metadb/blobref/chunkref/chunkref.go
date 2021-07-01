@@ -28,16 +28,16 @@ import (
 // ChunkRef is a metadata entity to keep track of chunks stored in an external blob store.
 // It is a child entity of and always associated to a BlobRef.
 type ChunkRef struct {
-	// Key is the primary key of the ChunkRef
+	// Key is the primary key of the ChunkRef.
 	Key uuid.UUID `datastore:"-"`
-	// BlobRef is the key of parent BlobRef
+	// BlobRef is the key of parent BlobRef.
 	BlobRef uuid.UUID `datastore:"-"`
 
-	// Number is a position of the chunk in the BlobRef
+	// Number is the position of the chunk in the BlobRef.
 	Number int32
-	// Size is a byte size of the chunk
+	// Size is the byte size of the chunk.
 	Size int32
-	// Status is the current status of the chunk
+	// Status is the current status of the chunk.
 	blobref.Status
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
