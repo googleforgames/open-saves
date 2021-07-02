@@ -160,7 +160,7 @@ a new image locally by running scripts/build-open-saves-builder-base.sh.
 After building the image, you can push it to Cloud Container Repository by running
 
 ```bash
-docker push gcr.io/open-saves-dev/open-saves-builder-base:testing
+docker push gcr.io/triton-for-games-dev/open-saves-builder-base:testing
 ```
 
 Then, change the image tag in scripts/cloudbuild.Dockerfile from latest to
@@ -177,8 +177,8 @@ changes to the main branch on GitHub, and tag and push the new image as latest
 by running
 
 ```bash
-docker tag open-saves-builder-base:latest gcr.io/open-saves-dev/open-saves-builder-base:latest
-docker push gcr.io/open-saves-dev/open-saves-builder-base:latest
+docker tag open-saves-builder-base:latest gcr.io/triton-for-games-dev/open-saves-builder-base:latest
+docker push gcr.io/triton-for-games-dev/open-saves-builder-base:latest
 ```
 
 ## Updating public images
@@ -187,7 +187,7 @@ Cloud Build detects changes to the main branch and kicks off the build and deplo
 of the `open-saves-server:testing` and `open-saves-collector:testing` images to Google
 Container Registry. This is done by a Cloud Build Trigger with the Github App, and the
 file that configures this is `cloudbuild_update_images.yaml`, using the substitution
-variable "TAG_NAME = testing". A similar trigger tags images with `:latest` when new
+variable `TAG_NAME = testing`. A similar trigger tags images with `:latest` when new
 releases are detected, currently any new tags pushed.
 
 These are not to be confused with `cloudbuild.yaml` which configures continuous
