@@ -17,6 +17,7 @@ package blobref
 import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
@@ -100,4 +101,13 @@ func NewChunkedBlobRef(storeKey, recordKey string) *BlobRef {
 // ObjectPath returns an object path for the backend blob storage.
 func (b *BlobRef) ObjectPath() string {
 	return b.Key.String()
+}
+
+// ToProto returns a BlobMetadata representation of the object.
+func (b *BlobRef) ToProto() *pb.BlobMetadata {
+	return &pb.BlobMetadata{
+		StoreKey:  b.StoreKey,
+		RecordKey: b.RecordKey,
+		Size:      b.Size,
+	}
 }
