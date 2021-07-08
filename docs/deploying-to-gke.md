@@ -8,13 +8,12 @@ Follow the steps in the [Deployment Guide](deploying.md) before running the comm
 
 This step requires `kubectl` to be installed.
 
-Similar to Cloud Run, GKE depends on an image that we can build and push to GCR.
+Similar to Cloud Run, we can deploy to GKE using the latest public
+Open Saves server image.
 
 ```bash
 export GCP_PROJECT="your-project-id"
-export TAG=gcr.io/$GCP_PROJECT/open-saves-server:testing
-docker build -t $TAG .
-docker push $TAG
+export TAG=gcr.io/triton-for-games-dev/open-saves-server:latest
 ```
 
 Next, we need to create a cluster that has Workload Identity enabled. It may take several minutes to create a cluster.
