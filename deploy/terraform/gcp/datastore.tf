@@ -25,3 +25,15 @@ resource "google_datastore_index" "blob_status_updated_at" {
     direction = "ASCENDING"
   }
 }
+
+resource "google_datastore_index" "chunk_status_updated_at" {
+  kind = "chunk"
+  properties {
+    name = "Status"
+    direction = "ASCENDING"
+  }
+  properties {
+    name = "Timestamps.UpdatedAt"
+    direction = "ASCENDING"
+  }
+}
