@@ -24,5 +24,5 @@ func TestCursor_NextOnNil(t *testing.T) {
 	var c BlobRefCursor
 	b, err := c.Next()
 	assert.Nil(t, b)
-	assert.Error(t, err)
+	assert.ErrorIs(t, ErrIteratorNil, err)
 }
