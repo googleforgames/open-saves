@@ -20,6 +20,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -122,4 +123,14 @@ func (c *ChunkRef) DecodeBytes(by []byte) error {
 	b := bytes.NewBuffer(by)
 	d := gob.NewDecoder(b)
 	return d.Decode(c)
+}
+
+// ToProto converts returns a pb.ChunkMetadata representation of the
+// ChunkRef object.
+func (c *ChunkRef) ToProto() *pb.ChunkMetadata {
+	return &pb.ChunkMetadata{
+		SessionId: c.BlobRef.String(),
+		Number:    int64(c.Number),
+		Size:      int64(c.Size),
+	}
 }
