@@ -118,3 +118,19 @@ func TestBlobRef_GetObjectPath(t *testing.T) {
 
 	assert.Equal(t, blob.Key.String(), blob.ObjectPath())
 }
+
+func TestBlobRef_ToProto(t *testing.T) {
+	const (
+		size   = int64(123)
+		store  = "store"
+		record = "record"
+	)
+	b := NewBlobRef(size, store, record)
+
+	proto := b.ToProto()
+	if assert.NotNil(t, proto) {
+		assert.Equal(t, b.StoreKey, proto.GetStoreKey())
+		assert.Equal(t, b.RecordKey, proto.GetRecordKey())
+		assert.Equal(t, b.Size, proto.GetSize())
+	}
+}

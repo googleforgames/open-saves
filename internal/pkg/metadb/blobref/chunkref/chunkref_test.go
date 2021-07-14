@@ -95,3 +95,15 @@ func TestChunkRef_EncodeDecodeBytes(t *testing.T) {
 	}
 	assert.Equal(t, c, decoded)
 }
+
+func TestChunkRef_ToProto(t *testing.T) {
+	blobKey := uuid.New()
+	c := New(blobKey, 42)
+	c.Size = 12345
+	proto := c.ToProto()
+	if assert.NotNil(t, proto) {
+		assert.Equal(t, blobKey.String(), proto.GetSessionId())
+		assert.EqualValues(t, c.Size, proto.GetSize())
+		assert.EqualValues(t, c.Number, proto.GetNumber())
+	}
+}

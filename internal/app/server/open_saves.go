@@ -27,20 +27,23 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // TODO(hongalex): make this a configurable field for users.
 const (
-	maxRecordSizeToCache int = 10 * 1024 * 1024 // 10 MB
-	maxInlineBlobSize    int = 64 * 1024        // 64 KiB
-	streamBufferSize     int = 1 * 1024 * 1024  // 1 MiB
-	opaqueStringLimit    int = 32 * 1024        // 32 KiB
+	maxRecordSizeToCache int = 10 * 1024 * 1024       // 10 MB
+	maxInlineBlobSize    int = 64 * 1024              // 64 KiB
+	streamBufferSize     int = 1 * 1024 * 1024        // 1 MiB
+	opaqueStringLimit    int = 32 * 1024              // 32 KiB
+	chunkSizeLimit       int = 1 * 1024 * 1024 * 1024 // 1 GiB
 )
 
 type openSavesServer struct {
@@ -279,6 +282,13 @@ func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *blobref.Blob
 	}
 }
 
+func (s *openSavesServer) chunkRefFail(ctx context.Context, chunk *chunkref.ChunkRef) {
+	chunk.Fail()
+	if err := s.metaDB.UpdateChunkRef(ctx, chunk); err != nil {
+		log.Errorf("Failed to mark ChunkRef (%v) as Failed: %v", chunk.Key, err)
+	}
+}
+
 func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	log.Debugf("Inserting external blob: %v\n", meta)
 	// Create a blob reference based on the metadata.
@@ -455,6 +465,193 @@ func (s *openSavesServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.Pi
 	return &pb.PingResponse{
 		Pong: req.GetPing(),
 	}, nil
+}
+
+func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateChunkedBlobRequest) (*pb.CreateChunkedBlobResponse, error) {
+	b := blobref.NewChunkedBlobRef(req.GetStoreKey(), req.GetRecordKey())
+	b, err := s.metaDB.InsertBlobRef(ctx, b)
+	if err != nil {
+		log.Errorf("CreateChunkedBlob failed for record (%v), blob key (%v): %v", b.RecordKey, b.Key, err)
+		return nil, err
+	}
+	return &pb.CreateChunkedBlobResponse{
+		SessionId: b.Key.String(),
+	}, nil
+}
+
+func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) error {
+	ctx := stream.Context()
+	req, err := stream.Recv()
+	if err != nil {
+		log.Errorf("Recv() returned error: %v", err)
+		return err
+	}
+	meta := req.GetMetadata()
+	if meta == nil {
+		log.Error("GetMetadata() returned nil. First message should be a ChunkMetadata.")
+		return status.Error(codes.InvalidArgument, "First message should be a ChunkMetadata.")
+	}
+	blobKey, err := uuid.Parse(meta.GetSessionId())
+	if err != nil {
+		log.Errorf("SessionId is not a valid UUID string: %v", err)
+		return status.Errorf(codes.InvalidArgument, "SessionId is not a valid UUID string: %v", err)
+	}
+
+	// Create a chunk reference based on the metadata.
+	chunk := chunkref.New(blobKey, int32(meta.GetNumber()))
+	if err := s.metaDB.InsertChunkRef(ctx, chunk); err != nil {
+		return err
+	}
+
+	writer, err := s.blobStore.NewWriter(ctx, chunk.ObjectPath())
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if writer != nil {
+			writer.Close()
+			// This means an abnormal exit, so make sure to mark the blob as Fail.
+			s.chunkRefFail(ctx, chunk)
+		}
+	}()
+
+	written := 0
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Errorf("UploadChunk: stream recv error: %v", err)
+			return err
+		}
+		fragment := req.GetContent()
+		if fragment == nil {
+			return status.Error(codes.InvalidArgument, "Subsequent input messages must contain chunk content")
+		}
+		n, err := writer.Write(fragment)
+		if err != nil {
+			log.Errorf("UploadChunk: BlobStore write error: %v", err)
+			return err
+		}
+		written += n
+		// TODO(yuryu): This is not suitable for unit tests until we make the value
+		// configurable, or have a BlobStore mock.
+		if written > chunkSizeLimit {
+			err := status.Errorf(codes.ResourceExhausted, "UploadChunk: Received chunk size (%v) exceed the limit (%v)", written, chunkSizeLimit)
+			log.Error(err)
+			return err
+		}
+	}
+	err = writer.Close()
+	writer = nil
+	if err != nil {
+		log.Errorf("writer.Close() failed on chunk object %v: %v", chunk.ObjectPath(), err)
+		s.chunkRefFail(ctx, chunk)
+		// The uploaded object can be deleted immediately.
+		if derr := s.blobStore.Delete(ctx, chunk.ObjectPath()); derr != nil {
+			log.Errorf("Delete chunk failed after writer.Close() error: %v", derr)
+		}
+		return err
+	}
+
+	// Update the chunk size based on the actual bytes written
+	// MarkChunkRefReady commits the new change to Datastore
+	chunk.Size = int32(written)
+	if err := s.metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
+		log.Errorf("Failed to update chunkref metadata (%v): %v", chunk.Key, err)
+		s.chunkRefFail(ctx, chunk)
+		// Do not delete the chunk object here. Leave it to the garbage collector.
+		return err
+	}
+	return stream.SendAndClose(meta)
+}
+
+func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.CommitChunkedUploadRequest) (*pb.BlobMetadata, error) {
+	blobKey, err := uuid.Parse(req.GetSessionId())
+	if err != nil {
+		log.Errorf("SessionId is not a valid UUID string: %v", err)
+		return nil, status.Errorf(codes.InvalidArgument, "SessionId is not a valid UUID string: %v", err)
+	}
+	blob, err := s.metaDB.GetBlobRef(ctx, blobKey)
+	if err != nil {
+		log.Errorf("Cannot retrieve chunked blob metadata for session (%v): %v", blobKey, err)
+		return nil, err
+	}
+	_, blob, err = s.metaDB.PromoteBlobRefToCurrent(ctx, blob)
+	if err != nil {
+		log.Errorf("PromoteBlobRefToCurrent failed for object %v: %v", blob.ObjectPath(), err)
+		// Do not delete the blob object here. Leave it to the garbage collector.
+		return nil, err
+	}
+	return blob.ToProto(), nil
+}
+
+func (s *openSavesServer) AbortChunkedUpload(ctx context.Context, req *pb.AbortChunkedUploadRequest) (*emptypb.Empty, error) {
+	id, err := uuid.Parse(req.GetSessionId())
+	if err != nil {
+		log.Errorf("SessionId is not a valid UUID: %v", err)
+		return new(empty.Empty), status.Errorf(codes.InvalidArgument, "SessionId is not a valid UUID: %v", err)
+	}
+	err = s.metaDB.MarkUncommittedBlobForDeletion(ctx, id)
+	if err != nil {
+		log.Errorf("AbortChunkedUpload failed for session (%v): %v", id, err)
+	}
+	return new(empty.Empty), err
+}
+
+func (s *openSavesServer) GetBlobChunk(req *pb.GetBlobChunkRequest, response pb.OpenSaves_GetBlobChunkServer) error {
+	ctx := response.Context()
+
+	chunk, err := s.metaDB.FindChunkRefByNumber(ctx, req.GetStoreKey(), req.GetRecordKey(), int32(req.GetChunkNumber()))
+	if err != nil {
+		log.Errorf("GetBlobChunk failed to get chunk metadata for store (%v), record (%v), number (%v): %v",
+			req.GetStoreKey(), req.GetRecordKey(), req.GetChunkNumber(), err)
+		return err
+	}
+
+	err = response.Send(&pb.GetBlobChunkResponse{
+		Response: &pb.GetBlobChunkResponse_Metadata{
+			Metadata: chunk.ToProto(),
+		},
+	})
+	if err != nil {
+		log.Errorf("Send failed for metadata: %v", err)
+	}
+
+	reader, err := s.blobStore.NewReader(ctx, chunk.ObjectPath())
+	if err != nil {
+		log.Errorf("GetBlobChunk failed to create a reader for chunk (%v): %v", chunk.ObjectPath(), err)
+		return err
+	}
+	defer reader.Close()
+
+	buf := make([]byte, streamBufferSize)
+	sent := 0
+	for {
+		n, err := reader.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Errorf("GetBlobChunk: BlobStore Reader returned error for object (%v): %v", chunk.ObjectPath(), err)
+			return err
+		}
+		err = response.Send(&pb.GetBlobChunkResponse{Response: &pb.GetBlobChunkResponse_Content{
+			Content: buf[:n],
+		}})
+		if err != nil {
+			log.Errorf("GetBlobChunk: Stream send error for object (%v): %v", chunk.ObjectPath(), err)
+			return err
+		}
+		sent += n
+	}
+	if sent != int(chunk.Size) {
+		log.Errorf("GetBlobChunk: Chunk size sent (%v) and stored in the metadata (%v) don't match.", sent, chunk.Size)
+		return status.Errorf(codes.DataLoss,
+			"GetBlobChunk: Chunk size sent (%v) and stored in the metadata (%v) don't match.", sent, chunk.Size)
+	}
+	return nil
 }
 
 func (s *openSavesServer) getRecordAndCache(ctx context.Context, storeKey, key string, hint *pb.Hint) (*record.Record, error) {
