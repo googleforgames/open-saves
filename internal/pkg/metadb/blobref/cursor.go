@@ -20,6 +20,10 @@ import (
 	ds "cloud.google.com/go/datastore"
 )
 
+var (
+	ErrIteratorNil = errors.New("iterator is nil")
+)
+
 // BlobRefCursor is a database cursor for BlobRef.
 type BlobRefCursor struct {
 	iter *ds.Iterator
@@ -30,13 +34,14 @@ func NewCursor(i *ds.Iterator) *BlobRefCursor {
 }
 
 // Next advances the iterator and returns the next value.
-// Returns nil and an iterator.Done at the end of the iterator.
+// Returns nil and and iterator.Done at the end of the iterator.
+// Returns ErrIteratorNil if the iterator is nil.
 func (i *BlobRefCursor) Next() (*BlobRef, error) {
 	if i == nil {
-		return nil, errors.New("BlobRefIterator.Next was called on nil")
+		return nil, ErrIteratorNil
 	}
 	if i.iter == nil {
-		return nil, errors.New("iterator is nil")
+		return nil, ErrIteratorNil
 	}
 	var blob BlobRef
 	_, err := i.iter.Next(&blob)
