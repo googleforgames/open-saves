@@ -1,17 +1,23 @@
-# Reference
-
+# Protocol Documentation
 <a name="top"></a>
 
 ## Table of Contents
 
-- [api/open_saves.proto](../api/open_saves.proto)
+- [open_saves.proto](#open_saves.proto)
+    - [AbortChunkedUploadRequest](#opensaves.AbortChunkedUploadRequest)
     - [BlobMetadata](#opensaves.BlobMetadata)
+    - [ChunkMetadata](#opensaves.ChunkMetadata)
+    - [CommitChunkedUploadRequest](#opensaves.CommitChunkedUploadRequest)
     - [CreateBlobRequest](#opensaves.CreateBlobRequest)
+    - [CreateChunkedBlobRequest](#opensaves.CreateChunkedBlobRequest)
+    - [CreateChunkedBlobResponse](#opensaves.CreateChunkedBlobResponse)
     - [CreateRecordRequest](#opensaves.CreateRecordRequest)
     - [CreateStoreRequest](#opensaves.CreateStoreRequest)
     - [DeleteBlobRequest](#opensaves.DeleteBlobRequest)
     - [DeleteRecordRequest](#opensaves.DeleteRecordRequest)
     - [DeleteStoreRequest](#opensaves.DeleteStoreRequest)
+    - [GetBlobChunkRequest](#opensaves.GetBlobChunkRequest)
+    - [GetBlobChunkResponse](#opensaves.GetBlobChunkResponse)
     - [GetBlobRequest](#opensaves.GetBlobRequest)
     - [GetBlobResponse](#opensaves.GetBlobResponse)
     - [GetRecordRequest](#opensaves.GetRecordRequest)
@@ -29,6 +35,7 @@
     - [Record.PropertiesEntry](#opensaves.Record.PropertiesEntry)
     - [Store](#opensaves.Store)
     - [UpdateRecordRequest](#opensaves.UpdateRecordRequest)
+    - [UploadChunkRequest](#opensaves.UploadChunkRequest)
   
     - [FilterOperator](#opensaves.FilterOperator)
     - [Property.Type](#opensaves.Property.Type)
@@ -39,10 +46,25 @@
 
 
 
-<a name="api/open_saves.proto"></a>
+<a name="open_saves.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## api/open_saves.proto
+## open_saves.proto
+
+
+
+<a name="opensaves.AbortChunkedUploadRequest"></a>
+
+### AbortChunkedUploadRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| session_id | [string](#string) |  | session_id is the ID of a chunked upload session to abort. |
+
+
+
 
 
 
@@ -65,6 +87,39 @@ when creating (uploading) a new blob object.
 
 
 
+<a name="opensaves.ChunkMetadata"></a>
+
+### ChunkMetadata
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| session_id | [string](#string) |  | session_id is the ID of a chunk upload session. Not used for downloads. |
+| number | [int64](#int64) |  | number is the number |
+| size | [int64](#int64) |  | size is a byte size of the chunk. |
+| hint | [Hint](#opensaves.Hint) |  | Performance hints (write only). |
+
+
+
+
+
+
+<a name="opensaves.CommitChunkedUploadRequest"></a>
+
+### CommitChunkedUploadRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| session_id | [string](#string) |  | session_id is the ID of a chunked upload session to commit. |
+
+
+
+
+
+
 <a name="opensaves.CreateBlobRequest"></a>
 
 ### CreateBlobRequest
@@ -77,6 +132,38 @@ should contain content.
 | ----- | ---- | ----- | ----------- |
 | metadata | [BlobMetadata](#opensaves.BlobMetadata) |  | metadata is the metadata used to initialize the blob object with. |
 | content | [bytes](#bytes) |  | content is the binary content of the blob object. |
+
+
+
+
+
+
+<a name="opensaves.CreateChunkedBlobRequest"></a>
+
+### CreateChunkedBlobRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| store_key | [string](#string) |  | store_key is the key of the store that the record belongs to. |
+| record_key | [string](#string) |  | record_key is the key of the record the new blob object belongs to. |
+| chunk_size | [int64](#int64) |  | Size of each chunk |
+
+
+
+
+
+
+<a name="opensaves.CreateChunkedBlobResponse"></a>
+
+### CreateChunkedBlobResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| session_id | [string](#string) |  | session_id is a chunked |
 
 
 
@@ -163,6 +250,42 @@ should contain content.
 
 
 
+<a name="opensaves.GetBlobChunkRequest"></a>
+
+### GetBlobChunkRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| store_key | [string](#string) |  | The key of the store that the record belongs to. |
+| record_key | [string](#string) |  | The key of the record to get. |
+| chunk_number | [int64](#int64) |  | chunk_number is the number of the chunk to get. |
+| hint | [Hint](#opensaves.Hint) |  | Performance hints. |
+
+
+
+
+
+
+<a name="opensaves.GetBlobChunkResponse"></a>
+
+### GetBlobChunkResponse
+GetBlobChunkResponse is a server-streaming response to return metadata and
+content of a chunked blob object. The first message contains metadata and the
+subsequent messages contain the binary data of the chunk inthe content field.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| metadata | [ChunkMetadata](#opensaves.ChunkMetadata) |  |  |
+| content | [bytes](#bytes) |  |  |
+
+
+
+
+
+
 <a name="opensaves.GetBlobRequest"></a>
 
 ### GetBlobRequest
@@ -184,7 +307,7 @@ should contain content.
 
 ### GetBlobResponse
 GetBlobResponse is a server-streaming response to return metadata and
-content of a blob object. The first message contains blob_ref and the
+content of a blob object. The first message contains metadata and the
 subsequent messages contain the rest of the binary blob in the content
 field.
 
@@ -400,6 +523,9 @@ Record represents each entity in the Open Saves database.
 | tags | [string](#string) | repeated | tags are queryable strings to categorize records Examples: &#34;player:1&#34;, &#34;system&#34;, &#34;inventory:xxx&#34; |
 | created_at | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | created_at is the point in time in UTC when the Record is created on the Open Saves server. It is managed and set by the server. |
 | updated_at | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | updated_at is the point in time in UTC when the Record is updated on the Open Saves server. It is managed by the server and updated every time the Record is updated. |
+| chunked | [bool](#bool) |  | chunked is set true if the attached blob is chunked, otherwise false. |
+| number_of_chunks | [int64](#int64) |  | Number of chunks. |
+| opaque_string | [string](#string) |  | Opaque string where you can store any utf-8 string (e.g. JSON) that is too big and does not fit in the properties. This will not be indexed or queryable. The current size limit is 32KiB. |
 
 
 
@@ -458,6 +584,24 @@ Store represents an internal bucket to contain records.
 
 
 
+
+<a name="opensaves.UploadChunkRequest"></a>
+
+### UploadChunkRequest
+UploadChunkRequest is used by UploadChunk, which is a client-streaming
+method. The first message should contain the metadata, and the subsequent
+messages should contain the content field until EOF.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| metadata | [ChunkMetadata](#opensaves.ChunkMetadata) |  | metadata is the metadata to associate the chunk to. |
+| content | [bytes](#bytes) |  | content is the binary content of the chunk. |
+
+
+
+
+
  
 
 
@@ -498,7 +642,6 @@ Supported structured data types
 
 ### OpenSaves
 Public interface of the Open Saves service.
-TODO(#69): Add streaming endpoints to transfer large blobs.
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
@@ -512,7 +655,12 @@ TODO(#69): Add streaming endpoints to transfer large blobs.
 | UpdateRecord | [UpdateRecordRequest](#opensaves.UpdateRecordRequest) | [Record](#opensaves.Record) | UpdateRecord updates an existing record. This returns an error and does not create a new record if the key doesn&#39;t exist. |
 | DeleteRecord | [DeleteRecordRequest](#opensaves.DeleteRecordRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | DeleteRecord deletes a single record with the specified key. |
 | CreateBlob | [CreateBlobRequest](#opensaves.CreateBlobRequest) stream | [BlobMetadata](#opensaves.BlobMetadata) | CreateBlob adds a new blob to a record. |
-| GetBlob | [GetBlobRequest](#opensaves.GetBlobRequest) | [GetBlobResponse](#opensaves.GetBlobResponse) stream | GetBlob retrieves a blob object in a record. |
+| CreateChunkedBlob | [CreateChunkedBlobRequest](#opensaves.CreateChunkedBlobRequest) | [CreateChunkedBlobResponse](#opensaves.CreateChunkedBlobResponse) | CreateChunkedBlob starts a new chunked blob upload session. |
+| UploadChunk | [UploadChunkRequest](#opensaves.UploadChunkRequest) stream | [ChunkMetadata](#opensaves.ChunkMetadata) | UploadChunk uploads and stores each each chunk. |
+| CommitChunkedUpload | [CommitChunkedUploadRequest](#opensaves.CommitChunkedUploadRequest) | [BlobMetadata](#opensaves.BlobMetadata) | CommitChunkedUpload commits a chunked blob upload session and makes the blob available for reads. |
+| AbortChunkedUpload | [AbortChunkedUploadRequest](#opensaves.AbortChunkedUploadRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | AbortChunkedUploads aborts a chunked blob upload session and discards temporary objects. |
+| GetBlob | [GetBlobRequest](#opensaves.GetBlobRequest) | [GetBlobResponse](#opensaves.GetBlobResponse) stream | GetBlob retrieves a blob object in a record. Currently this method does not support chunked blobs and returns an UNIMPLEMENTED error if called for chunked blobs. TODO(yuryu): Support chunked blobs and return such objects entirely. |
+| GetBlobChunk | [GetBlobChunkRequest](#opensaves.GetBlobChunkRequest) | [GetBlobChunkResponse](#opensaves.GetBlobChunkResponse) stream | GetBlobChunk returns a chunk of a blob object uploaded using CreateChunkedBlob. It returns an INVALID_ARGUMENT error if the blob is not a chunked object. |
 | DeleteBlob | [DeleteBlobRequest](#opensaves.DeleteBlobRequest) | [.google.protobuf.Empty](#google.protobuf.Empty) | DeleteBlob removes an blob object from a record. |
 | Ping | [PingRequest](#opensaves.PingRequest) | [PingResponse](#opensaves.PingResponse) | Ping returns the same string provided by the client. The string is optional and the server returns an empty string if omitted. |
 
