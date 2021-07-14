@@ -39,10 +39,11 @@ import (
 
 // TODO(hongalex): make this a configurable field for users.
 const (
-	maxRecordSizeToCache int = 10 * 1024 * 1024 // 10 MB
-	maxInlineBlobSize    int = 64 * 1024        // 64 KiB
-	streamBufferSize     int = 1 * 1024 * 1024  // 1 MiB
-	opaqueStringLimit    int = 32 * 1024        // 32 KiB
+	maxRecordSizeToCache int = 10 * 1024 * 1024       // 10 MB
+	maxInlineBlobSize    int = 64 * 1024              // 64 KiB
+	streamBufferSize     int = 1 * 1024 * 1024        // 1 MiB
+	opaqueStringLimit    int = 32 * 1024              // 32 KiB
+	chunkSizeLimit       int = 1 * 1024 * 1024 * 1024 // 1 GiB
 )
 
 type openSavesServer struct {
@@ -514,14 +515,14 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 		}
 	}()
 
-	written := int32(0)
+	written := 0
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Errorf("CreateChunkedBlob: stream recv error: %v", err)
+			log.Errorf("UploadChunk: stream recv error: %v", err)
 			return err
 		}
 		fragment := req.GetContent()
@@ -530,10 +531,17 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 		}
 		n, err := writer.Write(fragment)
 		if err != nil {
-			log.Errorf("CreateChunkedBlob: BlobStore write error: %v", err)
+			log.Errorf("UploadChunk: BlobStore write error: %v", err)
 			return err
 		}
-		written += int32(n)
+		written += n
+		// TODO(yuryu): This is not suitable for unit tests until we make the value
+		// configurable, or have a BlobStore mock.
+		if written > chunkSizeLimit {
+			err := status.Errorf(codes.ResourceExhausted, "UploadChunk: Received chunk size (%v) exceed the limit (%v)", written, chunkSizeLimit)
+			log.Error(err)
+			return err
+		}
 	}
 	err = writer.Close()
 	writer = nil
@@ -549,7 +557,7 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 
 	// Update the chunk size based on the actual bytes written
 	// MarkChunkRefReady commits the new change to Datastore
-	chunk.Size = written
+	chunk.Size = int32(written)
 	if err := s.metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
 		log.Errorf("Failed to update chunkref metadata (%v): %v", chunk.Key, err)
 		s.chunkRefFail(ctx, chunk)
