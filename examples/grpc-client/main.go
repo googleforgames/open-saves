@@ -33,6 +33,7 @@ import (
 
 var (
 	address      = flag.String("address", "localhost:6000", "Address of Open Saves server")
+	insecure     = flag.Bool("insecure", false, "Dial grpc server insecurely")
 	authenticate = flag.Bool("authenticate", false, "Dial grpc server with default authentication")
 )
 
@@ -51,6 +52,9 @@ func main() {
 		pool, _ := x509.SystemCertPool()
 		creds := credentials.NewClientTLSFromCert(pool, "")
 		opts = append(opts, option.WithGRPCDialOption(grpc.WithTransportCredentials(creds)), option.WithoutAuthentication())
+	}
+	if *insecure {
+		opts = append(opts, option.WithGRPCDialOption(grpc.WithInsecure()), option.WithoutAuthentication())
 	}
 	if *address != "" {
 		opts = append(opts, option.WithEndpoint(*address))
