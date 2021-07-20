@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"log"
@@ -25,13 +26,15 @@ import (
 	"google.golang.org/api/option"
 	gtransport "google.golang.org/api/transport/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	pb "github.com/googleforgames/open-saves/api"
 )
 
 var (
-	address  = flag.String("address", "localhost:6000", "Address of Open Saves server")
-	insecure = flag.Bool("insecure", false, "Dial grpc server insecurely")
+	address      = flag.String("address", "localhost:6000", "Address of Open Saves server")
+	insecure     = flag.Bool("insecure", false, "Dial grpc server insecurely")
+	authenticate = flag.Bool("authenticate", false, "Dial grpc server with default authentication")
 )
 
 func defaultClientOptions() []option.ClientOption {
@@ -45,6 +48,11 @@ func main() {
 	ctx := context.Background()
 
 	opts := defaultClientOptions()
+	if !*authenticate {
+		pool, _ := x509.SystemCertPool()
+		creds := credentials.NewClientTLSFromCert(pool, "")
+		opts = append(opts, option.WithGRPCDialOption(grpc.WithTransportCredentials(creds)), option.WithoutAuthentication())
+	}
 	if *insecure {
 		opts = append(opts, option.WithGRPCDialOption(grpc.WithInsecure()), option.WithoutAuthentication())
 	}
