@@ -622,6 +622,24 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 	return datastoreErrToGRPCStatus(err)
 }
 
+// DeleteChunkRef deletes the ChunkRef object from the database.
+// Returned errors:
+//	- NotFound: the chunkref object is not found.
+//	- FailedPrecondition: the chunkref status is Ready and can't be deleted.
+func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) error {
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		var chunk chunkref.ChunkRef
+		if err := tx.Get(m.createChunkRefKey(blobKey, key), &chunk); err != nil {
+			return err
+		}
+		if chunk.Status == blobref.StatusReady {
+			return status.Error(codes.FailedPrecondition, "chunk is currently marked as ready. mark it for deletion first")
+		}
+		return tx.Delete(m.createChunkRefKey(blobKey, key))
+	})
+	return datastoreErrToGRPCStatus(err)
+}
+
 // ListBlobRefsByStatus returns a cursor that iterates over BlobRefs
 // where Status = status and UpdatedAt < olderThan.
 func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status, olderThan time.Time) (*blobref.BlobRefCursor, error) {
@@ -629,6 +647,21 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 		Filter("Timestamps.UpdatedAt <", olderThan)
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
+}
+
+// ListChunkRefsByStatus returns a cursor that iterates over ChunkRefs
+// where Status = status and UpdatedAt < olderThan.
+func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Status, olderThan time.Time) *chunkref.ChunkRefCursor {
+	query := m.newQuery(chunkKind).Filter("Status = ", int(status)).
+		Filter("Timestamps.UpdatedAt <", olderThan)
+	return chunkref.NewCursor(m.client.Run(ctx, query))
+}
+
+// GetChildChunkRefs returns a ChunkRef cursor that iterats over child ChunkRef
+// entries of the BlobRef specified by blobkey.
+func (m *MetaDB) GetChildChunkRefs(ctx context.Context, blobKey uuid.UUID) *chunkref.ChunkRefCursor {
+	query := m.newQuery(chunkKind).Ancestor(m.createBlobKey(blobKey))
+	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
 
 func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {

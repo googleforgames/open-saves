@@ -19,11 +19,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	log "github.com/sirupsen/logrus"
 	"gocloud.dev/gcerrors"
 	"google.golang.org/api/iterator"
@@ -93,6 +95,77 @@ func (c *Collector) run(ctx context.Context) {
 	}
 	for _, s := range statuses {
 		c.deleteMatchingBlobRefs(ctx, s, c.cfg.Before)
+		c.deleteMatchingChunkRefs(ctx, s, c.cfg.Before)
+	}
+}
+
+func (c *Collector) deleteChunk(ctx context.Context, chunk *chunkref.ChunkRef) error {
+	if err := c.blob.Delete(ctx, chunk.ObjectPath()); err != nil {
+		if gcerrors.Code(err) != gcerrors.NotFound {
+			log.Errorf("Blob.Delete failed for chunkref key(%v): %v", chunk.Key, err)
+			if chunk.Status != blobref.StatusError {
+				chunk.Fail()
+				if err := c.metaDB.UpdateChunkRef(ctx, chunk); err != nil {
+					log.Errorf("MetaDB.UpdateChunkRef failed for key(%v): %v", chunk.Key, err)
+				}
+			}
+			return err
+		} else {
+			log.Warnf("Blob (%v) was not found.", chunk.ObjectPath())
+		}
+	}
+	return nil
+}
+
+func (c *Collector) deleteChildChunks(ctx context.Context, blobKey uuid.UUID) error {
+	cur := c.metaDB.GetChildChunkRefs(ctx, blobKey)
+	for {
+		chunk, err := cur.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Errorf("cursor.Next() returned error: %v", err)
+			return err
+		}
+		if err := c.deleteChunk(ctx, chunk); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Collector) markBlobFailed(ctx context.Context, blob *blobref.BlobRef) {
+	if blob.Status != blobref.StatusError {
+		blob.Fail()
+		_, err := c.metaDB.UpdateBlobRef(ctx, blob)
+		if err != nil {
+			log.Errorf("MetaDB.UpdateBlobRef failed for key(%v): %v", blob.Key, err)
+		}
+	}
+}
+
+func (c *Collector) deleteBlob(ctx context.Context, blob *blobref.BlobRef) {
+	if blob.Chunked {
+		if err := c.deleteChildChunks(ctx, blob.Key); err != nil {
+			c.markBlobFailed(ctx, blob)
+			return
+		}
+	} else {
+		if err := c.blob.Delete(ctx, blob.ObjectPath()); err != nil {
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
+				c.markBlobFailed(ctx, blob)
+				return
+			} else {
+				log.Warnf("Blob (%v) was not found. Deleting BlobRef (%v) anyway.", blob.ObjectPath(), blob.Key)
+			}
+		}
+	}
+	if err := c.metaDB.DeleteBlobRef(ctx, blob.Key); err != nil {
+		log.Errorf("DeleteBlobRef failed for key(%v): %v", blob.Key, err)
+	} else {
+		log.Infof("Deleted BlobRef (%v), status = %v", blob.Key, blob.Status)
 	}
 }
 
@@ -112,25 +185,30 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 			log.Errorf("cursor.Next() returned error: %v", err)
 			break
 		}
-		if err := c.blob.Delete(ctx, blob.ObjectPath()); err != nil {
-			if gcerrors.Code(err) != gcerrors.NotFound {
-				log.Errorf("Blob.Delete failed for key(%v): %v", blob.Key, err)
-				if blob.Status != blobref.StatusError {
-					blob.Fail()
-					_, err := c.metaDB.UpdateBlobRef(ctx, blob)
-					if err != nil {
-						log.Errorf("MetaDB.UpdateBlobRef failed for key(%v): %v", blob.Key, err)
-					}
-				}
-				continue
-			} else {
-				log.Warnf("Blob (%v) was not found. Deleting BlobRef (%v) anyway.", blob.ObjectPath(), blob.Key)
-			}
+		c.deleteBlob(ctx, blob)
+	}
+	return nil
+}
+
+func (c *Collector) deleteMatchingChunkRefs(ctx context.Context, status blobref.Status, olderThan time.Time) error {
+	log.Infof("Garbage collecting ChunkRef objects with status = %v, older than %v", status, olderThan)
+	cursor := c.metaDB.ListChunkRefsByStatus(ctx, status, olderThan)
+	for {
+		chunk, err := cursor.Next()
+		if err == iterator.Done {
+			break
 		}
-		if err := c.metaDB.DeleteBlobRef(ctx, blob.Key); err != nil {
-			log.Errorf("DeleteBlobRef failed for key(%v): %v", blob.Key, err)
+		if err != nil {
+			log.Errorf("cursor.Next() return error: %v", err)
+			return err
 		}
-		log.Infof("Deleted BlobRef (%v), status = %v", blob.Key, blob.Status)
+		if err := c.deleteChunk(ctx, chunk); err != nil {
+			log.Errorf("deleteChunk failed for chunk (%v): %v", chunk.Key, err)
+			continue
+		}
+		if err := c.metaDB.DeleteChunkRef(ctx, chunk.BlobRef, chunk.Key); err != nil {
+			log.Errorf("DeleteChunkRef failed for chunk (%v): %v", chunk.Key, err)
+		}
 	}
 	return nil
 }
