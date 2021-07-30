@@ -22,6 +22,7 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/stretchr/testify/assert"
@@ -39,6 +40,7 @@ const (
 	storeKind         = "store"
 	recordKind        = "record"
 	blobKind          = "blob"
+	chunkKind         = "chunk"
 	testTimeThreshold = -1 * time.Hour
 )
 
@@ -110,6 +112,22 @@ func setupTestBlobRef(ctx context.Context, t *testing.T, ds *datastore.Client, b
 	}
 	t.Cleanup(func() {
 		ds.Delete(ctx, key)
+	})
+}
+
+func chunkRefKey(chunk *chunkref.ChunkRef) *datastore.Key {
+	return datastore.NameKey(chunkKind, chunk.Key.String(),
+		datastore.NameKey(blobKind, chunk.BlobRef.String(), nil))
+}
+
+func setupTestChunkRef(ctx context.Context, t *testing.T, collector *Collector, ds *datastore.Client, chunk *chunkref.ChunkRef) {
+	t.Helper()
+
+	if err := collector.metaDB.InsertChunkRef(ctx, chunk); err != nil {
+		t.Fatalf("InsertChunkRef failed: %v", err)
+	}
+	t.Cleanup(func() {
+		ds.Delete(ctx, chunkRefKey(chunk))
 	})
 }
 
@@ -204,5 +222,57 @@ func TestCollector_DeletesUnlinkedBlobRefs(t *testing.T) {
 		blob, err := collector.blob.Get(ctx, b.ObjectPath())
 		assert.Nil(t, blob)
 		assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err))
+	}
+}
+
+func TestCollector_DeletesChunkedBlobs(t *testing.T) {
+	ctx := context.Background()
+	collector := newTestCollector(ctx, t)
+	store := setupTestStore(ctx, t, collector)
+	record := setupTestRecord(ctx, t, collector, store.Key)
+	blob := blobref.NewChunkedBlobRef(store.Key, record.Key)
+	ds := newDatastoreClient(ctx, t)
+	setupTestBlobRef(ctx, t, ds, blob)
+
+	const numChunkRefs = 5
+	chunks := make([]*chunkref.ChunkRef, 0, numChunkRefs)
+
+	// 0 and 2 are old, to be deleted
+	// 1 and 3 have the applicable statuses but new
+	// 4 is still initializing
+	for i := 0; i < numChunkRefs; i++ {
+		chunk := chunkref.New(blob.Key, int32(i))
+		chunk.Timestamps.CreatedAt = collector.cfg.Before
+		chunk.Timestamps.UpdatedAt = collector.cfg.Before
+		chunks = append(chunks, chunk)
+	}
+	chunks[0].MarkForDeletion()
+	chunks[0].Timestamps.UpdatedAt = collector.cfg.Before.Add(-1 * time.Microsecond)
+	chunks[1].MarkForDeletion()
+	chunks[2].Fail()
+	chunks[2].Timestamps.UpdatedAt = collector.cfg.Before.Add(-1 * time.Microsecond)
+	chunks[3].Fail()
+
+	for _, c := range chunks {
+		setupTestChunkRef(ctx, t, collector, ds, c)
+		setupExternalBlob(ctx, t, collector, c.ObjectPath())
+	}
+	collector.run(ctx)
+
+	exists := []bool{false, true, false, true, true}
+	for i, e := range exists {
+		chunk := new(chunkref.ChunkRef)
+		err := ds.Get(ctx, chunkRefKey(chunks[i]), chunk)
+		if e {
+			assert.NoError(t, err)
+		} else {
+			assert.ErrorIs(t, datastore.ErrNoSuchEntity, err)
+		}
+		_, err = collector.blob.Get(ctx, chunks[i].ObjectPath())
+		if e {
+			assert.NoError(t, err)
+		} else {
+			assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err))
+		}
 	}
 }

@@ -1075,3 +1075,88 @@ func TestMetaDB_MultipleChunksWithSameNumber(t *testing.T) {
 		metadbtest.AssertEqualChunkRef(t, chunks[1], got)
 	}
 }
+
+func TestMetaDB_GetChildChunkRefs(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+
+	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
+
+	chunks := []*chunkref.ChunkRef{
+		chunkref.New(blob.Key, 0),
+		chunkref.New(blob.Key, 1),
+		chunkref.New(blob.Key, 2),
+	}
+	chunks[1].Status = blobref.StatusError
+	chunks[2].Status = blobref.StatusPendingDeletion
+
+	for _, chunk := range chunks {
+		setupTestChunkRef(ctx, t, metaDB, chunk)
+	}
+
+	cur := metaDB.GetChildChunkRefs(ctx, blob.Key)
+	for i := 0; i < len(chunks); i++ {
+		actual, err := cur.Next()
+		if assert.NoError(t, err) {
+			metadbtest.AssertEqualChunkRef(t, chunks[actual.Number], actual)
+		}
+	}
+	actual, err := cur.Next()
+	assert.ErrorIs(t, err, iterator.Done)
+	assert.Nil(t, actual)
+}
+
+func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+
+	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
+
+	statuses := []blobref.Status{
+		blobref.StatusError,
+		blobref.StatusInitializing,
+		blobref.StatusPendingDeletion,
+		blobref.StatusPendingDeletion}
+	chunks := []*chunkref.ChunkRef{}
+	for i, s := range statuses {
+		chunk := &chunkref.ChunkRef{
+			Key:     uuid.New(),
+			BlobRef: blob.Key,
+			Status:  s,
+			Number:  int32(i),
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC),
+				UpdatedAt: time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC),
+				Signature: uuid.New(),
+			},
+		}
+		chunks = append(chunks, chunk)
+		setupTestChunkRef(ctx, t, metaDB, chunk)
+	}
+
+	// Should return iterator.Done and nil when not found
+	iter := metaDB.ListChunkRefsByStatus(ctx, blobref.StatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
+	if assert.NotNil(t, iter) {
+		b, err := iter.Next()
+		assert.Equal(t, iterator.Done, err)
+		assert.Nil(t, b)
+	}
+
+	iter = metaDB.ListChunkRefsByStatus(ctx, blobref.StatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
+	if assert.NotNil(t, iter) {
+		// Should return both of the PendingDeletion entries
+		b, err := iter.Next()
+		assert.NoError(t, err)
+		if assert.NotNil(t, b) {
+			metadbtest.AssertEqualChunkRef(t, chunks[2], b)
+		}
+		b, err = iter.Next()
+		assert.NoError(t, err)
+		if assert.NotNil(t, b) {
+			metadbtest.AssertEqualChunkRef(t, chunks[3], b)
+		}
+		b, err = iter.Next()
+		assert.Equal(t, iterator.Done, err)
+		assert.Nil(t, b)
+	}
+}
