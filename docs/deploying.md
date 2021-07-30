@@ -15,7 +15,6 @@
     - [Check Cloud Storage](#check-cloud-storage)
   - [Set up the garbage collector](#set-up-the-garbage-collector)
   - [Next steps](#next-steps)
-
 <!-- /TOC -->
 
 This page explains how to quickly deploy an Open Saves server to Cloud Run on MacOS/Linux.
