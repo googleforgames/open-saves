@@ -18,9 +18,9 @@ import (
 	"context"
 	"flag"
 
-	"github.com/googleforgames/open-saves/examples/load_tester/load"
-	"github.com/googleforgames/open-saves/examples/load_tester/load/getrecord"
-	"github.com/googleforgames/open-saves/examples/load_tester/load/ping"
+	"github.com/googleforgames/open-saves/examples/load-tester/load"
+	"github.com/googleforgames/open-saves/examples/load-tester/load/getrecord"
+	"github.com/googleforgames/open-saves/examples/load-tester/load/ping"
 )
 
 var (

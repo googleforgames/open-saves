@@ -21,8 +21,8 @@ import (
 	"time"
 
 	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/examples/load_tester/load"
-	"github.com/googleforgames/open-saves/examples/load_tester/load/utils"
+	"github.com/googleforgames/open-saves/examples/load-tester/load"
+	"github.com/googleforgames/open-saves/examples/load-tester/load/utils"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
