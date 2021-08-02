@@ -6,8 +6,9 @@
   - [Set up Serverless VPC access](#set-up-serverless-vpc-access)
   - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
   - [Cloud Storage](#cloud-storage)
-  - [Deploying to Cloud Run](#deploying-to-cloud-run-recommended) (recommended)
-  - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
+  - [Deploying your application](#deploying-your-application)
+    - [Deploying to Cloud Run](#deploying-to-cloud-run-recommended) (recommended)
+    - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
 - [Check to see everything worked](#check-to-see-everything-worked)
   - [Check Datastore](#check-datastore)
   - [Check Memorystore](#check-memorystore)
@@ -17,7 +18,7 @@
 
 <!-- /TOC -->
 
-This page explains how to quickly deploy an Open Saves server to Cloud Run on MacOS/Linux.
+This page explains how to deploy an Open Saves server to Cloud Run on MacOS/Linux.
 
 ## Before you begin
 
@@ -33,17 +34,27 @@ install and configure the following:
     For more information on installation and set up, see the
     [Cloud SDK Quickstarts](https://cloud.google.com/sdk/docs/quickstarts).
 
-1. Create a new Google Cloud project using the [Google Cloud Console](https://console.cloud.google.com/) or the Google Cloud SDK. See [Creating and managing projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects) for additional information.
+1. Create a new Google Cloud project using the [Google Cloud Console](https://console.cloud.google.com/) or the Google Cloud SDK. See [Creating and managing projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects) for more information.
+
+1. If you plan to deploy your application to Cloud Run, make sure you have [Go v1.14](https://golang.org/doc/install) or later installed.
+
+1. Create a service account using the [Google Cloud Console](https://console.cloud.google.com/) or the Google Cloud SDK. See [Creating a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) for more information.
+
+    Save the service account name to an environment variable:
+    
+    ```bash
+    export OPEN_SAVES_GSA=<your service account name here>
+    ```
 
 1. Enable Google Cloud APIs needed for running Open Saves.
 
-```bash
-gcloud services enable  datastore.googleapis.com \
-                        redis.googleapis.com \
-                        run.googleapis.com \
-                        storage-component.googleapis.com\
-                        vpcaccess.googleapis.com
-```
+  ```bash
+  gcloud services enable  datastore.googleapis.com \
+                          redis.googleapis.com \
+                          run.googleapis.com \
+                          storage-component.googleapis.com\
+                          vpcaccess.googleapis.com
+  ```
 
 ## Setting up backend services on Google Cloud
 
@@ -156,8 +167,11 @@ a globally unique bucket name.
 export BUCKET_PATH=gs://<your-unique-bucket-name>
 gsutil mb $BUCKET_PATH
 ```
+### Deploying your application
 
-### Deploying to Cloud Run (recommended)
+You can deploy your application to either Cloud Run or Google Kubernetes Engine (GKE).
+
+#### Deploying to Cloud Run (recommended)
 
 Run the following commands to deploy the containerized application to Cloud Run.
 This uses the beta version of the Cloud Run service because we are using the
@@ -193,7 +207,6 @@ ENDPOINT=${ENDPOINT#https://} && echo ${ENDPOINT}
 ```
 
 Next, run the example client application to make sure everything worked.
-Make sure you have Go v1.14 or later installed.
 
 ```bash
 git clone https://github.com/googleforgames/open-saves
@@ -210,7 +223,7 @@ The client code does the following:
 4. Creates another record to store our blob.
 5. Uploads a blob via the stream in `CreateBlob`.
 
-### Deploying to Google Kubernetes Engine (GKE)
+#### Deploying to Google Kubernetes Engine (GKE)
 
 See [Deploying to Google Kubernetes Engine](deploying-to-gke.md) for this procedure.
 
@@ -225,7 +238,7 @@ kinds in the search bar at the top, specifically "Store", "Record", "Blob".
 ### Check Memorystore
 
 While you can't see individual keys directly, navigate to the [Memorystore dashboard](https://console.cloud.google.com/memorystore),
-select the instance that you created, and then select the "Keys in database" graph. You should
+select the instance that you created, and then select the "Keys in database" graph from the dropdown menu. You should
 see a few keys like in the screenshot below. It might take a few minutes before the graph is updated.
 
 ![memorystore](images/memorystore.png)
@@ -243,7 +256,7 @@ gsutil ls $BUCKET_PATH
 
 ## Set up the garbage collector
 
-Open Saves doesn't delete blob objects immediately when the DeleteBlob or DeleteRecord methods are invoked. Instead, it marks associated objects for future deletion.
+Open Saves doesn't delete blob objects immediately when the `DeleteBlob` or `DeleteRecord` methods are invoked. Instead, it marks associated objects for future deletion.
 You need to run the garbage collector program periodically to remove unused records and objects in Datastore and Cloud Storage.
 
 First, you need to create a virtual machine on [Compute Engine](https://cloud.google.com/compute).
