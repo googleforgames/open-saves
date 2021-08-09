@@ -156,6 +156,34 @@ and cannot be undone. Google Cloud Platform currently allows only one Datastore
 database per project, so you would need to create a new project to change the
 database location.
 
+Next, create the following `index.yaml` file:
+
+```bash
+cat > index.yaml << 'EOF'
+indexes:
+ 
+- kind: blob
+  properties:
+  - name: Status
+    direction: asc
+  - name: Timestamps.UpdatedAt
+    direction: asc
+ 
+- kind: chunk
+  properties:
+  - name: Status
+    direction: asc
+  - name: Timestamps.UpdatedAt
+    direction: asc
+EOF
+```
+
+Deploy the `index.yaml` file to Datastore:
+
+```bash
+gcloud datastore indexes create index.yaml
+```
+
 ### Cloud Storage
 
 Cloud Storage is used to store large blobs that don't fit in Datastore.
@@ -232,8 +260,11 @@ See [Deploying to Google Kubernetes Engine](deploying-to-gke.md) for this proced
 ### Check Datastore
 
 In your browser, navigate to the [Datastore dashboard](https://console.cloud.google.com/datastore).
-You should see several entities here, from running the example code. Try looking for different
+
+On the **Entities** page, you should see several entities here, from running the example code. Try looking for different
 kinds in the search bar at the top, specifically "Store", "Record", "Blob".
+
+On the **Indexes** page, you should see two kinds: **blob** and **chunk**.
 
 ### Check Memorystore
 
@@ -286,7 +317,7 @@ gcloud compute ssh $GC_VM_NAME --zone=$GCP_ZONE
 You can run the garbage collector with the following command after logging into the machine:
 
 ```bash
-docker run gcr.io/triton-for-games-dev/open-saves-collector:testing
+docker run -- gcr.io/triton-for-games-dev/open-saves-collector:testing /collector -project=$GCP_PROJECT -bucket=$BUCKET_PATH
 ```
 
 You may want to automate the execution. In this guide, we will use systemd to run the
