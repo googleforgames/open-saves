@@ -291,7 +291,7 @@ Open Saves doesn't delete blob objects immediately when the `DeleteBlob` or `Del
 You need to run the garbage collector program periodically to remove unused records and objects in Datastore and Cloud Storage.
 
 First, you need to create a virtual machine on [Compute Engine](https://cloud.google.com/compute).
-We use the `us-central1-c` zone in this guide, however, you may choose to use another zone. We recommend using
+We use the `us-central1-c` zone in this guide, but you can choose a different zone. We recommend using
 one of the zones in the region that you have the Datastore database. Please refer to [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones)
 for more information.
 
