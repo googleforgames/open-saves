@@ -270,7 +270,7 @@ Run the following commands to create a new virtual machine using the same servic
 export GC_VM_NAME=collector-vm
 
 gcloud compute instances create $GC_VM_NAME \
-    --service-account=$OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com 
+    --service-account=$OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com \
     --scopes=https://www.googleapis.com/auth/cloud-platform --machine-type=e2-micro \
     --image-family=cos-85-lts --image-project=cos-cloud --zone=$GCP_ZONE
 ```
