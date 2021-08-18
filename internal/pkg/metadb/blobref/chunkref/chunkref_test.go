@@ -93,7 +93,16 @@ func TestChunkRef_EncodeDecodeBytes(t *testing.T) {
 	if err := decoded.DecodeBytes(encoded); err != nil {
 		t.Fatalf("DecodeBytes failed with error: %v", err)
 	}
-	assert.Equal(t, c, decoded)
+	if assert.NotNil(t, decoded) {
+		assert.Equal(t, c.BlobRef, decoded.BlobRef)
+		assert.Equal(t, c.Key, decoded.Key)
+		assert.Equal(t, c.Number, decoded.Number)
+		assert.Equal(t, c.Size, decoded.Size)
+		assert.Equal(t, c.Status, decoded.Status)
+		assert.Equal(t, c.Timestamps.Signature, decoded.Timestamps.Signature)
+		assert.True(t, c.Timestamps.CreatedAt.Equal(decoded.Timestamps.CreatedAt))
+		assert.True(t, c.Timestamps.UpdatedAt.Equal(decoded.Timestamps.UpdatedAt))
+	}
 }
 
 func TestChunkRef_ToProto(t *testing.T) {
