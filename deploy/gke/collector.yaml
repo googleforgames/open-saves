@@ -1,0 +1,21 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: collector
+  namespace: open-saves-namespace
+spec: 
+  schedule: "10 0 * * *"
+  jobTemplate:
+    spec: 
+      template:
+        spec: 
+          serviceAccountName: open-saves-ksa
+          containers:
+          - name: collector
+            image: gcr.io/triton-for-games-dev/triton-server:testing
+            env:
+            - name: OPEN_SAVES_BUCKET
+              value: "gs://your-bucket-here"
+            - name: OPEN_SAVES_CACHE
+              value: "redis:6379"
+          restartPolicy: OnFailure
