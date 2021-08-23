@@ -156,32 +156,10 @@ and cannot be undone. Google Cloud Platform currently allows only one Datastore
 database per project, so you would need to create a new project to change the
 database location.
 
-Next, create the following `index.yaml` file:
+Next, deploy the `index.yaml` file to Datastore:
 
 ```bash
-cat > index.yaml << 'EOF'
-indexes:
- 
-- kind: blob
-  properties:
-  - name: Status
-    direction: asc
-  - name: Timestamps.UpdatedAt
-    direction: asc
- 
-- kind: chunk
-  properties:
-  - name: Status
-    direction: asc
-  - name: Timestamps.UpdatedAt
-    direction: asc
-EOF
-```
-
-Deploy the `index.yaml` file to Datastore:
-
-```bash
-gcloud datastore indexes create index.yaml
+gcloud datastore indexes create deploy/datastore/index.yaml
 ```
 
 ### Cloud Storage
