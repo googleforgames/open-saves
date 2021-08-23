@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
+	github.com/vmihailenco/msgpack/v5 v5.3.4
 	gocloud.dev v0.23.0
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/oauth2 v0.0.0-20210615190721-d04028783cf1 // indirect

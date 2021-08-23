@@ -15,14 +15,12 @@
 package record
 
 import (
-	"bytes"
-	"encoding/gob"
-
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
+	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -151,17 +149,14 @@ func (r *Record) CacheKey() string {
 
 // DecodeBytes deserializes the byte slice given by by.
 func (r *Record) DecodeBytes(by []byte) error {
-	b := bytes.NewBuffer(by)
-	d := gob.NewDecoder(b)
-	return d.Decode(r)
+	return msgpack.Unmarshal(by, r)
 }
 
 // EncodeBytes returns a serialized byte slice of the object.
 func (r *Record) EncodeBytes() ([]byte, error) {
-	b := new(bytes.Buffer)
-	e := gob.NewEncoder(b)
-	if err := e.Encode(r); err != nil {
+	b, err := msgpack.Marshal(r)
+	if err != nil {
 		return nil, err
 	}
-	return b.Bytes(), nil
+	return b, nil
 }
