@@ -15,15 +15,13 @@
 package chunkref
 
 import (
-	"bytes"
-	"encoding/gob"
-
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // ChunkRef is a metadata entity to keep track of chunks stored in an external blob store.
@@ -110,19 +108,16 @@ func (c ChunkRef) CacheKey() string {
 
 // EncodeBytes returns a serialized byte slice of the object.
 func (c *ChunkRef) EncodeBytes() ([]byte, error) {
-	b := new(bytes.Buffer)
-	e := gob.NewEncoder(b)
-	if err := e.Encode(c); err != nil {
+	b, err := msgpack.Marshal(c)
+	if err != nil {
 		return nil, err
 	}
-	return b.Bytes(), nil
+	return b, nil
 }
 
 // DecodeBytes deserializes the byte slice given by by.
 func (c *ChunkRef) DecodeBytes(by []byte) error {
-	b := bytes.NewBuffer(by)
-	d := gob.NewDecoder(b)
-	return d.Decode(c)
+	return msgpack.Unmarshal(by, c)
 }
 
 // ToProto converts returns a pb.ChunkMetadata representation of the
