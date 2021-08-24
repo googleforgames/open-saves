@@ -12,7 +12,7 @@ spec:
           serviceAccountName: open-saves-ksa
           containers:
           - name: collector
-            image: gcr.io/triton-for-games-dev/triton-server:testing
+            image: gcr.io/triton-for-games-dev/open-saves-collector:testing
             env:
             - name: OPEN_SAVES_BUCKET
               value: "gs://your-bucket-here"
