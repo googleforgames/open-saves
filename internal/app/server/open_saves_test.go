@@ -31,6 +31,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -860,8 +862,8 @@ func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	// Non-existent record should fail with codes.FailedPrecondition
 
+	// Non-existent record should fail with codes.FailedPrecondition
 	res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
 		StoreKey:  uuid.NewString(),
 		RecordKey: uuid.NewString(),
