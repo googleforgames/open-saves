@@ -21,7 +21,7 @@ For more information about the API, refer to the [API reference](./docs/referenc
 
 ## Disclaimer
 
-This software is currently alpha, and subject to change. It is not yet ready to be used in production systems.
+This software is currently beta, and subject to change. It is not yet ready to serve production workloads.
 
 ## Contributing to the project
 
