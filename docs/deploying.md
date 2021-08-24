@@ -156,6 +156,12 @@ and cannot be undone. Google Cloud Platform currently allows only one Datastore
 database per project, so you would need to create a new project to change the
 database location.
 
+Next, deploy the `index.yaml` file to Datastore:
+
+```bash
+gcloud datastore indexes create deploy/datastore/index.yaml
+```
+
 ### Cloud Storage
 
 Cloud Storage is used to store large blobs that don't fit in Datastore.
@@ -232,8 +238,11 @@ See [Deploying to Google Kubernetes Engine](deploying-to-gke.md) for this proced
 ### Check Datastore
 
 In your browser, navigate to the [Datastore dashboard](https://console.cloud.google.com/datastore).
-You should see several entities here, from running the example code. Try looking for different
+
+On the **Entities** page, you should see several entities here, from running the example code. Try looking for different
 kinds in the search bar at the top, specifically "Store", "Record", "Blob".
+
+On the **Indexes** page, you should see two kinds: **blob** and **chunk**.
 
 ### Check Memorystore
 
@@ -260,7 +269,7 @@ Open Saves doesn't delete blob objects immediately when the `DeleteBlob` or `Del
 You need to run the garbage collector program periodically to remove unused records and objects in Datastore and Cloud Storage.
 
 First, you need to create a virtual machine on [Compute Engine](https://cloud.google.com/compute).
-We use the `us-central1-c` zone in this guide, however, you may choose to use another zone. We recommend using
+We use the `us-central1-c` zone in this guide, but you can choose a different zone. We recommend using
 one of the zones in the region that you have the Datastore database. Please refer to [Regions and Zones](https://cloud.google.com/compute/docs/regions-zones)
 for more information.
 
@@ -286,7 +295,7 @@ gcloud compute ssh $GC_VM_NAME --zone=$GCP_ZONE
 You can run the garbage collector with the following command after logging into the machine:
 
 ```bash
-docker run gcr.io/triton-for-games-dev/open-saves-collector:testing
+docker run -- gcr.io/triton-for-games-dev/open-saves-collector:testing /collector -project=$GCP_PROJECT -bucket=$BUCKET_PATH
 ```
 
 You may want to automate the execution. In this guide, we will use systemd to run the
