@@ -463,7 +463,7 @@ func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateC
 	b := blobref.NewChunkedBlobRef(req.GetStoreKey(), req.GetRecordKey())
 	b, err := s.metaDB.InsertBlobRef(ctx, b)
 	if err != nil {
-		log.Errorf("CreateChunkedBlob failed for record (%v), blob key (%v): %v", b.RecordKey, b.Key, err)
+		log.Errorf("CreateChunkedBlob failed for store (%v), record (%v): %v", req.GetStoreKey(), req.GetRecordKey(), err)
 		return nil, err
 	}
 	return &pb.CreateChunkedBlobResponse{
