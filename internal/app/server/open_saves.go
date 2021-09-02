@@ -622,6 +622,16 @@ func (s *openSavesServer) GetBlobChunk(req *pb.GetBlobChunkRequest, response pb.
 	sent := 0
 	for {
 		n, err := reader.Read(buf)
+		if n > 0 {
+			err = response.Send(&pb.GetBlobChunkResponse{Response: &pb.GetBlobChunkResponse_Content{
+				Content: buf[:n],
+			}})
+			if err != nil {
+				log.Errorf("GetBlobChunk: Stream send error for object (%v): %v", chunk.ObjectPath(), err)
+				return err
+			}
+			sent += n
+		}
 		if err == io.EOF {
 			break
 		}
@@ -629,14 +639,7 @@ func (s *openSavesServer) GetBlobChunk(req *pb.GetBlobChunkRequest, response pb.
 			log.Errorf("GetBlobChunk: BlobStore Reader returned error for object (%v): %v", chunk.ObjectPath(), err)
 			return err
 		}
-		err = response.Send(&pb.GetBlobChunkResponse{Response: &pb.GetBlobChunkResponse_Content{
-			Content: buf[:n],
-		}})
-		if err != nil {
-			log.Errorf("GetBlobChunk: Stream send error for object (%v): %v", chunk.ObjectPath(), err)
-			return err
-		}
-		sent += n
+
 	}
 	if sent != int(chunk.Size) {
 		log.Errorf("GetBlobChunk: Chunk size sent (%v) and stored in the metadata (%v) don't match.", sent, chunk.Size)
