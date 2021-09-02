@@ -227,21 +227,23 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 			break
 		}
 		req, err := stream.Recv()
+		if req != nil {
+			fragment := req.GetContent()
+			if fragment == nil {
+				return status.Error(codes.InvalidArgument, "Subsequent input messages must contain blob content")
+			}
+			n, err := buffer.Write(fragment)
+			if err != nil {
+				return err
+			}
+			recvd += n
+		}
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return err
 		}
-		fragment := req.GetContent()
-		if fragment == nil {
-			return status.Error(codes.InvalidArgument, "Subsequent input messages must contain blob content")
-		}
-		n, err := buffer.Write(fragment)
-		if err != nil {
-			return err
-		}
-		recvd += n
 	}
 
 	if int64(buffer.Len()) != size {
@@ -304,6 +306,18 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 	written := int64(0)
 	for {
 		req, err := stream.Recv()
+		if req != nil {
+			fragment := req.GetContent()
+			if fragment == nil {
+				return status.Error(codes.InvalidArgument, "Subsequent input messages must contain blob content")
+			}
+			n, err := writer.Write(fragment)
+			if err != nil {
+				log.Errorf("CreateBlob BlobStore write error: %v", err)
+				return err
+			}
+			written += int64(n)
+		}
 		if err == io.EOF {
 			break
 		}
@@ -311,16 +325,6 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 			log.Errorf("CreateBlob stream recv error: %v", err)
 			return err
 		}
-		fragment := req.GetContent()
-		if fragment == nil {
-			return status.Error(codes.InvalidArgument, "Subsequent input messages must contain blob content")
-		}
-		n, err := writer.Write(fragment)
-		if err != nil {
-			log.Errorf("CreateBlob BlobStore write error: %v", err)
-			return err
-		}
-		written += int64(n)
 	}
 	err = writer.Close()
 	writer = nil
@@ -513,28 +517,30 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	written := 0
 	for {
 		req, err := stream.Recv()
+		if req != nil {
+			fragment := req.GetContent()
+			if fragment == nil {
+				return status.Error(codes.InvalidArgument, "Subsequent input messages must contain chunk content")
+			}
+			n, err := writer.Write(fragment)
+			if err != nil {
+				log.Errorf("UploadChunk: BlobStore write error: %v", err)
+				return err
+			}
+			written += n
+			// TODO(yuryu): This is not suitable for unit tests until we make the value
+			// configurable, or have a BlobStore mock.
+			if written > chunkSizeLimit {
+				err := status.Errorf(codes.ResourceExhausted, "UploadChunk: Received chunk size (%v) exceed the limit (%v)", written, chunkSizeLimit)
+				log.Error(err)
+				return err
+			}
+		}
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			log.Errorf("UploadChunk: stream recv error: %v", err)
-			return err
-		}
-		fragment := req.GetContent()
-		if fragment == nil {
-			return status.Error(codes.InvalidArgument, "Subsequent input messages must contain chunk content")
-		}
-		n, err := writer.Write(fragment)
-		if err != nil {
-			log.Errorf("UploadChunk: BlobStore write error: %v", err)
-			return err
-		}
-		written += n
-		// TODO(yuryu): This is not suitable for unit tests until we make the value
-		// configurable, or have a BlobStore mock.
-		if written > chunkSizeLimit {
-			err := status.Errorf(codes.ResourceExhausted, "UploadChunk: Received chunk size (%v) exceed the limit (%v)", written, chunkSizeLimit)
-			log.Error(err)
 			return err
 		}
 	}
