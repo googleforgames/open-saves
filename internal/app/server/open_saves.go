@@ -33,7 +33,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -42,7 +41,6 @@ const (
 	maxRecordSizeToCache int = 10 * 1024 * 1024       // 10 MB
 	maxInlineBlobSize    int = 64 * 1024              // 64 KiB
 	streamBufferSize     int = 1 * 1024 * 1024        // 1 MiB
-	opaqueStringLimit    int = 32 * 1024              // 32 KiB
 	chunkSizeLimit       int = 1 * 1024 * 1024 * 1024 // 1 GiB
 )
 
@@ -106,9 +104,6 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 
 func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
 	record := record.FromProto(req.GetStoreKey(), req.GetRecord())
-	if err := checkRecord(record); err != nil {
-		return nil, err
-	}
 	newRecord, err := s.metaDB.InsertRecord(ctx, req.StoreKey, record)
 	if err != nil {
 		log.Warnf("CreateRecord failed for store (%s), record (%s): %v",
@@ -182,9 +177,6 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
 	updateTo := record.FromProto(req.GetStoreKey(), req.GetRecord())
-	if err := checkRecord(updateTo); err != nil {
-		return nil, err
-	}
 	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), updateTo.Key,
 		func(r *record.Record) (*record.Record, error) {
 			r.OwnerID = updateTo.OwnerID
@@ -471,7 +463,7 @@ func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateC
 	b := blobref.NewChunkedBlobRef(req.GetStoreKey(), req.GetRecordKey())
 	b, err := s.metaDB.InsertBlobRef(ctx, b)
 	if err != nil {
-		log.Errorf("CreateChunkedBlob failed for record (%v), blob key (%v): %v", b.RecordKey, b.Key, err)
+		log.Errorf("CreateChunkedBlob failed for store (%v), record (%v): %v", req.GetStoreKey(), req.GetRecordKey(), err)
 		return nil, err
 	}
 	return &pb.CreateChunkedBlobResponse{
@@ -587,7 +579,7 @@ func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.Commi
 	return blob.ToProto(), nil
 }
 
-func (s *openSavesServer) AbortChunkedUpload(ctx context.Context, req *pb.AbortChunkedUploadRequest) (*emptypb.Empty, error) {
+func (s *openSavesServer) AbortChunkedUpload(ctx context.Context, req *pb.AbortChunkedUploadRequest) (*empty.Empty, error) {
 	id, err := uuid.Parse(req.GetSessionId())
 	if err != nil {
 		log.Errorf("SessionId is not a valid UUID: %v", err)
@@ -709,15 +701,4 @@ func shouldCheckCache(hint *pb.Hint) bool {
 		return true
 	}
 	return !hint.SkipCache
-}
-
-// checkRecord checks a record against size limits.
-// Returns nil if the record satisfies conditions.
-// Returns codes.InvalidArgument if it does not.
-func checkRecord(record *record.Record) error {
-	if len(record.OpaqueString) > opaqueStringLimit {
-		return status.Errorf(codes.InvalidArgument, "The length of OpaqueString exceeds %v bytes (actual = %v bytes)",
-			opaqueStringLimit, len(record.OpaqueString))
-	}
-	return nil
 }

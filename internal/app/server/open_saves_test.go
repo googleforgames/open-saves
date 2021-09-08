@@ -680,34 +680,6 @@ func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
 	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
 }
 
-func generateTestString(length int) string {
-	runes := make([]rune, length)
-	for i := 0; i < length; i++ {
-		runes[i] = rune('0' + i%('z'-'0'))
-	}
-	return string(runes)
-}
-
-func TestOpenSaves_RecordChecks(t *testing.T) {
-	ctx := context.Background()
-	_, listener := getOpenSavesServer(ctx, t, "gcp")
-	_, client := getTestClient(ctx, t, listener)
-	store := &pb.Store{Key: uuid.New().String()}
-	setupTestStore(ctx, t, client, store)
-	record := &pb.Record{Key: uuid.New().String()}
-	const opaqueStringLimit = 32 * 1024
-	record.OpaqueString = generateTestString(opaqueStringLimit)
-	setupTestRecord(ctx, t, client, store.Key, record)
-	record.OpaqueString = generateTestString(opaqueStringLimit + 1)
-
-	_, err := client.UpdateRecord(ctx, &pb.UpdateRecordRequest{
-		StoreKey: store.Key,
-		Record:   record,
-	})
-	assert.Equal(t, codes.InvalidArgument, status.Code(err),
-		"UpdateRecord should return InvalidArgument when OpaqueString is too big.")
-}
-
 func TestOpenSaves_QueryRecords_Filter(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
@@ -884,4 +856,19 @@ func TestOpenSaves_QueryRecords_Tags(t *testing.T) {
 	require.Equal(t, 1, len(resp.StoreKeys))
 
 	assert.Contains(t, resp.Records[0].Tags, "hello")
+}
+
+func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+
+	// Non-existent record should fail with codes.FailedPrecondition
+	res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
+		StoreKey:  uuid.NewString(),
+		RecordKey: uuid.NewString(),
+		ChunkSize: 0,
+	})
+	assert.Nil(t, res)
+	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
