@@ -32,7 +32,7 @@ type Tester interface {
 
 // ConnOptions is a set of connection options
 type ConnOptions struct {
-	// Address is the address of the server to run against */
+	// Address is the address of the server to run against
 	Address string
 	// Insecure is whether to use an insecure connection
 	Insecure bool

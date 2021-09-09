@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package opensaves
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc"
 )
 
+// CreateTempStore creates a new Store with a new UUID string as the key.
 func CreateTempStore(ctx context.Context, conn *grpc.ClientConn) (*pb.Store, error) {
 	client := pb.NewOpenSavesClient(conn)
 	s, err := client.CreateStore(ctx, &pb.CreateStoreRequest{
@@ -39,11 +40,13 @@ func CreateTempStore(ctx context.Context, conn *grpc.ClientConn) (*pb.Store, err
 	return s, nil
 }
 
+// DeleteStore deletes the specified store.
 func DeleteStore(ctx context.Context, conn *grpc.ClientConn, store *pb.Store) {
 	client := pb.NewOpenSavesClient(conn)
-	client.DeleteStore(ctx, &pb.DeleteStoreRequest{Key: store.Key})
+	client.DeleteStore(ctx, &pb.DeleteStoreRequest{Key: store.GetKey()})
 }
 
+// CreateTempRecord creates a new Record inside the store with a new UUID string as the key.
 func CreateTempRecord(ctx context.Context, conn *grpc.ClientConn, store *pb.Store) (*pb.Record, error) {
 	client := pb.NewOpenSavesClient(conn)
 	record, err := client.CreateRecord(ctx, &pb.CreateRecordRequest{StoreKey: store.GetKey(),
@@ -59,6 +62,7 @@ func CreateTempRecord(ctx context.Context, conn *grpc.ClientConn, store *pb.Stor
 	return record, nil
 }
 
+// DeleteRecord deletes the specified record.
 func DeleteRecord(ctx context.Context, conn *grpc.ClientConn, store *pb.Store, record *pb.Record) {
 	client := pb.NewOpenSavesClient(conn)
 	client.DeleteRecord(ctx, &pb.DeleteRecordRequest{StoreKey: store.GetKey(), Key: record.GetKey()})

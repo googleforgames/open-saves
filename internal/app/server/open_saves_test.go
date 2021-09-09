@@ -25,6 +25,8 @@ import (
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
+	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/stretchr/testify/assert"
@@ -49,9 +51,9 @@ const (
 	blobKind       = "blob"
 )
 
-func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
+func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (pb.OpenSavesServer, *bufconn.Listener) {
 	t.Helper()
-	impl, err := newOpenSavesServer(ctx, cloud, testProject, testBucket, testCacheAddr)
+	impl, err := NewOpenSavesServer(ctx, cloud, testProject, testBucket, testCacheAddr)
 	if err != nil {
 		t.Fatalf("Failed to create a new Open Saves server instance: %v", err)
 	}
@@ -66,6 +68,10 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 	}()
 	t.Cleanup(func() { server.Stop() })
 	return impl, listener
+}
+
+func getCacheStore(addr string) *cache.Cache {
+	return cache.New(redis.NewRedis(addr))
 }
 
 func assertTimestampsWithinDelta(t *testing.T, expected, actual *timestamppb.Timestamp) {
@@ -223,6 +229,13 @@ func setupTestRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClien
 	}
 }
 
+func TestOpenSaves_NewServerWithInvalidCloud(t *testing.T) {
+	ctx := context.Background()
+	server, err := NewOpenSavesServer(ctx, "", "", "", "")
+	assert.Nil(t, server)
+	assert.Error(t, err)
+}
+
 func TestOpenSaves_CreateGetDeleteStore(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
@@ -369,7 +382,7 @@ func TestOpenSaves_ListStoresNamePerfectMatch(t *testing.T) {
 
 func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	ctx := context.Background()
-	server, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.New().String()
 	store := &pb.Store{Key: storeKey}
@@ -408,7 +421,8 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	// Check do not cache hint was honored.
 	cacheKey := record.CacheKey(storeKey, recordKey)
 	recFromCache := new(record.Record)
-	err = server.cacheStore.Get(ctx, cacheKey, recFromCache)
+	cacheStore := getCacheStore(testCacheAddr)
+	err = cacheStore.Get(ctx, cacheKey, recFromCache)
 	assert.Error(t, err, "should not have retrieved record from cache after Create with DoNotCache hint")
 
 	getReq := &pb.GetRecordRequest{
@@ -423,7 +437,7 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	}
 
 	recFromCache2 := new(record.Record)
-	err = server.cacheStore.Get(ctx, cacheKey, recFromCache2)
+	err = cacheStore.Get(ctx, cacheKey, recFromCache2)
 	assert.Error(t, err, "should not have retrieved record from cache after Get with DoNotCache hint")
 
 	// Modify GetRecordRequest to not use the hint.
@@ -433,7 +447,7 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	}
 
 	recFromCache3 := new(record.Record)
-	err = server.cacheStore.Get(ctx, cacheKey, recFromCache3)
+	err = cacheStore.Get(ctx, cacheKey, recFromCache3)
 	if assert.NoError(t, err, "should have retrieved record from cache after Get without hints") {
 		assertEqualRecord(t, expected, recFromCache3.ToProto())
 	}
@@ -441,9 +455,9 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	// Insert some bad data directly into the cache store.
 	// Check that the SkipCache hint successfully skips the
 	// cache and retrieves the correct data directly.
-	server.cacheRecord(ctx, &record.Record{
+	cacheStore.Set(ctx, &record.Record{
 		Key: "bad record",
-	}, nil)
+	})
 	getReqSkipCache := &pb.GetRecordRequest{
 		StoreKey: storeKey,
 		Key:      recordKey,
@@ -467,7 +481,7 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	}
 
 	recFromCache4 := new(record.Record)
-	err = server.cacheStore.Get(ctx, cacheKey, recFromCache4)
+	err = cacheStore.Get(ctx, cacheKey, recFromCache4)
 	assert.Error(t, err, "should not have retrieved record from cache post-delete")
 }
 

@@ -49,7 +49,7 @@ func Run(ctx context.Context, network string, cfg *Config) error {
 	}()
 
 	s := grpc.NewServer()
-	server, err := newOpenSavesServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
+	server, err := NewOpenSavesServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
 	if err != nil {
 		return err
 	}

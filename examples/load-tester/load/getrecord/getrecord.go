@@ -22,7 +22,7 @@ import (
 
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/examples/load-tester/load"
-	"github.com/googleforgames/open-saves/examples/load-tester/load/utils"
+	"github.com/googleforgames/open-saves/examples/load-tester/load/opensaves"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -35,11 +35,11 @@ type Tester struct {
 
 // Run runs the load test according to config using conns.
 // Call PrintResults to print results.
-func (b *Tester) Run(ctx context.Context, conns []*grpc.ClientConn, config *load.TestOptions) error {
+func (t *Tester) Run(ctx context.Context, conns []*grpc.ClientConn, config *load.TestOptions) error {
 	log.Infof("Starting GetRecord calls, connections = %v, concurrency = %v, requests = %v",
 		len(conns), config.Concurrency, config.Requests)
-	store, record, err := b.prepare(ctx, conns[0])
-	defer b.cleanup(ctx, conns[0], store, record)
+	store, record, err := t.prepare(ctx, conns[0])
+	defer t.cleanup(ctx, conns[0], store, record)
 	if err != nil {
 		return err
 	}
@@ -55,16 +55,16 @@ func (b *Tester) Run(ctx context.Context, conns []*grpc.ClientConn, config *load
 				wg.Done()
 				succChan <- succeeded
 			}()
-			succeeded, _ = b.runWithConn(ctx, conn, store, record.GetKey(),
+			succeeded, _ = t.runWithConn(ctx, conn, store, record.GetKey(),
 				config.Requests/len(conns), config.Concurrency)
 		}(conn)
 	}
 	wg.Wait()
 
-	b.elapsed = time.Since(start)
-	b.succeeded = 0
+	t.elapsed = time.Since(start)
+	t.succeeded = 0
 	for i := 0; i < len(conns); i++ {
-		b.succeeded += <-succChan
+		t.succeeded += <-succChan
 	}
 	return nil
 }
@@ -113,11 +113,11 @@ func (b *Tester) PrintResults() {
 }
 
 func (b *Tester) prepare(ctx context.Context, conn *grpc.ClientConn) (*pb.Store, *pb.Record, error) {
-	store, err := utils.CreateTempStore(ctx, conn)
+	store, err := opensaves.CreateTempStore(ctx, conn)
 	if err != nil {
 		return nil, nil, err
 	}
-	record, err := utils.CreateTempRecord(ctx, conn, store)
+	record, err := opensaves.CreateTempRecord(ctx, conn, store)
 	if err != nil {
 		return store, nil, err
 	}
@@ -127,8 +127,8 @@ func (b *Tester) prepare(ctx context.Context, conn *grpc.ClientConn) (*pb.Store,
 func (b *Tester) cleanup(ctx context.Context, conn *grpc.ClientConn, store *pb.Store, record *pb.Record) {
 	if store != nil {
 		if record != nil {
-			utils.DeleteRecord(ctx, conn, store, record)
+			opensaves.DeleteRecord(ctx, conn, store, record)
 		}
-		utils.DeleteStore(ctx, conn, store)
+		opensaves.DeleteStore(ctx, conn, store)
 	}
 }

@@ -56,8 +56,15 @@ type openSavesServer struct {
 // Assert openSavesServer implements pb.OpenSavesServer
 var _ pb.OpenSavesServer = new(openSavesServer)
 
-// newOpenSavesServer creates a new instance of the Open Saves server.
-func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (*openSavesServer, error) {
+// NewOpenSavesServer creates a new instance of the Open Saves server.
+// Parameters:
+//  - ctx: context.Context.
+//  - cloud: name of the backend provider. currently only "gcp" is supported.
+//  - project: name of the cloud project to use.
+//  - bucket: bucket url for the blob store. e.g. "gs://triton-integration"
+//  - cacheAddr: address of the cache server to use. e.g. "localhost:6379"
+// Returns an OpenSavesServer instance if error is nil. Otherwise returns nil and error.
+func NewOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (pb.OpenSavesServer, error) {
 	log.Infof("Creating a new Open Saves server instance: cloud = %v, project = %v, bucket = %v, cache address = %v",
 		cloud, project, bucket, cacheAddr)
 

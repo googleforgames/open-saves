@@ -34,7 +34,7 @@ type Tester struct {
 
 // Run runs the load test according to config using conns.
 // Call PrintResults to print results.
-func (b *Tester) Run(ctx context.Context, conns []*grpc.ClientConn, config *load.TestOptions) error {
+func (t *Tester) Run(ctx context.Context, conns []*grpc.ClientConn, config *load.TestOptions) error {
 	log.Infof("Starting Ping calls, connections = %v, concurrency = %v, requests = %v",
 		len(conns), config.Concurrency, config.Requests)
 
@@ -49,15 +49,15 @@ func (b *Tester) Run(ctx context.Context, conns []*grpc.ClientConn, config *load
 				wg.Done()
 				succChan <- succeeded
 			}()
-			succeeded, _ = b.runWithConn(ctx, conn, config.Requests/len(conns), config.Concurrency)
+			succeeded, _ = t.runWithConn(ctx, conn, config.Requests/len(conns), config.Concurrency)
 		}(conn)
 	}
 	wg.Wait()
-	b.elapsed = time.Since(start)
+	t.elapsed = time.Since(start)
 
-	b.succeeded = 0
+	t.succeeded = 0
 	for i := 0; i < len(conns); i++ {
-		b.succeeded += <-succChan
+		t.succeeded += <-succChan
 	}
 	return nil
 }
