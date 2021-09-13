@@ -14,7 +14,7 @@
 
 FROM debian:testing
 
-ENV GO_VERSION=1.15.5
+ENV GO_VERSION=1.17.1
 ENV GOPATH=/go
 ENV SOURCE_DIR=/app
 ENV BUILD_DIR=/build
