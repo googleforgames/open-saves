@@ -480,6 +480,8 @@ message ChunkMetadata {
 
   // Performance hints (write only).
   Hint hint = 4;
+
+  // TODO(yuryu): Add checksum
 }
 
 message CommitChunkedUploadRequest {
