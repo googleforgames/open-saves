@@ -68,7 +68,7 @@ func main() {
 	c := pb.NewOpenSavesClient(connPool)
 
 	store := &pb.Store{
-		Key:     uuid.New().String(),
+		Key:     uuid.NewString(),
 		Name:    "user-store",
 		OwnerId: "admin1",
 	}

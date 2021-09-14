@@ -227,7 +227,7 @@ func TestOpenSaves_CreateGetDeleteStore(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
+	storeKey := uuid.NewString()
 	store := &pb.Store{
 		Key:     storeKey,
 		Name:    "test-createGetDeleteStore-store",
@@ -254,11 +254,11 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
+	storeKey := uuid.NewString()
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	recordKey := uuid.New().String()
+	recordKey := uuid.NewString()
 	const testBlobSize = int64(42)
 	record := &pb.Record{
 		Key:          recordKey,
@@ -289,11 +289,11 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
+	storeKey := uuid.NewString()
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	recordKey := uuid.New().String()
+	recordKey := uuid.NewString()
 	createReq := &pb.CreateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
@@ -342,8 +342,8 @@ func TestOpenSaves_ListStoresNamePerfectMatch(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
-	storeName := "test store " + uuid.New().String()
+	storeKey := uuid.NewString()
+	storeName := "test store " + uuid.NewString()
 	store := &pb.Store{
 		Key:  storeKey,
 		Name: storeName,
@@ -371,11 +371,11 @@ func TestOpenSaves_CacheRecordsWithHints(t *testing.T) {
 	ctx := context.Background()
 	server, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
+	storeKey := uuid.NewString()
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	recordKey := uuid.New().String()
+	recordKey := uuid.NewString()
 	const testBlobSize = int64(256)
 	createReq := &pb.CreateRecordRequest{
 		StoreKey: storeKey,
@@ -601,9 +601,9 @@ func TestOpenSaves_InlineBlobSimple(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	store := &pb.Store{Key: uuid.New().String()}
+	store := &pb.Store{Key: uuid.NewString()}
 	setupTestStore(ctx, t, client, store)
-	record := &pb.Record{Key: uuid.New().String()}
+	record := &pb.Record{Key: uuid.NewString()}
 	setupTestRecord(ctx, t, client, store.Key, record)
 
 	beforeCreateBlob := time.Now()
@@ -640,9 +640,9 @@ func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	store := &pb.Store{Key: uuid.New().String()}
+	store := &pb.Store{Key: uuid.NewString()}
 	setupTestStore(ctx, t, client, store)
-	record := &pb.Record{Key: uuid.New().String()}
+	record := &pb.Record{Key: uuid.NewString()}
 	setupTestRecord(ctx, t, client, store.Key, record)
 
 	const blobSize = 4*1024*1024 + 13 // 4 Mi + 13 B
@@ -684,11 +684,11 @@ func TestOpenSaves_QueryRecords_Filter(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
+	storeKey := uuid.NewString()
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	recordKey1 := uuid.New().String()
+	recordKey1 := uuid.NewString()
 	stringVal1 := &pb.Property_StringValue{StringValue: "foo"}
 	createReq := &pb.CreateRecordRequest{
 		StoreKey: storeKey,
@@ -712,7 +712,7 @@ func TestOpenSaves_QueryRecords_Filter(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	recordKey2 := uuid.New().String()
+	recordKey2 := uuid.NewString()
 	createReq.Record.Key = recordKey2
 	stringVal2 := &pb.Property_StringValue{StringValue: "bar"}
 	createReq.Record.Properties = map[string]*pb.Property{
@@ -758,11 +758,11 @@ func TestOpenSaves_QueryRecords_Owner(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
+	storeKey := uuid.NewString()
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	recordKey1 := uuid.New().String()
+	recordKey1 := uuid.NewString()
 	createReq := &pb.CreateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
@@ -780,7 +780,7 @@ func TestOpenSaves_QueryRecords_Owner(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	recordKey2 := uuid.New().String()
+	recordKey2 := uuid.NewString()
 	createReq.Record.Key = recordKey2
 	createReq.Record.OwnerId = "owner2"
 	_, err = client.CreateRecord(ctx, createReq)
@@ -810,11 +810,11 @@ func TestOpenSaves_QueryRecords_Tags(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
-	storeKey := uuid.New().String()
+	storeKey := uuid.NewString()
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	recordKey1 := uuid.New().String()
+	recordKey1 := uuid.NewString()
 	createReq := &pb.CreateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
@@ -832,7 +832,7 @@ func TestOpenSaves_QueryRecords_Tags(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	recordKey2 := uuid.New().String()
+	recordKey2 := uuid.NewString()
 	createReq.Record.Key = recordKey2
 	createReq.Record.Tags = []string{"hello", "world"}
 	_, err = client.CreateRecord(ctx, createReq)
