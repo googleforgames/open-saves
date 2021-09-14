@@ -97,6 +97,9 @@ service OpenSaves {
   // to 42 if the current value is 24.
   // Otherwise it will not update the property and return the current (unchanged) value
   // and updated = false. The operation is executed atomically.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
   rpc CompareAndSwap(AtomicRequest) returns (AtomicResponse) {}
 
   // CompareAndSwapGreater compares the number of an integer property to value and
@@ -107,6 +110,9 @@ service OpenSaves {
   // Otherwise it will not update the property and return the current (unchanged) value
   // and updated = false. The operation is executed atomically.
   // This method does not use old_value in AtomicRequest.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
   rpc CompareAndSwapGreater(AtomicRequest) returns (AtomicResponse) {}
 
   // CompareAndSwapLess does the same operation as CompareAndSwapLess except
@@ -114,27 +120,45 @@ service OpenSaves {
   rpc CompareAndSwapLess(AtomicRequest) returns (AtomicResponse) {}
 
   // AtomicAdd adds a number to an integer property atomically.
-  // For example, AtomicAdd(property, 42) will run property += 42 and
-  // return the old value.
+  // For example, AtomicAdd(property, 42) will run property += 42 and return the old value.
   // This method does not use old_value in AtomicRequest.
   // The updated field in AtomicResponse is always set to true.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
   rpc AtomicAdd(AtomicRequest) returns (AtomicResponse) {}
 
   // AtomicSub does the same except it subtracts a number.
   rpc AtomicSub(AtomicRequest) returns (AtomicResponse) {}
 
-  // AtomicInc increments the number of an integer property by one if
-  // the current value < value. Otherwise it resets the property to 0.
+  // AtomicInc increments the number of an integer property if less than old_value. Otherwise
+  // it resets the property to value.
+  // if (property < AtomicRequest.old_value) {
+  //   property++
+  // } else {
+  //   property = AtomicRequest.value
+  // }
+  // This makes the property an incrementing counter between [value, old_value].
   // It returns the old value of the property.
-  // This method does not use old_value in AtomicRequest.
   // The updated field in AtomicResponse is set to true.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
   rpc AtomicInc(AtomicRequest) returns (AtomicResponse) {}
 
-  // AtomicDec decrements the number of an integer property by one if
-  // the current value > 0 && current value < value. Otherwise it keeps the current number.
+  // AtomicDec decrements the number of an integer property by one if more than old_value.
+  // Otherwise it resets the property to value.
+  // if (AtomicRequest.old_value < property) {
+  //   property--
+  // } else {
+  //   property = AtomicRequest.value
+  // }
+  // This makes the property a decrementing between [old_value, value]
   // It returns the old value of the property.
-  // This method does not use old_value in AtomicRequest.
   // The updated field in AtomicResponse is always set to true.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
   rpc AtomicDec(AtomicRequest) returns (AtomicResponse) {}
 }
 
@@ -413,23 +437,6 @@ message BlobMetadata {
 
   // Performance hints (write only).
   Hint hint = 4;
-
-  // md5 is the MD5 hash of the blob content.
-  // If supplied for uploads, the server validates the content using the hash value.
-  // For downloads, the server returns the stored hash value of the blob content.
-  // The length of the hash value is 0 (not present) or 16 (present) bytes.
-  bytes md5Hash = 5;
-
-  // crc32c is the CRC32C checksum of the blob content.
-  // Specifically, it uses the Castagnoli polynomial. https://pkg.go.dev/hash/crc32#pkg-constants
-  // If supplied for uploads, the server validates the content using the checksum.
-  // For downloads, the server returns the checksum of the blob content.
-  // Open Saves provides both MD5 and CRC32C because CRC32C is often used by
-  // Cloud object storage services.
-  uint32 crc32c = 6;
-
-  // has_crc32c indicates if crc32c is present.
-  bool has_crc32c = 7;
 }
 
 message CreateChunkedBlobRequest {
@@ -473,23 +480,6 @@ message ChunkMetadata {
 
   // Performance hints (write only).
   Hint hint = 4;
-
-  // md5 is the MD5 hash of the chunk content.
-  // If supplied for uploads, the server validates the content using the hash value.
-  // For downloads, the server returns the stored hash value of the chunk content.
-  // The length of the hash value is 0 (not present) or 16 (present) bytes.
-  bytes md5Hash = 5;
-
-  // crc32c is the CRC32C checksum of the chunk content.
-  // Specifically, it uses the Castagnoli polynomial. https://pkg.go.dev/hash/crc32#pkg-constants
-  // If supplied for uploads, the server validates the content using the checksum.
-  // For downloads, the server returns the checksum of the chunk content.
-  // Open Saves provides both MD5 and CRC32C because CRC32C is often used by
-  // Cloud object storage services.
-  uint32 crc32c = 6;
-
-  // has_crc32c indicates if crc32c is present.
-  bool has_crc32c = 7;
 }
 
 message CommitChunkedUploadRequest {

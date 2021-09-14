@@ -872,3 +872,212 @@ func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
+
+func assertAtomicResponse(t *testing.T, err error, res *pb.AtomicResponse, updated bool, value int64) {
+	t.Helper()
+	if assert.NoError(t, err) {
+		assert.Equal(t, updated, res.Updated)
+		assert.Equal(t, value, res.Value)
+	}
+}
+
+func TestOpenSaves_CompareAndSwap(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	const testPropertyName = "prop1"
+	recordKey := uuid.NewString()
+	record := &pb.Record{
+		Key: recordKey,
+		Properties: map[string]*pb.Property{
+			testPropertyName: {
+				Type:  pb.Property_INTEGER,
+				Value: &pb.Property_IntegerValue{IntegerValue: 42},
+			},
+			"string": {
+				Type:  pb.Property_STRING,
+				Value: &pb.Property_StringValue{StringValue: "Lorem ipsum"},
+			},
+		},
+	}
+
+	newAtomicRequest := func(oldValue, value int64) *pb.AtomicRequest {
+		return &pb.AtomicRequest{
+			StoreKey:     storeKey,
+			RecordKey:    recordKey,
+			PropertyName: testPropertyName,
+			OldValue:     oldValue,
+			Value:        value,
+		}
+	}
+
+	setupTestRecord(ctx, t, client, storeKey, record)
+
+	res, err := client.CompareAndSwap(ctx, newAtomicRequest(41, 42))
+	assertAtomicResponse(t, err, res, false, 42)
+
+	res, err = client.CompareAndSwap(ctx, newAtomicRequest(42, 43))
+	assertAtomicResponse(t, err, res, true, 42)
+
+	res, err = client.CompareAndSwapGreater(ctx, newAtomicRequest(0, 42))
+	assertAtomicResponse(t, err, res, false, 43)
+
+	res, err = client.CompareAndSwapGreater(ctx, newAtomicRequest(0, 43))
+	assertAtomicResponse(t, err, res, false, 43)
+
+	res, err = client.CompareAndSwapGreater(ctx, newAtomicRequest(0, 44))
+	assertAtomicResponse(t, err, res, true, 43)
+
+	res, err = client.CompareAndSwapGreater(ctx, newAtomicRequest(0, -1))
+	assertAtomicResponse(t, err, res, false, 44)
+
+	res, err = client.CompareAndSwapLess(ctx, newAtomicRequest(0, 45))
+	assertAtomicResponse(t, err, res, false, 44)
+
+	res, err = client.CompareAndSwapLess(ctx, newAtomicRequest(0, 44))
+	assertAtomicResponse(t, err, res, false, 44)
+
+	res, err = client.CompareAndSwapLess(ctx, newAtomicRequest(0, 43))
+	assertAtomicResponse(t, err, res, true, 44)
+
+	res, err = client.CompareAndSwapLess(ctx, newAtomicRequest(0, -2))
+	assertAtomicResponse(t, err, res, true, 43)
+
+	res, err = client.CompareAndSwapGreater(ctx, newAtomicRequest(0, -1))
+	assertAtomicResponse(t, err, res, true, -2)
+
+	// Test errors
+	res, err = client.CompareAndSwap(ctx, &pb.AtomicRequest{
+		StoreKey:     storeKey,
+		RecordKey:    recordKey,
+		PropertyName: "string",
+	})
+	assert.Nil(t, res)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	res, err = client.CompareAndSwap(ctx, &pb.AtomicRequest{
+		StoreKey:     storeKey,
+		RecordKey:    recordKey,
+		PropertyName: "non existent",
+	})
+	assert.Nil(t, res)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestOpenSaves_AtomicAddSub(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	const testPropertyName = "prop1"
+	recordKey := uuid.NewString()
+	record := &pb.Record{
+		Key: recordKey,
+		Properties: map[string]*pb.Property{
+			testPropertyName: {
+				Type:  pb.Property_INTEGER,
+				Value: &pb.Property_IntegerValue{IntegerValue: -42},
+			},
+		},
+	}
+	setupTestRecord(ctx, t, client, storeKey, record)
+
+	newAtomicRequest := func(value int64) *pb.AtomicRequest {
+		return &pb.AtomicRequest{
+			StoreKey:     storeKey,
+			RecordKey:    recordKey,
+			PropertyName: testPropertyName,
+			Value:        value,
+		}
+	}
+
+	res, err := client.AtomicAdd(ctx, newAtomicRequest(42))
+	assertAtomicResponse(t, err, res, true, -42)
+
+	res, err = client.AtomicAdd(ctx, newAtomicRequest(1))
+	assertAtomicResponse(t, err, res, true, 0)
+
+	res, err = client.AtomicAdd(ctx, newAtomicRequest(-2))
+	assertAtomicResponse(t, err, res, true, 1)
+
+	res, err = client.AtomicSub(ctx, newAtomicRequest(1))
+	assertAtomicResponse(t, err, res, true, -1)
+
+	res, err = client.AtomicSub(ctx, newAtomicRequest(-44))
+	assertAtomicResponse(t, err, res, true, -2)
+
+	re, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
+	if assert.NoError(t, err) {
+		if v, ok := re.Properties[testPropertyName].Value.(*pb.Property_IntegerValue); ok {
+			assert.Equal(t, int64(42), v.IntegerValue)
+		} else {
+			assert.Fail(t, "property was not an integer")
+		}
+	}
+}
+
+func TestOpenSaves_AtomicIncDec(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	const testPropertyName = "prop1"
+	recordKey := uuid.NewString()
+	record := &pb.Record{
+		Key: recordKey,
+		Properties: map[string]*pb.Property{
+			testPropertyName: {
+				Type:  pb.Property_INTEGER,
+				Value: &pb.Property_IntegerValue{IntegerValue: -1},
+			},
+		},
+	}
+	setupTestRecord(ctx, t, client, storeKey, record)
+
+	newAtomicRequest := func(oldValue, value int64) *pb.AtomicRequest {
+		return &pb.AtomicRequest{
+			StoreKey:     storeKey,
+			RecordKey:    recordKey,
+			PropertyName: testPropertyName,
+			OldValue:     oldValue,
+			Value:        value,
+		}
+	}
+
+	res, err := client.AtomicInc(ctx, newAtomicRequest(2, 0))
+	assertAtomicResponse(t, err, res, true, -1)
+	res, err = client.AtomicInc(ctx, newAtomicRequest(2, 0))
+	assertAtomicResponse(t, err, res, true, 0)
+	res, err = client.AtomicInc(ctx, newAtomicRequest(2, 0))
+	assertAtomicResponse(t, err, res, true, 1)
+	res, err = client.AtomicInc(ctx, newAtomicRequest(2, 0))
+	assertAtomicResponse(t, err, res, true, 2)
+
+	res, err = client.AtomicDec(ctx, newAtomicRequest(-3, -1))
+	assertAtomicResponse(t, err, res, true, 0)
+	res, err = client.AtomicDec(ctx, newAtomicRequest(-3, -1))
+	assertAtomicResponse(t, err, res, true, -1)
+	res, err = client.AtomicDec(ctx, newAtomicRequest(-3, -1))
+	assertAtomicResponse(t, err, res, true, -2)
+	res, err = client.AtomicDec(ctx, newAtomicRequest(-3, -1))
+	assertAtomicResponse(t, err, res, true, -3)
+
+	re, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
+	if assert.NoError(t, err) {
+		if v, ok := re.Properties[testPropertyName].Value.(*pb.Property_IntegerValue); ok {
+			assert.Equal(t, int64(-1), v.IntegerValue)
+		} else {
+			assert.Fail(t, "property was not an integer")
+		}
+	}
+}

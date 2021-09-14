@@ -16,6 +16,7 @@ package metadb
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	ds "cloud.google.com/go/datastore"
@@ -45,7 +46,7 @@ const (
 )
 
 var (
-	ErrNoUpdate = status.Error(codes.OK, "UpdateRecord doesn't need to commit the change")
+	ErrNoUpdate = errors.New("UpdateRecord doesn't need to commit the change")
 )
 
 // MetaDB is a metadata database manager of Open Saves.

@@ -73,6 +73,9 @@ type OpenSavesClient interface {
 	// to 42 if the current value is 24.
 	// Otherwise it will not update the property and return the current (unchanged) value
 	// and updated = false. The operation is executed atomically.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	CompareAndSwap(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
 	// CompareAndSwapGreater compares the number of an integer property to value and
 	// updates the property if the new value is greater than the current value.
@@ -82,29 +85,50 @@ type OpenSavesClient interface {
 	// Otherwise it will not update the property and return the current (unchanged) value
 	// and updated = false. The operation is executed atomically.
 	// This method does not use old_value in AtomicRequest.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	CompareAndSwapGreater(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
 	// CompareAndSwapLess does the same operation as CompareAndSwapLess except
 	// when the new value is less than the old value.
 	CompareAndSwapLess(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
 	// AtomicAdd adds a number to an integer property atomically.
-	// For example, AtomicAdd(property, 42) will run property += 42 and
-	// return the old value.
+	// For example, AtomicAdd(property, 42) will run property += 42 and return the old value.
 	// This method does not use old_value in AtomicRequest.
 	// The updated field in AtomicResponse is always set to true.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	AtomicAdd(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
 	// AtomicSub does the same except it subtracts a number.
 	AtomicSub(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
-	// AtomicInc increments the number of an integer property by one if
-	// the current value < value. Otherwise it resets the property to 0.
+	// AtomicInc increments the number of an integer property if less than old_value. Otherwise
+	// it resets the property to value.
+	// if (property < AtomicRequest.old_value) {
+	//   property++
+	// } else {
+	//   property = AtomicRequest.value
+	// }
+	// This makes the property an incrementing counter between [value, old_value].
 	// It returns the old value of the property.
-	// This method does not use old_value in AtomicRequest.
-	// The updated field in AtomicResponse is always set to true.
+	// The updated field in AtomicResponse is set to true.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	AtomicInc(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
-	// AtomicDec decrements the number of an integer property by one if
-	// the current value > value. Otherwise it keeps the current number.
+	// AtomicDec decrements the number of an integer property by one if more than old_value.
+	// Otherwise it resets the property to value.
+	// if (AtomicRequest.old_value < property) {
+	//   property--
+	// } else {
+	//   property = AtomicRequest.value
+	// }
+	// This makes the property a decrementing between [old_value, value]
 	// It returns the old value of the property.
-	// This method does not use old_value in AtomicRequest.
 	// The updated field in AtomicResponse is always set to true.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	AtomicDec(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
 }
 
@@ -495,6 +519,9 @@ type OpenSavesServer interface {
 	// to 42 if the current value is 24.
 	// Otherwise it will not update the property and return the current (unchanged) value
 	// and updated = false. The operation is executed atomically.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	CompareAndSwap(context.Context, *AtomicRequest) (*AtomicResponse, error)
 	// CompareAndSwapGreater compares the number of an integer property to value and
 	// updates the property if the new value is greater than the current value.
@@ -504,29 +531,50 @@ type OpenSavesServer interface {
 	// Otherwise it will not update the property and return the current (unchanged) value
 	// and updated = false. The operation is executed atomically.
 	// This method does not use old_value in AtomicRequest.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	CompareAndSwapGreater(context.Context, *AtomicRequest) (*AtomicResponse, error)
 	// CompareAndSwapLess does the same operation as CompareAndSwapLess except
 	// when the new value is less than the old value.
 	CompareAndSwapLess(context.Context, *AtomicRequest) (*AtomicResponse, error)
 	// AtomicAdd adds a number to an integer property atomically.
-	// For example, AtomicAdd(property, 42) will run property += 42 and
-	// return the old value.
+	// For example, AtomicAdd(property, 42) will run property += 42 and return the old value.
 	// This method does not use old_value in AtomicRequest.
 	// The updated field in AtomicResponse is always set to true.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	AtomicAdd(context.Context, *AtomicRequest) (*AtomicResponse, error)
 	// AtomicSub does the same except it subtracts a number.
 	AtomicSub(context.Context, *AtomicRequest) (*AtomicResponse, error)
-	// AtomicInc increments the number of an integer property by one if
-	// the current value < value. Otherwise it resets the property to 0.
+	// AtomicInc increments the number of an integer property if less than old_value. Otherwise
+	// it resets the property to value.
+	// if (property < AtomicRequest.old_value) {
+	//   property++
+	// } else {
+	//   property = AtomicRequest.value
+	// }
+	// This makes the property an incrementing counter between [value, old_value].
 	// It returns the old value of the property.
-	// This method does not use old_value in AtomicRequest.
-	// The updated field in AtomicResponse is always set to true.
+	// The updated field in AtomicResponse is set to true.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	AtomicInc(context.Context, *AtomicRequest) (*AtomicResponse, error)
-	// AtomicDec decrements the number of an integer property by one if
-	// the current value > value. Otherwise it keeps the current number.
+	// AtomicDec decrements the number of an integer property by one if more than old_value.
+	// Otherwise it resets the property to value.
+	// if (AtomicRequest.old_value < property) {
+	//   property--
+	// } else {
+	//   property = AtomicRequest.value
+	// }
+	// This makes the property a decrementing between [old_value, value]
 	// It returns the old value of the property.
-	// This method does not use old_value in AtomicRequest.
 	// The updated field in AtomicResponse is always set to true.
+	// Errors:
+	//   - NotFound: the requested record or property was not found.
+	//   - InvalidArgument: the requested property was not an integer.
 	AtomicDec(context.Context, *AtomicRequest) (*AtomicResponse, error)
 	mustEmbedUnimplementedOpenSavesServer()
 }

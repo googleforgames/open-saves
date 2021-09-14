@@ -654,14 +654,14 @@ func (s *openSavesServer) doCompareAndSwap(ctx context.Context, req *pb.AtomicRe
 	res := &pb.AtomicResponse{
 		Updated: true,
 	}
-	_, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), req.GetRecordKey(),
+	updatedRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), req.GetRecordKey(),
 		func(r *record.Record) (*record.Record, error) {
 			property, ok := r.Properties[req.GetPropertyName()]
 			if !ok {
-				return nil, status.Errorf(codes.FailedPrecondition, "property (%v) was not found", req.GetPropertyName())
+				return nil, status.Errorf(codes.NotFound, "property (%v) was not found", req.GetPropertyName())
 			}
 			if property.Type != pb.Property_INTEGER {
-				return nil, status.Errorf(codes.FailedPrecondition, "the value type of property (%v) was not integer: %v",
+				return nil, status.Errorf(codes.InvalidArgument, "the value type of property (%v) was not integer: %v",
 					req.GetPropertyName(), property.Type.String())
 			}
 			// Save the old value.
@@ -678,6 +678,9 @@ func (s *openSavesServer) doCompareAndSwap(ctx context.Context, req *pb.AtomicRe
 	if err != nil {
 		log.Error(err)
 		return nil, err
+	}
+	if res.GetUpdated() {
+		s.cacheRecord(ctx, updatedRecord, req.GetHint())
 	}
 	return res, nil
 }
@@ -734,19 +737,19 @@ func (s *openSavesServer) AtomicSub(ctx context.Context, req *pb.AtomicRequest) 
 func (s *openSavesServer) AtomicInc(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
 	log.Infof("AtomicInc: store (%v), record (%v), property (%v)",
 		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
-	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
-		if property < value {
+	return s.doCompareAndSwap(ctx, req, func(property, oldValue, value int64) (bool, int64) {
+		if property < oldValue {
 			return true, property + 1
 		}
-		return true, 0
+		return true, value
 	})
 }
 
 func (s *openSavesServer) AtomicDec(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
 	log.Infof("AtomicDec: store (%v), record (%v), property (%v)",
 		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
-	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
-		if property > value {
+	return s.doCompareAndSwap(ctx, req, func(property, oldValue, value int64) (bool, int64) {
+		if oldValue < property {
 			return true, property - 1
 		}
 		return true, value
