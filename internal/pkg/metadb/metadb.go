@@ -44,6 +44,10 @@ const (
 	ownerField      = "OwnerID"
 )
 
+var (
+	ErrNoUpdate = status.Error(codes.OK, "UpdateRecord doesn't need to commit the change")
+)
+
 // MetaDB is a metadata database manager of Open Saves.
 // The methods return gRPC error codes. Here are some common error codes
 // returned. For additional details, please look at the method help.
@@ -312,7 +316,8 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 		toUpdate.Timestamps.Update()
 		return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, toUpdate))
 	})
-	if err != nil {
+	// ErrNoUpdate is expected and not treated as an error.
+	if err != nil && err != ErrNoUpdate {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
 	return toUpdate, nil

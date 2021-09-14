@@ -66,6 +66,46 @@ type OpenSavesClient interface {
 	// The string is optional and the server returns an empty string if
 	// omitted.
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	// CompareAndSwap compares the number of an integer property to a old_value and
+	// updates the property to value if the old_value and the current property are equal.
+	// The updated field in AtomicResponse is set to true if the swap is executed.
+	// For example, CompareAndSwap(property, value = 42, old_value = 24) will set the property
+	// to 42 if the current value is 24.
+	// Otherwise it will not update the property and return the current (unchanged) value
+	// and updated = false. The operation is executed atomically.
+	CompareAndSwap(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
+	// CompareAndSwapGreater compares the number of an integer property to value and
+	// updates the property if the new value is greater than the current value.
+	// The updated field in AtomicResponse is set to true if the swap is executed.
+	// For example, CompareAndSwapGreater(property, value = 42) will replace property with 42
+	// and return {value = old value, updated = true} if property < 42.
+	// Otherwise it will not update the property and return the current (unchanged) value
+	// and updated = false. The operation is executed atomically.
+	// This method does not use old_value in AtomicRequest.
+	CompareAndSwapGreater(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
+	// CompareAndSwapLess does the same operation as CompareAndSwapLess except
+	// when the new value is less than the old value.
+	CompareAndSwapLess(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
+	// AtomicAdd adds a number to an integer property atomically.
+	// For example, AtomicAdd(property, 42) will run property += 42 and
+	// return the old value.
+	// This method does not use old_value in AtomicRequest.
+	// The updated field in AtomicResponse is always set to true.
+	AtomicAdd(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
+	// AtomicSub does the same except it subtracts a number.
+	AtomicSub(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
+	// AtomicInc increments the number of an integer property by one if
+	// the current value < value. Otherwise it resets the property to 0.
+	// It returns the old value of the property.
+	// This method does not use old_value in AtomicRequest.
+	// The updated field in AtomicResponse is always set to true.
+	AtomicInc(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
+	// AtomicDec decrements the number of an integer property by one if
+	// the current value > value. Otherwise it keeps the current number.
+	// It returns the old value of the property.
+	// This method does not use old_value in AtomicRequest.
+	// The updated field in AtomicResponse is always set to true.
+	AtomicDec(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error)
 }
 
 type openSavesClient struct {
@@ -334,6 +374,69 @@ func (c *openSavesClient) Ping(ctx context.Context, in *PingRequest, opts ...grp
 	return out, nil
 }
 
+func (c *openSavesClient) CompareAndSwap(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error) {
+	out := new(AtomicResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CompareAndSwap", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) CompareAndSwapGreater(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error) {
+	out := new(AtomicResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CompareAndSwapGreater", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) CompareAndSwapLess(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error) {
+	out := new(AtomicResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CompareAndSwapLess", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) AtomicAdd(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error) {
+	out := new(AtomicResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicAdd", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) AtomicSub(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error) {
+	out := new(AtomicResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicSub", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) AtomicInc(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error) {
+	out := new(AtomicResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicInc", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *openSavesClient) AtomicDec(ctx context.Context, in *AtomicRequest, opts ...grpc.CallOption) (*AtomicResponse, error) {
+	out := new(AtomicResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicDec", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OpenSavesServer is the server API for OpenSaves service.
 // All implementations must embed UnimplementedOpenSavesServer
 // for forward compatibility
@@ -385,6 +488,46 @@ type OpenSavesServer interface {
 	// The string is optional and the server returns an empty string if
 	// omitted.
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	// CompareAndSwap compares the number of an integer property to a old_value and
+	// updates the property to value if the old_value and the current property are equal.
+	// The updated field in AtomicResponse is set to true if the swap is executed.
+	// For example, CompareAndSwap(property, value = 42, old_value = 24) will set the property
+	// to 42 if the current value is 24.
+	// Otherwise it will not update the property and return the current (unchanged) value
+	// and updated = false. The operation is executed atomically.
+	CompareAndSwap(context.Context, *AtomicRequest) (*AtomicResponse, error)
+	// CompareAndSwapGreater compares the number of an integer property to value and
+	// updates the property if the new value is greater than the current value.
+	// The updated field in AtomicResponse is set to true if the swap is executed.
+	// For example, CompareAndSwapGreater(property, value = 42) will replace property with 42
+	// and return {value = old value, updated = true} if property < 42.
+	// Otherwise it will not update the property and return the current (unchanged) value
+	// and updated = false. The operation is executed atomically.
+	// This method does not use old_value in AtomicRequest.
+	CompareAndSwapGreater(context.Context, *AtomicRequest) (*AtomicResponse, error)
+	// CompareAndSwapLess does the same operation as CompareAndSwapLess except
+	// when the new value is less than the old value.
+	CompareAndSwapLess(context.Context, *AtomicRequest) (*AtomicResponse, error)
+	// AtomicAdd adds a number to an integer property atomically.
+	// For example, AtomicAdd(property, 42) will run property += 42 and
+	// return the old value.
+	// This method does not use old_value in AtomicRequest.
+	// The updated field in AtomicResponse is always set to true.
+	AtomicAdd(context.Context, *AtomicRequest) (*AtomicResponse, error)
+	// AtomicSub does the same except it subtracts a number.
+	AtomicSub(context.Context, *AtomicRequest) (*AtomicResponse, error)
+	// AtomicInc increments the number of an integer property by one if
+	// the current value < value. Otherwise it resets the property to 0.
+	// It returns the old value of the property.
+	// This method does not use old_value in AtomicRequest.
+	// The updated field in AtomicResponse is always set to true.
+	AtomicInc(context.Context, *AtomicRequest) (*AtomicResponse, error)
+	// AtomicDec decrements the number of an integer property by one if
+	// the current value > value. Otherwise it keeps the current number.
+	// It returns the old value of the property.
+	// This method does not use old_value in AtomicRequest.
+	// The updated field in AtomicResponse is always set to true.
+	AtomicDec(context.Context, *AtomicRequest) (*AtomicResponse, error)
 	mustEmbedUnimplementedOpenSavesServer()
 }
 
@@ -445,6 +588,27 @@ func (UnimplementedOpenSavesServer) DeleteBlob(context.Context, *DeleteBlobReque
 }
 func (UnimplementedOpenSavesServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedOpenSavesServer) CompareAndSwap(context.Context, *AtomicRequest) (*AtomicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompareAndSwap not implemented")
+}
+func (UnimplementedOpenSavesServer) CompareAndSwapGreater(context.Context, *AtomicRequest) (*AtomicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompareAndSwapGreater not implemented")
+}
+func (UnimplementedOpenSavesServer) CompareAndSwapLess(context.Context, *AtomicRequest) (*AtomicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompareAndSwapLess not implemented")
+}
+func (UnimplementedOpenSavesServer) AtomicAdd(context.Context, *AtomicRequest) (*AtomicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AtomicAdd not implemented")
+}
+func (UnimplementedOpenSavesServer) AtomicSub(context.Context, *AtomicRequest) (*AtomicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AtomicSub not implemented")
+}
+func (UnimplementedOpenSavesServer) AtomicInc(context.Context, *AtomicRequest) (*AtomicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AtomicInc not implemented")
+}
+func (UnimplementedOpenSavesServer) AtomicDec(context.Context, *AtomicRequest) (*AtomicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AtomicDec not implemented")
 }
 func (UnimplementedOpenSavesServer) mustEmbedUnimplementedOpenSavesServer() {}
 
@@ -805,6 +969,132 @@ func _OpenSaves_Ping_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OpenSaves_CompareAndSwap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).CompareAndSwap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/CompareAndSwap",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).CompareAndSwap(ctx, req.(*AtomicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_CompareAndSwapGreater_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).CompareAndSwapGreater(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/CompareAndSwapGreater",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).CompareAndSwapGreater(ctx, req.(*AtomicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_CompareAndSwapLess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).CompareAndSwapLess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/CompareAndSwapLess",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).CompareAndSwapLess(ctx, req.(*AtomicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_AtomicAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).AtomicAdd(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/AtomicAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).AtomicAdd(ctx, req.(*AtomicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_AtomicSub_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).AtomicSub(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/AtomicSub",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).AtomicSub(ctx, req.(*AtomicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_AtomicInc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).AtomicInc(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/AtomicInc",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).AtomicInc(ctx, req.(*AtomicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_AtomicDec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OpenSavesServer).AtomicDec(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/opensaves.OpenSaves/AtomicDec",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OpenSavesServer).AtomicDec(ctx, req.(*AtomicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OpenSaves_ServiceDesc is the grpc.ServiceDesc for OpenSaves service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -867,6 +1157,34 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _OpenSaves_Ping_Handler,
+		},
+		{
+			MethodName: "CompareAndSwap",
+			Handler:    _OpenSaves_CompareAndSwap_Handler,
+		},
+		{
+			MethodName: "CompareAndSwapGreater",
+			Handler:    _OpenSaves_CompareAndSwapGreater_Handler,
+		},
+		{
+			MethodName: "CompareAndSwapLess",
+			Handler:    _OpenSaves_CompareAndSwapLess_Handler,
+		},
+		{
+			MethodName: "AtomicAdd",
+			Handler:    _OpenSaves_AtomicAdd_Handler,
+		},
+		{
+			MethodName: "AtomicSub",
+			Handler:    _OpenSaves_AtomicSub_Handler,
+		},
+		{
+			MethodName: "AtomicInc",
+			Handler:    _OpenSaves_AtomicInc_Handler,
+		},
+		{
+			MethodName: "AtomicDec",
+			Handler:    _OpenSaves_AtomicDec_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

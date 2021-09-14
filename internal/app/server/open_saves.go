@@ -646,6 +646,113 @@ func (s *openSavesServer) GetBlobChunk(req *pb.GetBlobChunkRequest, response pb.
 	return nil
 }
 
+// Called as compareAndSwap(property, old_value, value) and should return (updated, new value to set)
+// Transaction is aborted if the returned bool is false and the returned int64 is discarded.
+type compareAndSwap = func(property, oldValue, value int64) (bool, int64)
+
+func (s *openSavesServer) doCompareAndSwap(ctx context.Context, req *pb.AtomicRequest, cas compareAndSwap) (*pb.AtomicResponse, error) {
+	res := &pb.AtomicResponse{
+		Updated: true,
+	}
+	_, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), req.GetRecordKey(),
+		func(r *record.Record) (*record.Record, error) {
+			property, ok := r.Properties[req.GetPropertyName()]
+			if !ok {
+				return nil, status.Errorf(codes.FailedPrecondition, "property (%v) was not found", req.GetPropertyName())
+			}
+			if property.Type != pb.Property_INTEGER {
+				return nil, status.Errorf(codes.FailedPrecondition, "the value type of property (%v) was not integer: %v",
+					req.GetPropertyName(), property.Type.String())
+			}
+			// Save the old value.
+			res.Value = property.IntegerValue
+			updated, newValue := cas(property.IntegerValue, req.GetOldValue(), req.GetValue())
+			res.Updated = updated
+			if !updated {
+				// ErrNoUpdate aborts the transaction safely.
+				return nil, metadb.ErrNoUpdate
+			}
+			property.IntegerValue = newValue
+			return r, nil
+		})
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return res, nil
+}
+
+func (s *openSavesServer) CompareAndSwap(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
+	log.Infof("CompareAndSwap: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doCompareAndSwap(ctx, req, func(property, oldValue, value int64) (bool, int64) {
+		if property == oldValue {
+			return true, value
+		}
+		return false, oldValue
+	})
+}
+
+func (s *openSavesServer) CompareAndSwapGreater(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
+	log.Infof("CompareAndSwapGreater: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
+		if value > property {
+			return true, value
+		}
+		return false, property
+	})
+}
+
+func (s *openSavesServer) CompareAndSwapLess(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
+	log.Infof("Less: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
+		if value < property {
+			return true, value
+		}
+		return false, property
+	})
+}
+
+func (s *openSavesServer) AtomicAdd(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
+	log.Infof("AtomicAdd: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
+		return true, property + value
+	})
+}
+
+func (s *openSavesServer) AtomicSub(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
+	log.Infof("AtomicSub: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
+		return true, property - value
+	})
+}
+
+func (s *openSavesServer) AtomicInc(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
+	log.Infof("AtomicInc: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
+		if property < value {
+			return true, property + 1
+		}
+		return true, 0
+	})
+}
+
+func (s *openSavesServer) AtomicDec(ctx context.Context, req *pb.AtomicRequest) (*pb.AtomicResponse, error) {
+	log.Infof("AtomicDec: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doCompareAndSwap(ctx, req, func(property, _, value int64) (bool, int64) {
+		if property > value {
+			return true, property - 1
+		}
+		return true, value
+	})
+}
+
 func (s *openSavesServer) getRecordAndCache(ctx context.Context, storeKey, key string, hint *pb.Hint) (*record.Record, error) {
 	if shouldCheckCache(hint) {
 		r := new(record.Record)
