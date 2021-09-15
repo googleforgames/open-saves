@@ -77,11 +77,11 @@ func newMetaDB(ctx context.Context, t *testing.T) *m.MetaDB {
 }
 
 func newStoreKey() string {
-	return uuid.New().String() + "_unittest_store"
+	return uuid.NewString() + "_unittest_store"
 }
 
 func newRecordKey() string {
-	return uuid.New().String() + "_unittest_record"
+	return uuid.NewString() + "_unittest_record"
 }
 
 func cloneRecord(r *record.Record) *record.Record {
@@ -210,7 +210,7 @@ func TestMetaDB_SimpleCreateGetDeleteStore(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
 	storeKey := newStoreKey()
-	storeName := "SimpleCreateGetDeleteStore" + uuid.New().String()
+	storeName := "SimpleCreateGetDeleteStore" + uuid.NewString()
 	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
 	store := &store.Store{
 		Key:     storeKey,
@@ -641,8 +641,8 @@ func TestMetaDB_BlobInsertShouldFailForNonexistentRecord(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 	blob := &blobref.BlobRef{
 		Key:       uuid.New(),
-		StoreKey:  "non-existent" + uuid.New().String(),
-		RecordKey: "non-existent" + uuid.New().String(),
+		StoreKey:  "non-existent" + uuid.NewString(),
+		RecordKey: "non-existent" + uuid.NewString(),
 	}
 
 	insertedBlob, err := metaDB.InsertBlobRef(ctx, blob)
