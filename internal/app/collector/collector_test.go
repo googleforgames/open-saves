@@ -63,7 +63,7 @@ func newTestCollector(ctx context.Context, t *testing.T) *Collector {
 func setupTestStore(ctx context.Context, t *testing.T, collector *Collector) *store.Store {
 	t.Helper()
 	store := &store.Store{
-		Key:  uuid.New().String(),
+		Key:  uuid.NewString(),
 		Name: t.Name(),
 	}
 	store, err := collector.metaDB.CreateStore(ctx, store)
@@ -88,7 +88,7 @@ func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
 func setupTestRecord(ctx context.Context, t *testing.T, collector *Collector, storeKey string) *record.Record {
 	t.Helper()
 	record := &record.Record{
-		Key:        uuid.New().String(),
+		Key:        uuid.NewString(),
 		Tags:       []string{t.Name()},
 		Properties: make(record.PropertyMap),
 	}
