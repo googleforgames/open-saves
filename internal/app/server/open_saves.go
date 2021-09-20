@@ -646,10 +646,10 @@ func (s *openSavesServer) GetBlobChunk(req *pb.GetBlobChunkRequest, response pb.
 	return nil
 }
 
-func (s *openSavesServer) CompareAndSwapProperty(ctx context.Context, req *pb.CASPropertyRequest) (*pb.CASPropertyResponse, error) {
-	log.Infof("CompareAndSwapProperty: store (%v), record (%v), property (%v)",
+func (s *openSavesServer) CompareAndSwap(ctx context.Context, req *pb.CompareAndSwapRequest) (*pb.CompareAndSwapResponse, error) {
+	log.Infof("CompareAndSwap: store (%v), record (%v), property (%v)",
 		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
-	res := &pb.CASPropertyResponse{Updated: false}
+	res := &pb.CompareAndSwapResponse{Updated: false}
 	updatedRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), req.GetRecordKey(),
 		func(r *record.Record) (*record.Record, error) {
 			property, ok := r.Properties[req.GetPropertyName()]
@@ -776,7 +776,7 @@ func (s *openSavesServer) AtomicSubInt(ctx context.Context, req *pb.AtomicIntReq
 // the new property value.
 type atomicIncCallback = func(value, lower, upper int64) int64
 
-func (s *openSavesServer) doAtomicIncDec(ctx context.Context, req *pb.AtomicIncIntRequest, callback atomicIncCallback) (*pb.AtomicIntResponse, error) {
+func (s *openSavesServer) doAtomicIncDec(ctx context.Context, req *pb.AtomicIncRequest, callback atomicIncCallback) (*pb.AtomicIntResponse, error) {
 	res := &pb.AtomicIntResponse{
 		Updated: true,
 	}
@@ -803,8 +803,8 @@ func (s *openSavesServer) doAtomicIncDec(ctx context.Context, req *pb.AtomicIncI
 	return res, nil
 }
 
-func (s *openSavesServer) AtomicIncInt(ctx context.Context, req *pb.AtomicIncIntRequest) (*pb.AtomicIntResponse, error) {
-	log.Infof("AtomicIncInt: store (%v), record (%v), property (%v)",
+func (s *openSavesServer) AtomicInc(ctx context.Context, req *pb.AtomicIncRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("AtomicInc: store (%v), record (%v), property (%v)",
 		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
 	return s.doAtomicIncDec(ctx, req, func(value, lower, upper int64) int64 {
 		if value < upper {
@@ -814,8 +814,8 @@ func (s *openSavesServer) AtomicIncInt(ctx context.Context, req *pb.AtomicIncInt
 	})
 }
 
-func (s *openSavesServer) AtomicDecInt(ctx context.Context, req *pb.AtomicIncIntRequest) (*pb.AtomicIntResponse, error) {
-	log.Infof("AtomicDecInt: store (%v), record (%v), property (%v)",
+func (s *openSavesServer) AtomicDec(ctx context.Context, req *pb.AtomicIncRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("AtomicDec: store (%v), record (%v), property (%v)",
 		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
 	return s.doAtomicIncDec(ctx, req, func(value, lower, upper int64) int64 {
 		if lower < value {

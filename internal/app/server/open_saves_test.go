@@ -802,7 +802,7 @@ func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
 
-func assertAtomicResponse(t *testing.T, err error, res *pb.AtomicIntResponse, updated bool, value int64) {
+func assertAtomicIntResponse(t *testing.T, err error, res *pb.AtomicIntResponse, updated bool, value int64) {
 	t.Helper()
 	if assert.NoError(t, err) {
 		assert.Equal(t, updated, res.Updated)
@@ -810,7 +810,7 @@ func assertAtomicResponse(t *testing.T, err error, res *pb.AtomicIntResponse, up
 	}
 }
 
-func assertCASPropertyResponse(t *testing.T, err error, res *pb.CASPropertyResponse, updated bool, value *pb.Property) {
+func assertCASResponse(t *testing.T, err error, res *pb.CompareAndSwapResponse, updated bool, value *pb.Property) {
 	t.Helper()
 	if assert.NoError(t, err) {
 		assert.Equal(t, updated, res.GetUpdated())
@@ -839,8 +839,8 @@ func TestOpenSaves_CompareAndSwap(t *testing.T) {
 
 	setupTestRecord(ctx, t, client, storeKey, rr)
 
-	newRequest := func(oldValue, value *pb.Property) *pb.CASPropertyRequest {
-		return &pb.CASPropertyRequest{
+	newRequest := func(oldValue, value *pb.Property) *pb.CompareAndSwapRequest {
+		return &pb.CompareAndSwapRequest{
 			StoreKey:     storeKey,
 			RecordKey:    recordKey,
 			PropertyName: testPropertyName,
@@ -849,29 +849,29 @@ func TestOpenSaves_CompareAndSwap(t *testing.T) {
 		}
 	}
 
-	res, err := client.CompareAndSwapProperty(ctx, newRequest(
+	res, err := client.CompareAndSwap(ctx, newRequest(
 		record.NewIntegerPropertyProto(41), record.NewIntegerPropertyProto(42)))
-	assertCASPropertyResponse(t, err, res, false, record.NewIntegerPropertyProto(42))
+	assertCASResponse(t, err, res, false, record.NewIntegerPropertyProto(42))
 
-	res, err = client.CompareAndSwapProperty(ctx, newRequest(
+	res, err = client.CompareAndSwap(ctx, newRequest(
 		record.NewIntegerPropertyProto(42), record.NewIntegerPropertyProto(43)))
-	assertCASPropertyResponse(t, err, res, true, record.NewIntegerPropertyProto(42))
+	assertCASResponse(t, err, res, true, record.NewIntegerPropertyProto(42))
 
-	res, err = client.CompareAndSwapProperty(ctx, newRequest(
+	res, err = client.CompareAndSwap(ctx, newRequest(
 		record.NewIntegerPropertyProto(43), record.NewStringPropertyProto("hello, world")))
-	assertCASPropertyResponse(t, err, res, true, record.NewIntegerPropertyProto(43))
+	assertCASResponse(t, err, res, true, record.NewIntegerPropertyProto(43))
 
 	// Type mismatch should not return error for CASProperty.
-	res, err = client.CompareAndSwapProperty(ctx, newRequest(
+	res, err = client.CompareAndSwap(ctx, newRequest(
 		record.NewIntegerPropertyProto(42), record.NewIntegerPropertyProto(42)))
-	assertCASPropertyResponse(t, err, res, false, record.NewStringPropertyProto("hello, world"))
+	assertCASResponse(t, err, res, false, record.NewStringPropertyProto("hello, world"))
 
 	ar, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
 	if assert.NoError(t, err) {
 		assert.Equal(t, record.NewStringPropertyProto("hello, world"), ar.GetProperties()[testPropertyName])
 	}
 
-	res, err = client.CompareAndSwapProperty(ctx, &pb.CASPropertyRequest{
+	res, err = client.CompareAndSwap(ctx, &pb.CompareAndSwapRequest{
 		StoreKey:     storeKey,
 		RecordKey:    recordKey,
 		PropertyName: "non existent",
@@ -909,46 +909,46 @@ func TestOpenSaves_AtomicIntMethods(t *testing.T) {
 	}
 
 	res, err := client.CompareAndSwapGreaterInt(ctx, newRequest(42))
-	assertAtomicResponse(t, err, res, false, 43)
+	assertAtomicIntResponse(t, err, res, false, 43)
 
 	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(43))
-	assertAtomicResponse(t, err, res, false, 43)
+	assertAtomicIntResponse(t, err, res, false, 43)
 
 	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(44))
-	assertAtomicResponse(t, err, res, true, 43)
+	assertAtomicIntResponse(t, err, res, true, 43)
 
 	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(-1))
-	assertAtomicResponse(t, err, res, false, 44)
+	assertAtomicIntResponse(t, err, res, false, 44)
 
 	res, err = client.CompareAndSwapLessInt(ctx, newRequest(45))
-	assertAtomicResponse(t, err, res, false, 44)
+	assertAtomicIntResponse(t, err, res, false, 44)
 
 	res, err = client.CompareAndSwapLessInt(ctx, newRequest(44))
-	assertAtomicResponse(t, err, res, false, 44)
+	assertAtomicIntResponse(t, err, res, false, 44)
 
 	res, err = client.CompareAndSwapLessInt(ctx, newRequest(43))
-	assertAtomicResponse(t, err, res, true, 44)
+	assertAtomicIntResponse(t, err, res, true, 44)
 
 	res, err = client.CompareAndSwapLessInt(ctx, newRequest(-2))
-	assertAtomicResponse(t, err, res, true, 43)
+	assertAtomicIntResponse(t, err, res, true, 43)
 
 	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(-1))
-	assertAtomicResponse(t, err, res, true, -2)
+	assertAtomicIntResponse(t, err, res, true, -2)
 
 	res, err = client.AtomicAddInt(ctx, newRequest(1))
-	assertAtomicResponse(t, err, res, true, -1)
+	assertAtomicIntResponse(t, err, res, true, -1)
 
 	res, err = client.AtomicAddInt(ctx, newRequest(1))
-	assertAtomicResponse(t, err, res, true, 0)
+	assertAtomicIntResponse(t, err, res, true, 0)
 
 	res, err = client.AtomicAddInt(ctx, newRequest(-2))
-	assertAtomicResponse(t, err, res, true, 1)
+	assertAtomicIntResponse(t, err, res, true, 1)
 
 	res, err = client.AtomicSubInt(ctx, newRequest(1))
-	assertAtomicResponse(t, err, res, true, -1)
+	assertAtomicIntResponse(t, err, res, true, -1)
 
 	res, err = client.AtomicSubInt(ctx, newRequest(-44))
-	assertAtomicResponse(t, err, res, true, -2)
+	assertAtomicIntResponse(t, err, res, true, -2)
 
 	re, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
 	if assert.NoError(t, err) {
@@ -997,8 +997,8 @@ func TestOpenSaves_AtomicIncDecInt(t *testing.T) {
 	}
 	setupTestRecord(ctx, t, client, storeKey, record)
 
-	newRequest := func(lower, upper int64) *pb.AtomicIncIntRequest {
-		return &pb.AtomicIncIntRequest{
+	newRequest := func(lower, upper int64) *pb.AtomicIncRequest {
+		return &pb.AtomicIncRequest{
 			StoreKey:     storeKey,
 			RecordKey:    recordKey,
 			PropertyName: testPropertyName,
@@ -1007,23 +1007,23 @@ func TestOpenSaves_AtomicIncDecInt(t *testing.T) {
 		}
 	}
 
-	res, err := client.AtomicIncInt(ctx, newRequest(0, 2))
-	assertAtomicResponse(t, err, res, true, -1)
-	res, err = client.AtomicIncInt(ctx, newRequest(0, 2))
-	assertAtomicResponse(t, err, res, true, 0)
-	res, err = client.AtomicIncInt(ctx, newRequest(0, 2))
-	assertAtomicResponse(t, err, res, true, 1)
-	res, err = client.AtomicIncInt(ctx, newRequest(0, 2))
-	assertAtomicResponse(t, err, res, true, 2)
+	res, err := client.AtomicInc(ctx, newRequest(0, 2))
+	assertAtomicIntResponse(t, err, res, true, -1)
+	res, err = client.AtomicInc(ctx, newRequest(0, 2))
+	assertAtomicIntResponse(t, err, res, true, 0)
+	res, err = client.AtomicInc(ctx, newRequest(0, 2))
+	assertAtomicIntResponse(t, err, res, true, 1)
+	res, err = client.AtomicInc(ctx, newRequest(0, 2))
+	assertAtomicIntResponse(t, err, res, true, 2)
 
-	res, err = client.AtomicDecInt(ctx, newRequest(-3, -1))
-	assertAtomicResponse(t, err, res, true, 0)
-	res, err = client.AtomicDecInt(ctx, newRequest(-3, -1))
-	assertAtomicResponse(t, err, res, true, -1)
-	res, err = client.AtomicDecInt(ctx, newRequest(-3, -1))
-	assertAtomicResponse(t, err, res, true, -2)
-	res, err = client.AtomicDecInt(ctx, newRequest(-3, -1))
-	assertAtomicResponse(t, err, res, true, -3)
+	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
+	assertAtomicIntResponse(t, err, res, true, 0)
+	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
+	assertAtomicIntResponse(t, err, res, true, -1)
+	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
+	assertAtomicIntResponse(t, err, res, true, -2)
+	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
+	assertAtomicIntResponse(t, err, res, true, -3)
 
 	re, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
 	if assert.NoError(t, err) {
@@ -1035,7 +1035,7 @@ func TestOpenSaves_AtomicIncDecInt(t *testing.T) {
 	}
 
 	// Check for type mismatch
-	res, err = client.AtomicIncInt(ctx, &pb.AtomicIncIntRequest{
+	res, err = client.AtomicInc(ctx, &pb.AtomicIncRequest{
 		StoreKey:     storeKey,
 		RecordKey:    recordKey,
 		PropertyName: "string",
@@ -1044,7 +1044,7 @@ func TestOpenSaves_AtomicIncDecInt(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 
 	// Check for nonexistent property
-	res, err = client.AtomicIncInt(ctx, &pb.AtomicIncIntRequest{
+	res, err = client.AtomicInc(ctx, &pb.AtomicIncRequest{
 		StoreKey:     storeKey,
 		RecordKey:    recordKey,
 		PropertyName: "nonexistent",

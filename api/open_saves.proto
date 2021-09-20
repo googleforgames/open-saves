@@ -90,18 +90,18 @@ service OpenSaves {
   // omitted.
   rpc Ping(PingRequest) returns (PingResponse) {}
 
-  // CompareAndSwapProperty compares the property to old_value and updates the property to value 
+  // CompareAndSwap compares the property to old_value and updates the property to value 
   // if the old_value and the current property are equal.
-  // The updated field in CASPropertyResponse is set to true if the swap is executed.
-  // For example, CompareAndSwapProperty(property, value = 42, old_value = 24) will set the
+  // The updated field in CompareAndSwapResponse is set to true if the swap is executed.
+  // For example, CompareAndSwap(property, value = 42, old_value = 24) will set the
   // property to 42 if the current value is 24.
-  // CompareAndSwapProperty also supports swapping with a value of another type, e.g. 
-  // CompareAndSwapProperty(property, value = "42", old_value = 24).
+  // CompareAndSwap also supports swapping with a value of another type, e.g. 
+  // CompareAndSwap(property, value = "42", old_value = 24).
   // Otherwise it will not update the property and return the current (unchanged) value
   // and updated = false. The operation is executed atomically.
   // Errors:
   //   - NotFound: the requested record or property was not found.
-  rpc CompareAndSwapProperty(CASPropertyRequest) returns (CASPropertyResponse) {}
+  rpc CompareAndSwap(CompareAndSwapRequest) returns (CompareAndSwapResponse) {}
 
   // CompareAndSwapGreaterInt compares the number of an integer property to value and
   // updates the property if the new value is greater than the current value.
@@ -130,7 +130,7 @@ service OpenSaves {
   // AtomicSubInt does the same except it subtracts a number.
   rpc AtomicSubInt(AtomicIntRequest) returns (AtomicIntResponse) {}
 
-  // AtomicIncInt increments the number of an integer property if less than upper_bound. 
+  // AtomicInc increments the number of an integer property if less than upper_bound. 
   // Otherwise it resets the property to lower_bound.
   // if (property < upper_bound) {
   //   property++
@@ -143,9 +143,9 @@ service OpenSaves {
   // Errors:
   //   - NotFound: the requested record or property was not found.
   //   - InvalidArgument: the requested property was not an integer.
-  rpc AtomicIncInt(AtomicIncIntRequest) returns (AtomicIntResponse) {}
+  rpc AtomicInc(AtomicIncRequest) returns (AtomicIntResponse) {}
 
-  // AtomicDecInt decrements the number of an integer property by one if more than lower_bound.
+  // AtomicDec decrements the number of an integer property by one if more than lower_bound.
   // Otherwise it resets the property to upper_bound.
   // if (lower_bound < property) {
   //   property--
@@ -158,7 +158,7 @@ service OpenSaves {
   // Errors:
   //   - NotFound: the requested record or property was not found.
   //   - InvalidArgument: the requested property was not an integer.
-  rpc AtomicDecInt(AtomicIncIntRequest) returns (AtomicIntResponse) {}
+  rpc AtomicDec(AtomicIncRequest) returns (AtomicIntResponse) {}
 }
 
 // Property represents typed data in Open Saves.
@@ -564,8 +564,8 @@ message PingResponse {
   string pong = 1;
 }
 
-// CASPropertyRequest is used by the CompareAndSwap methods to atomically update a property value.
-message CASPropertyRequest {
+// CompareAndSwapRequest is used by the CompareAndSwap methods to atomically update a property value.
+message CompareAndSwapRequest {
   // The key of the store that the record belongs to.
   string store_key = 1;
 
@@ -585,9 +585,9 @@ message CASPropertyRequest {
   Hint hint = 6;
 }
 
-// CASPropertyResponse is returned by CompareAndSwapProperty and indicates whether the request
+// CompareAndSwapResponse is returned by CompareAndSwap and indicates whether the request
 // has updated the property value.
-message CASPropertyResponse {
+message CompareAndSwapResponse {
   // updated indicates that the condition is satisfied and the property has been updated.
   bool updated = 1;
   
@@ -624,8 +624,8 @@ message AtomicIntResponse {
   int64 value = 2;
 }
 
-// AtomicIncIntRequest is used by atomic increment/decrement methods.
-message AtomicIncIntRequest {
+// AtomicIncRequest is used by atomic increment/decrement methods.
+message AtomicIncRequest {
   // The key of the store that the record belongs to.
   string store_key = 1;
 

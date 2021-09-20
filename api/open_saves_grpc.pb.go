@@ -66,18 +66,18 @@ type OpenSavesClient interface {
 	// The string is optional and the server returns an empty string if
 	// omitted.
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
-	// CompareAndSwapProperty compares the property to old_value and updates the property to value
+	// CompareAndSwap compares the property to old_value and updates the property to value
 	// if the old_value and the current property are equal.
-	// The updated field in CASPropertyResponse is set to true if the swap is executed.
-	// For example, CompareAndSwapProperty(property, value = 42, old_value = 24) will set the
+	// The updated field in CompareAndSwapResponse is set to true if the swap is executed.
+	// For example, CompareAndSwap(property, value = 42, old_value = 24) will set the
 	// property to 42 if the current value is 24.
-	// CompareAndSwapProperty also supports swapping with a value of another type, e.g.
-	// CompareAndSwapProperty(property, value = "42", old_value = 24).
+	// CompareAndSwap also supports swapping with a value of another type, e.g.
+	// CompareAndSwap(property, value = "42", old_value = 24).
 	// Otherwise it will not update the property and return the current (unchanged) value
 	// and updated = false. The operation is executed atomically.
 	// Errors:
 	//   - NotFound: the requested record or property was not found.
-	CompareAndSwapProperty(ctx context.Context, in *CASPropertyRequest, opts ...grpc.CallOption) (*CASPropertyResponse, error)
+	CompareAndSwap(ctx context.Context, in *CompareAndSwapRequest, opts ...grpc.CallOption) (*CompareAndSwapResponse, error)
 	// CompareAndSwapGreaterInt compares the number of an integer property to value and
 	// updates the property if the new value is greater than the current value.
 	// The updated field in AtomicResponse is set to true if the swap is executed.
@@ -101,7 +101,7 @@ type OpenSavesClient interface {
 	AtomicAddInt(ctx context.Context, in *AtomicIntRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error)
 	// AtomicSubInt does the same except it subtracts a number.
 	AtomicSubInt(ctx context.Context, in *AtomicIntRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error)
-	// AtomicIncInt increments the number of an integer property if less than upper_bound.
+	// AtomicInc increments the number of an integer property if less than upper_bound.
 	// Otherwise it resets the property to lower_bound.
 	// if (property < upper_bound) {
 	//   property++
@@ -114,8 +114,8 @@ type OpenSavesClient interface {
 	// Errors:
 	//   - NotFound: the requested record or property was not found.
 	//   - InvalidArgument: the requested property was not an integer.
-	AtomicIncInt(ctx context.Context, in *AtomicIncIntRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error)
-	// AtomicDecInt decrements the number of an integer property by one if more than lower_bound.
+	AtomicInc(ctx context.Context, in *AtomicIncRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error)
+	// AtomicDec decrements the number of an integer property by one if more than lower_bound.
 	// Otherwise it resets the property to upper_bound.
 	// if (lower_bound < property) {
 	//   property--
@@ -128,7 +128,7 @@ type OpenSavesClient interface {
 	// Errors:
 	//   - NotFound: the requested record or property was not found.
 	//   - InvalidArgument: the requested property was not an integer.
-	AtomicDecInt(ctx context.Context, in *AtomicIncIntRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error)
+	AtomicDec(ctx context.Context, in *AtomicIncRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error)
 }
 
 type openSavesClient struct {
@@ -397,9 +397,9 @@ func (c *openSavesClient) Ping(ctx context.Context, in *PingRequest, opts ...grp
 	return out, nil
 }
 
-func (c *openSavesClient) CompareAndSwapProperty(ctx context.Context, in *CASPropertyRequest, opts ...grpc.CallOption) (*CASPropertyResponse, error) {
-	out := new(CASPropertyResponse)
-	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CompareAndSwapProperty", in, out, opts...)
+func (c *openSavesClient) CompareAndSwap(ctx context.Context, in *CompareAndSwapRequest, opts ...grpc.CallOption) (*CompareAndSwapResponse, error) {
+	out := new(CompareAndSwapResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CompareAndSwap", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -442,18 +442,18 @@ func (c *openSavesClient) AtomicSubInt(ctx context.Context, in *AtomicIntRequest
 	return out, nil
 }
 
-func (c *openSavesClient) AtomicIncInt(ctx context.Context, in *AtomicIncIntRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error) {
+func (c *openSavesClient) AtomicInc(ctx context.Context, in *AtomicIncRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error) {
 	out := new(AtomicIntResponse)
-	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicIncInt", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicInc", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *openSavesClient) AtomicDecInt(ctx context.Context, in *AtomicIncIntRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error) {
+func (c *openSavesClient) AtomicDec(ctx context.Context, in *AtomicIncRequest, opts ...grpc.CallOption) (*AtomicIntResponse, error) {
 	out := new(AtomicIntResponse)
-	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicDecInt", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AtomicDec", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -511,18 +511,18 @@ type OpenSavesServer interface {
 	// The string is optional and the server returns an empty string if
 	// omitted.
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
-	// CompareAndSwapProperty compares the property to old_value and updates the property to value
+	// CompareAndSwap compares the property to old_value and updates the property to value
 	// if the old_value and the current property are equal.
-	// The updated field in CASPropertyResponse is set to true if the swap is executed.
-	// For example, CompareAndSwapProperty(property, value = 42, old_value = 24) will set the
+	// The updated field in CompareAndSwapResponse is set to true if the swap is executed.
+	// For example, CompareAndSwap(property, value = 42, old_value = 24) will set the
 	// property to 42 if the current value is 24.
-	// CompareAndSwapProperty also supports swapping with a value of another type, e.g.
-	// CompareAndSwapProperty(property, value = "42", old_value = 24).
+	// CompareAndSwap also supports swapping with a value of another type, e.g.
+	// CompareAndSwap(property, value = "42", old_value = 24).
 	// Otherwise it will not update the property and return the current (unchanged) value
 	// and updated = false. The operation is executed atomically.
 	// Errors:
 	//   - NotFound: the requested record or property was not found.
-	CompareAndSwapProperty(context.Context, *CASPropertyRequest) (*CASPropertyResponse, error)
+	CompareAndSwap(context.Context, *CompareAndSwapRequest) (*CompareAndSwapResponse, error)
 	// CompareAndSwapGreaterInt compares the number of an integer property to value and
 	// updates the property if the new value is greater than the current value.
 	// The updated field in AtomicResponse is set to true if the swap is executed.
@@ -546,7 +546,7 @@ type OpenSavesServer interface {
 	AtomicAddInt(context.Context, *AtomicIntRequest) (*AtomicIntResponse, error)
 	// AtomicSubInt does the same except it subtracts a number.
 	AtomicSubInt(context.Context, *AtomicIntRequest) (*AtomicIntResponse, error)
-	// AtomicIncInt increments the number of an integer property if less than upper_bound.
+	// AtomicInc increments the number of an integer property if less than upper_bound.
 	// Otherwise it resets the property to lower_bound.
 	// if (property < upper_bound) {
 	//   property++
@@ -559,8 +559,8 @@ type OpenSavesServer interface {
 	// Errors:
 	//   - NotFound: the requested record or property was not found.
 	//   - InvalidArgument: the requested property was not an integer.
-	AtomicIncInt(context.Context, *AtomicIncIntRequest) (*AtomicIntResponse, error)
-	// AtomicDecInt decrements the number of an integer property by one if more than lower_bound.
+	AtomicInc(context.Context, *AtomicIncRequest) (*AtomicIntResponse, error)
+	// AtomicDec decrements the number of an integer property by one if more than lower_bound.
 	// Otherwise it resets the property to upper_bound.
 	// if (lower_bound < property) {
 	//   property--
@@ -573,7 +573,7 @@ type OpenSavesServer interface {
 	// Errors:
 	//   - NotFound: the requested record or property was not found.
 	//   - InvalidArgument: the requested property was not an integer.
-	AtomicDecInt(context.Context, *AtomicIncIntRequest) (*AtomicIntResponse, error)
+	AtomicDec(context.Context, *AtomicIncRequest) (*AtomicIntResponse, error)
 	mustEmbedUnimplementedOpenSavesServer()
 }
 
@@ -635,8 +635,8 @@ func (UnimplementedOpenSavesServer) DeleteBlob(context.Context, *DeleteBlobReque
 func (UnimplementedOpenSavesServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedOpenSavesServer) CompareAndSwapProperty(context.Context, *CASPropertyRequest) (*CASPropertyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CompareAndSwapProperty not implemented")
+func (UnimplementedOpenSavesServer) CompareAndSwap(context.Context, *CompareAndSwapRequest) (*CompareAndSwapResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompareAndSwap not implemented")
 }
 func (UnimplementedOpenSavesServer) CompareAndSwapGreaterInt(context.Context, *AtomicIntRequest) (*AtomicIntResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CompareAndSwapGreaterInt not implemented")
@@ -650,11 +650,11 @@ func (UnimplementedOpenSavesServer) AtomicAddInt(context.Context, *AtomicIntRequ
 func (UnimplementedOpenSavesServer) AtomicSubInt(context.Context, *AtomicIntRequest) (*AtomicIntResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AtomicSubInt not implemented")
 }
-func (UnimplementedOpenSavesServer) AtomicIncInt(context.Context, *AtomicIncIntRequest) (*AtomicIntResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AtomicIncInt not implemented")
+func (UnimplementedOpenSavesServer) AtomicInc(context.Context, *AtomicIncRequest) (*AtomicIntResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AtomicInc not implemented")
 }
-func (UnimplementedOpenSavesServer) AtomicDecInt(context.Context, *AtomicIncIntRequest) (*AtomicIntResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AtomicDecInt not implemented")
+func (UnimplementedOpenSavesServer) AtomicDec(context.Context, *AtomicIncRequest) (*AtomicIntResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AtomicDec not implemented")
 }
 func (UnimplementedOpenSavesServer) mustEmbedUnimplementedOpenSavesServer() {}
 
@@ -1015,20 +1015,20 @@ func _OpenSaves_Ping_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OpenSaves_CompareAndSwapProperty_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CASPropertyRequest)
+func _OpenSaves_CompareAndSwap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompareAndSwapRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OpenSavesServer).CompareAndSwapProperty(ctx, in)
+		return srv.(OpenSavesServer).CompareAndSwap(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/opensaves.OpenSaves/CompareAndSwapProperty",
+		FullMethod: "/opensaves.OpenSaves/CompareAndSwap",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OpenSavesServer).CompareAndSwapProperty(ctx, req.(*CASPropertyRequest))
+		return srv.(OpenSavesServer).CompareAndSwap(ctx, req.(*CompareAndSwapRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1105,38 +1105,38 @@ func _OpenSaves_AtomicSubInt_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OpenSaves_AtomicIncInt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AtomicIncIntRequest)
+func _OpenSaves_AtomicInc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicIncRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OpenSavesServer).AtomicIncInt(ctx, in)
+		return srv.(OpenSavesServer).AtomicInc(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/opensaves.OpenSaves/AtomicIncInt",
+		FullMethod: "/opensaves.OpenSaves/AtomicInc",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OpenSavesServer).AtomicIncInt(ctx, req.(*AtomicIncIntRequest))
+		return srv.(OpenSavesServer).AtomicInc(ctx, req.(*AtomicIncRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OpenSaves_AtomicDecInt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AtomicIncIntRequest)
+func _OpenSaves_AtomicDec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AtomicIncRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OpenSavesServer).AtomicDecInt(ctx, in)
+		return srv.(OpenSavesServer).AtomicDec(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/opensaves.OpenSaves/AtomicDecInt",
+		FullMethod: "/opensaves.OpenSaves/AtomicDec",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OpenSavesServer).AtomicDecInt(ctx, req.(*AtomicIncIntRequest))
+		return srv.(OpenSavesServer).AtomicDec(ctx, req.(*AtomicIncRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1205,8 +1205,8 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _OpenSaves_Ping_Handler,
 		},
 		{
-			MethodName: "CompareAndSwapProperty",
-			Handler:    _OpenSaves_CompareAndSwapProperty_Handler,
+			MethodName: "CompareAndSwap",
+			Handler:    _OpenSaves_CompareAndSwap_Handler,
 		},
 		{
 			MethodName: "CompareAndSwapGreaterInt",
@@ -1225,12 +1225,12 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _OpenSaves_AtomicSubInt_Handler,
 		},
 		{
-			MethodName: "AtomicIncInt",
-			Handler:    _OpenSaves_AtomicIncInt_Handler,
+			MethodName: "AtomicInc",
+			Handler:    _OpenSaves_AtomicInc_Handler,
 		},
 		{
-			MethodName: "AtomicDecInt",
-			Handler:    _OpenSaves_AtomicDecInt_Handler,
+			MethodName: "AtomicDec",
+			Handler:    _OpenSaves_AtomicDec_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
