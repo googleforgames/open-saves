@@ -646,6 +646,185 @@ func (s *openSavesServer) GetBlobChunk(req *pb.GetBlobChunkRequest, response pb.
 	return nil
 }
 
+func (s *openSavesServer) CompareAndSwap(ctx context.Context, req *pb.CompareAndSwapRequest) (*pb.CompareAndSwapResponse, error) {
+	log.Infof("CompareAndSwap: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	res := &pb.CompareAndSwapResponse{Updated: false}
+	updatedRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), req.GetRecordKey(),
+		func(r *record.Record) (*record.Record, error) {
+			property, ok := r.Properties[req.GetPropertyName()]
+			if !ok {
+				return nil, status.Errorf(codes.NotFound, "property (%v) was not found", req.GetPropertyName())
+			}
+			// Save the current property value.
+			res.Value = property.ToProto()
+			oldValue := record.NewPropertyValueFromProto(req.GetOldValue())
+			value := record.NewPropertyValueFromProto(req.GetValue())
+
+			if property.Type == oldValue.Type {
+				switch property.Type {
+				case pb.Property_BOOLEAN:
+					if property.BooleanValue == oldValue.BooleanValue {
+						res.Updated = true
+					}
+				case pb.Property_INTEGER:
+					if property.IntegerValue == oldValue.IntegerValue {
+						res.Updated = true
+					}
+				case pb.Property_STRING:
+					if property.StringValue == oldValue.StringValue {
+						res.Updated = true
+					}
+				}
+			}
+
+			if !res.GetUpdated() {
+				// ErrNoUpdate aborts the transaction safely.
+				return nil, metadb.ErrNoUpdate
+			}
+			r.Properties[req.GetPropertyName()] = value
+			return r, nil
+		})
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	if res.GetUpdated() {
+		s.cacheRecord(ctx, updatedRecord, req.GetHint())
+	}
+	return res, nil
+}
+
+// Called as updateIntCallback(property, value) and should return (updated, new value to set)
+// Transaction is aborted if the returned bool is false and the returned int64 is discarded.
+type updateIntCallback = func(property, value int64) (bool, int64)
+
+func (s *openSavesServer) doAtomicUpdatePropertyInt(ctx context.Context, req *pb.AtomicIntRequest, callback updateIntCallback) (*pb.AtomicIntResponse, error) {
+	res := &pb.AtomicIntResponse{
+		Updated: false,
+	}
+	updatedRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), req.GetRecordKey(),
+		func(r *record.Record) (*record.Record, error) {
+			property, ok := r.Properties[req.GetPropertyName()]
+			if !ok {
+				return nil, status.Errorf(codes.NotFound, "property (%v) was not found", req.GetPropertyName())
+			}
+			if property.Type != pb.Property_INTEGER {
+				return nil, status.Errorf(codes.InvalidArgument, "the value type of property (%v) was not integer: %v",
+					req.GetPropertyName(), property.Type.String())
+			}
+			// Save the old value.
+			res.Value = property.IntegerValue
+			updated, newValue := callback(property.IntegerValue, req.GetValue())
+			if !updated {
+				// ErrNoUpdate aborts the transaction safely.
+				return nil, metadb.ErrNoUpdate
+			}
+			res.Updated = updated
+			property.IntegerValue = newValue
+			return r, nil
+		})
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	if res.GetUpdated() {
+		s.cacheRecord(ctx, updatedRecord, req.GetHint())
+	}
+	return res, nil
+}
+
+func (s *openSavesServer) CompareAndSwapGreaterInt(ctx context.Context, req *pb.AtomicIntRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("CompareAndSwapGreaterInt: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doAtomicUpdatePropertyInt(ctx, req, func(property, value int64) (bool, int64) {
+		if value > property {
+			return true, value
+		}
+		return false, property
+	})
+}
+
+func (s *openSavesServer) CompareAndSwapLessInt(ctx context.Context, req *pb.AtomicIntRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("CompareAndSwapLessInt: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doAtomicUpdatePropertyInt(ctx, req, func(property, value int64) (bool, int64) {
+		if value < property {
+			return true, value
+		}
+		return false, property
+	})
+}
+
+func (s *openSavesServer) AtomicAddInt(ctx context.Context, req *pb.AtomicIntRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("AtomicAddInt: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doAtomicUpdatePropertyInt(ctx, req, func(property, value int64) (bool, int64) {
+		return true, property + value
+	})
+}
+
+func (s *openSavesServer) AtomicSubInt(ctx context.Context, req *pb.AtomicIntRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("AtomicSubInt: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doAtomicUpdatePropertyInt(ctx, req, func(property, value int64) (bool, int64) {
+		return true, property - value
+	})
+}
+
+// atomicIncCallback is called as (current property value, lower_bound, upper_bound) and should return
+// the new property value.
+type atomicIncCallback = func(value, lower, upper int64) int64
+
+func (s *openSavesServer) doAtomicIncDec(ctx context.Context, req *pb.AtomicIncRequest, callback atomicIncCallback) (*pb.AtomicIntResponse, error) {
+	res := &pb.AtomicIntResponse{
+		Updated: true,
+	}
+	updatedRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), req.GetRecordKey(),
+		func(r *record.Record) (*record.Record, error) {
+			property, ok := r.Properties[req.GetPropertyName()]
+			if !ok {
+				return nil, status.Errorf(codes.NotFound, "property (%v) was not found", req.GetPropertyName())
+			}
+			if property.Type != pb.Property_INTEGER {
+				return nil, status.Errorf(codes.InvalidArgument, "the value type of property (%v) was not integer: %v",
+					req.GetPropertyName(), property.Type.String())
+			}
+			// Save the old value.
+			res.Value = property.IntegerValue
+			property.IntegerValue = callback(property.IntegerValue, req.GetLowerBound(), req.GetUpperBound())
+			return r, nil
+		})
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	s.cacheRecord(ctx, updatedRecord, req.GetHint())
+	return res, nil
+}
+
+func (s *openSavesServer) AtomicInc(ctx context.Context, req *pb.AtomicIncRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("AtomicInc: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doAtomicIncDec(ctx, req, func(value, lower, upper int64) int64 {
+		if value < upper {
+			return value + 1
+		}
+		return lower
+	})
+}
+
+func (s *openSavesServer) AtomicDec(ctx context.Context, req *pb.AtomicIncRequest) (*pb.AtomicIntResponse, error) {
+	log.Infof("AtomicDec: store (%v), record (%v), property (%v)",
+		req.GetStoreKey(), req.GetRecordKey(), req.GetPropertyName())
+	return s.doAtomicIncDec(ctx, req, func(value, lower, upper int64) int64 {
+		if lower < value {
+			return value - 1
+		}
+		return upper
+	})
+}
+
 func (s *openSavesServer) getRecordAndCache(ctx context.Context, storeKey, key string, hint *pb.Hint) (*record.Record, error) {
 	if shouldCheckCache(hint) {
 		r := new(record.Record)
