@@ -29,18 +29,15 @@ type PropertyValue struct {
 
 // ToProto converts the struct to a proto.
 func (p *PropertyValue) ToProto() *pb.Property {
-	ret := &pb.Property{
-		Type: p.Type,
-	}
 	switch p.Type {
 	case pb.Property_BOOLEAN:
-		ret.Value = &pb.Property_BooleanValue{BooleanValue: p.BooleanValue}
+		return NewBooleanPropertyProto(p.BooleanValue)
 	case pb.Property_INTEGER:
-		ret.Value = &pb.Property_IntegerValue{IntegerValue: p.IntegerValue}
+		return NewIntegerPropertyProto(p.IntegerValue)
 	case pb.Property_STRING:
-		ret.Value = &pb.Property_StringValue{StringValue: p.StringValue}
+		return NewStringPropertyProto(p.StringValue)
 	}
-	return ret
+	return new(pb.Property)
 }
 
 // NewPropertyValueFromProto creates a new Property instance from a proto.
@@ -74,4 +71,28 @@ func ExtractValue(p *pb.Property) interface{} {
 		return p.GetStringValue()
 	}
 	return nil
+}
+
+// NewBooleanPropertyProto returns a new pb.Property with boolean value v.
+func NewBooleanPropertyProto(v bool) *pb.Property {
+	return &pb.Property{
+		Type:  pb.Property_BOOLEAN,
+		Value: &pb.Property_BooleanValue{BooleanValue: v},
+	}
+}
+
+// NewIntegerPropertyProto returns a new pb.Property with integer value v.
+func NewIntegerPropertyProto(v int64) *pb.Property {
+	return &pb.Property{
+		Type:  pb.Property_INTEGER,
+		Value: &pb.Property_IntegerValue{IntegerValue: v},
+	}
+}
+
+// NewStringPropertyProto returns a new pb.Property with string value v.
+func NewStringPropertyProto(v string) *pb.Property {
+	return &pb.Property{
+		Type:  pb.Property_STRING,
+		Value: &pb.Property_StringValue{StringValue: v},
+	}
 }

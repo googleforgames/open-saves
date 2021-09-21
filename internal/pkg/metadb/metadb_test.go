@@ -22,6 +22,7 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
@@ -408,6 +409,34 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
 	metadbtest.AssertEqualRecord(t, updated, stored, "GetRecord should fetch the updated record.")
+}
+
+func TestMetaDB_UpdateRecordErrNoUpdate(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+	store := &store.Store{
+		Key:  newStoreKey(),
+		Name: t.Name(),
+	}
+	rr := &record.Record{
+		Key:          newRecordKey(),
+		OpaqueString: t.Name(),
+		Properties:   make(record.PropertyMap),
+	}
+	setupTestStoreRecord(ctx, t, metaDB, store, rr)
+
+	_, err := metaDB.UpdateRecord(ctx, store.Key, rr.Key,
+		func(toUpdate *record.Record) (*record.Record, error) {
+			return toUpdate, metadb.ErrNoUpdate
+		})
+	assert.NoError(t, err)
+
+	// Check if timestamps are not updated.
+	got, err := metaDB.GetRecord(ctx, store.Key, rr.Key)
+	if assert.NoError(t, err) {
+		assert.True(t, rr.Timestamps.UpdatedAt.Equal(got.Timestamps.UpdatedAt))
+		assert.Equal(t, rr.Timestamps.Signature, got.Timestamps.Signature)
+	}
 }
 
 func TestMetaDB_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {

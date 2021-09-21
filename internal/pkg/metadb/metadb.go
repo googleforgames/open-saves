@@ -16,6 +16,7 @@ package metadb
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	ds "cloud.google.com/go/datastore"
@@ -42,6 +43,10 @@ const (
 	propertiesField = "Properties"
 	tagsField       = "Tags"
 	ownerField      = "OwnerID"
+)
+
+var (
+	ErrNoUpdate = errors.New("UpdateRecord doesn't need to commit the change")
 )
 
 // MetaDB is a metadata database manager of Open Saves.
@@ -312,7 +317,8 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 		toUpdate.Timestamps.Update()
 		return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, toUpdate))
 	})
-	if err != nil {
+	// ErrNoUpdate is expected and not treated as an error.
+	if err != nil && err != ErrNoUpdate {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
 	return toUpdate, nil

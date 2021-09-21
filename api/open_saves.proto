@@ -89,6 +89,76 @@ service OpenSaves {
   // The string is optional and the server returns an empty string if
   // omitted.
   rpc Ping(PingRequest) returns (PingResponse) {}
+
+  // CompareAndSwap compares the property to old_value and updates the property to value 
+  // if the old_value and the current property are equal.
+  // The updated field in CompareAndSwapResponse is set to true if the swap is executed.
+  // For example, CompareAndSwap(property, value = 42, old_value = 24) will set the
+  // property to 42 if the current value is 24.
+  // CompareAndSwap also supports swapping with a value of another type, e.g. 
+  // CompareAndSwap(property, value = "42", old_value = 24).
+  // Otherwise it will not update the property and return the current (unchanged) value
+  // and updated = false. The operation is executed atomically.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  rpc CompareAndSwap(CompareAndSwapRequest) returns (CompareAndSwapResponse) {}
+
+  // CompareAndSwapGreaterInt compares the number of an integer property to value and
+  // updates the property if the new value is greater than the current value.
+  // The updated field in AtomicResponse is set to true if the swap is executed.
+  // For example, CompareAndSwapGreaterInt(property, value = 42) will replace property with 42
+  // and return {value = old value, updated = true} if 42 > property.
+  // Otherwise it will not update the property and return the current (unchanged) value
+  // and updated = false. The operation is executed atomically.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
+  rpc CompareAndSwapGreaterInt(AtomicIntRequest) returns (AtomicIntResponse) {}
+
+  // CompareAndSwapLessInt does the same operation as CompareAndSwapGreaterInt except
+  // the condition is the new value is less than the old value.
+  rpc CompareAndSwapLessInt(AtomicIntRequest) returns (AtomicIntResponse) {}
+
+  // AtomicAddInt adds a number to an integer property atomically.
+  // For example, AtomicAdd(property, 42) will run property += 42 and return the old value.
+  // The updated field in AtomicIntResponse is always set to true.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
+  rpc AtomicAddInt(AtomicIntRequest) returns (AtomicIntResponse) {}
+
+  // AtomicSubInt does the same except it subtracts a number.
+  rpc AtomicSubInt(AtomicIntRequest) returns (AtomicIntResponse) {}
+
+  // AtomicInc increments the number of an integer property if less than upper_bound. 
+  // Otherwise it resets the property to lower_bound.
+  // if (property < upper_bound) {
+  //   property++
+  // } else {
+  //   property = lower_bound
+  // }
+  // This makes the property an incrementing counter between [lower_bound, upper_bound].
+  // It returns the old value of the property.
+  // The updated field in AtomicIntResponse is set to true.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
+  rpc AtomicInc(AtomicIncRequest) returns (AtomicIntResponse) {}
+
+  // AtomicDec decrements the number of an integer property by one if more than lower_bound.
+  // Otherwise it resets the property to upper_bound.
+  // if (lower_bound < property) {
+  //   property--
+  // } else {
+  //   property = upper_bound
+  // }
+  // This makes the property a decrementing counter between [lower_bound, upper_bound].
+  // It returns the old value of the property.
+  // The updated field in AtomicIntResponse is always set to true.
+  // Errors:
+  //   - NotFound: the requested record or property was not found.
+  //   - InvalidArgument: the requested property was not an integer.
+  rpc AtomicDec(AtomicIncRequest) returns (AtomicIntResponse) {}
 }
 
 // Property represents typed data in Open Saves.
@@ -492,4 +562,85 @@ message PingRequest {
 message PingResponse {
   // An optional string that is copied from PingRequest.
   string pong = 1;
+}
+
+// CompareAndSwapRequest is used by the CompareAndSwap methods to atomically update a property value.
+message CompareAndSwapRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record that the property belongs to.
+  string record_key = 2;
+
+  // The name of the integer property to perform the operation to.
+  string property_name = 3;
+
+  // value is the new property value to set.
+  Property value = 4;
+
+  // old_value is compared against the current property value.
+  Property old_value = 5;
+
+  // Performance hints. 
+  Hint hint = 6;
+}
+
+// CompareAndSwapResponse is returned by CompareAndSwap and indicates whether the request
+// has updated the property value.
+message CompareAndSwapResponse {
+  // updated indicates that the condition is satisfied and the property has been updated.
+  bool updated = 1;
+  
+  // value is the old value of the property.
+  Property value = 2;
+}
+
+// AtomicIntRequest is used by atomic arithmetic methods (CompareAndSwap{Greater,Less}Int,
+// Atomic{Add,Sub}Int).
+message AtomicIntRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record that the property belongs to.
+  string record_key = 2;
+
+  // The name of the integer property to perform the operation to.
+  string property_name = 3;
+
+  // value is the operand for each method (see method descriptions).
+  int64 value = 4;
+
+  // Performance hints. 
+  Hint hint = 5;
+}
+
+// AtomicIntResponse indicates whether an atomic operation has updated a property
+// and includes the old value of the property.
+message AtomicIntResponse {
+  // updated indicates that the condition is satisfied and the property has been updated.
+  bool updated = 1;
+  
+  // value is the property value before the atomic operation.
+  int64 value = 2;
+}
+
+// AtomicIncRequest is used by atomic increment/decrement methods.
+message AtomicIncRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record that the property belongs to.
+  string record_key = 2;
+
+  // The name of the integer property to perform the operation to.
+  string property_name = 3;
+
+  // lower_bound is the lower bound of the interval.
+  int64 lower_bound = 4;
+
+  // upper_bound is the upper bound of the interval.
+  int64 upper_bound = 5;
+
+  // Performance hints. 
+  Hint hint = 6;
 }
