@@ -14,6 +14,13 @@
 
 package checksums
 
+import (
+	"bytes"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
 // Checksums is a struct for blob checksums.
 type Checksums struct {
 	// MD5 is the MD5 hash value of the associated blob object.
@@ -49,4 +56,24 @@ type ChecksumsProto interface {
 	GetHasCrc32C() bool
 	GetCrc32C() uint32
 	GetMd5() []byte
+}
+
+// ValidateIfPresent checks if the checksum values match with p.
+// Returns a DataLoss error if they don't.
+func (c *Checksums) ValidateIfPresent(p ChecksumsProto) error {
+	if len(p.GetMd5()) != 0 && len(c.MD5) != 0 {
+		if !bytes.Equal(p.GetMd5(), c.MD5) {
+			return status.Errorf(codes.DataLoss,
+				"MD5 hash values didn't match: provided[%v], calculated[%v]",
+				p.GetMd5(), c.MD5)
+		}
+	}
+	if p.GetHasCrc32C() && c.HasCRC32C {
+		if p.GetCrc32C() != c.GetCRC32C() {
+			return status.Errorf(codes.DataLoss,
+				"CRC32C checksums didn't match: provided[%v], calculated[%v]",
+				p.GetCrc32C(), p.GetCrc32C())
+		}
+	}
+	return nil
 }
