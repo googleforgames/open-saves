@@ -33,7 +33,7 @@ func TestChecksumsTest_Random(t *testing.T) {
 
 func TestChecksumsTest_AssertPropertyListMatch(t *testing.T) {
 	c := RandomChecksums(t)
-	ps, err := datastore.SaveStruct(c)
+	ps, err := datastore.SaveStruct(&c)
 	if assert.NoError(t, err) {
 		AssertPropertyListMatch(t, c, ps)
 	}
