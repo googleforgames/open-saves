@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"cloud.google.com/go/datastore"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,24 +38,8 @@ func TestChecksumsTest_AssertPropertyListMatch(t *testing.T) {
 	}
 }
 
-type checksumsProtoImpl struct {
-	checksums.Checksums
-}
-
-func (c *checksumsProtoImpl) GetMd5() []byte {
-	return c.MD5
-}
-
-func (c *checksumsProtoImpl) GetCrc32C() uint32 {
-	return c.GetCRC32C()
-}
-
-func (c *checksumsProtoImpl) GetHasCrc32C() bool {
-	return c.HasCRC32C
-}
-
 func TestChecksumsTest_AssertProtoEqual(t *testing.T) {
 	c := RandomChecksums(t)
-	p := &checksumsProtoImpl{Checksums: c}
+	p := &ChecksumsProtoImpl{Checksums: c}
 	AssertProtoEqual(t, c, p)
 }

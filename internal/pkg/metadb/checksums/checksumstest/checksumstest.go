@@ -60,3 +60,20 @@ func AssertProtoEqual(t *testing.T, expected checksums.Checksums, actual checksu
 	assert.Equal(t, expected.GetCRC32C(), actual.GetCrc32C())
 	assert.Equal(t, expected.HasCRC32C, actual.GetHasCrc32C())
 }
+
+// ChecksumsProtoImpl is a wrapper of Checksums for tests.
+type ChecksumsProtoImpl struct {
+	checksums.Checksums
+}
+
+func (c *ChecksumsProtoImpl) GetMd5() []byte {
+	return c.MD5
+}
+
+func (c *ChecksumsProtoImpl) GetCrc32C() uint32 {
+	return c.GetCRC32C()
+}
+
+func (c *ChecksumsProtoImpl) GetHasCrc32C() bool {
+	return c.HasCRC32C
+}
