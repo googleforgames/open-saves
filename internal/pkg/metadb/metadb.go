@@ -68,6 +68,15 @@ type MetaDB struct {
 // Returning a non-nil error aborts the transaction.
 type RecordUpdater func(record *record.Record) (*record.Record, error)
 
+// removeInlineBlob removes inline blob related attributes from the Record.
+func removeInlineBlob(r *record.Record) *record.Record {
+	r.Blob = nil
+	r.BlobSize = 0
+	r.MD5 = nil
+	r.ResetCRC32C()
+	return r
+}
+
 // NewMetaDB creates a new MetaDB instance with an initialized database client.
 func NewMetaDB(ctx context.Context, projectID string, opts ...option.ClientOption) (*MetaDB, error) {
 	client, err := ds.NewClient(ctx, projectID, opts...)
@@ -478,8 +487,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 		}
 		if record.ExternalBlob == uuid.Nil {
 			// Simply add the new blob if previously didn't have a blob
-			record.Blob = nil
-			record.Timestamps.Update()
+			record = removeInlineBlob(record)
 		} else {
 			// Mark previous blob for deletion
 			oldBlob, err := m.getBlobRef(ctx, tx, record.ExternalBlob)
@@ -513,6 +521,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 
 		record.BlobSize = blob.Size
 		record.ExternalBlob = blob.Key
+		record.Timestamps.Update()
 		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record)); err != nil {
 			return err
 		}
@@ -544,8 +553,7 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 
 		record.BlobSize = 0
 		if record.ExternalBlob == uuid.Nil && len(record.Blob) > 0 {
-			// Delete the inline blob
-			record.Blob = nil
+			record = removeInlineBlob(record)
 			record.Timestamps.Update()
 			return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
 		}

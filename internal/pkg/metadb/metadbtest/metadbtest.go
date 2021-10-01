@@ -20,11 +20,23 @@ import (
 
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
+
+func assertEqualChecksums(t *testing.T, expected, actual checksums.Checksums, msgAndArgs ...interface{}) {
+	t.Helper()
+	if len(expected.MD5) == 0 {
+		assert.Empty(t, actual.MD5, msgAndArgs...)
+	} else {
+		assert.Equal(t, expected.MD5, actual.MD5, msgAndArgs...)
+	}
+	assert.Equal(t, expected.CRC32C, actual.CRC32C, msgAndArgs...)
+	assert.Equal(t, expected.HasCRC32C, actual.HasCRC32C, msgAndArgs...)
+}
 
 func assertTimestampsWithinDuration(t *testing.T, expected, actual *timestamps.Timestamps, delta time.Duration, msgAndArgs ...interface{}) {
 	t.Helper()
@@ -79,6 +91,7 @@ func AssertEqualRecordWithinDuration(t *testing.T, expected, actual *record.Reco
 		assert.Equal(t, expected.Properties, actual.Properties, msgAndArgs...)
 		assert.ElementsMatch(t, expected.Tags, actual.Tags, msgAndArgs...)
 		assert.Equal(t, expected.OwnerID, actual.OwnerID, msgAndArgs...)
+		assertEqualChecksums(t, expected.Checksums, actual.Checksums, msgAndArgs...)
 		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
 	}
 }
@@ -106,6 +119,7 @@ func AssertEqualBlobRefWithinDuration(t *testing.T, expected, actual *blobref.Bl
 		assert.Equal(t, expected.StoreKey, actual.StoreKey, msgAndArgs...)
 		assert.Equal(t, expected.RecordKey, actual.RecordKey, msgAndArgs...)
 		assert.Equal(t, expected.Chunked, actual.Chunked, msgAndArgs...)
+		assertEqualChecksums(t, expected.Checksums, actual.Checksums, msgAndArgs...)
 		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
 	}
 }
@@ -131,6 +145,7 @@ func AssertEqualChunkRefWithinDuration(t *testing.T, expected, actual *chunkref.
 		assert.Equal(t, expected.Number, actual.Number, msgAndArgs...)
 		assert.Equal(t, expected.Size, actual.Size, msgAndArgs...)
 		assert.Equal(t, expected.Status, actual.Status, msgAndArgs...)
+		assertEqualChecksums(t, expected.Checksums, actual.Checksums, msgAndArgs...)
 		assertTimestampsWithinDuration(t, &expected.Timestamps, &actual.Timestamps, delta, msgAndArgs...)
 	}
 }

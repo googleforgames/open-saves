@@ -22,10 +22,10 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
@@ -427,7 +427,7 @@ func TestMetaDB_UpdateRecordErrNoUpdate(t *testing.T) {
 
 	_, err := metaDB.UpdateRecord(ctx, store.Key, rr.Key,
 		func(toUpdate *record.Record) (*record.Record, error) {
-			return toUpdate, metadb.ErrNoUpdate
+			return toUpdate, m.ErrNoUpdate
 		})
 	assert.NoError(t, err)
 
@@ -1149,10 +1149,11 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 	chunks := []*chunkref.ChunkRef{}
 	for i, s := range statuses {
 		chunk := &chunkref.ChunkRef{
-			Key:     uuid.New(),
-			BlobRef: blob.Key,
-			Status:  s,
-			Number:  int32(i),
+			Key:       uuid.New(),
+			BlobRef:   blob.Key,
+			Status:    s,
+			Number:    int32(i),
+			Checksums: checksumstest.RandomChecksums(t),
 			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC),
 				UpdatedAt: time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC),

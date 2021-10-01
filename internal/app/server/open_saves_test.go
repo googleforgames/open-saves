@@ -16,6 +16,8 @@ package server
 
 import (
 	"context"
+	"crypto/md5"
+	"hash/crc32"
 	"io"
 	"net"
 	"testing"
@@ -26,6 +28,7 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -476,8 +479,11 @@ func TestOpenSaves_Ping(t *testing.T) {
 	assert.Equal(t, testString, pong.GetPong())
 }
 
-func createBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
-	storeKey, recordKey string, content []byte) {
+// createBlobWithChecksums creates a blob with optional checksums.
+// Passing nil to md5 or crc32c skips integrity checking on the server side.
+// Passing an incorrect value fails the test.
+func createBlobWithChecksums(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
+	storeKey, recordKey string, content []byte, cs checksums.Checksums) {
 	t.Helper()
 
 	cbc, err := client.CreateBlob(ctx)
@@ -492,6 +498,9 @@ func createBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
 				StoreKey:  storeKey,
 				RecordKey: recordKey,
 				Size:      int64(len(content)),
+				Md5:       cs.MD5,
+				Crc32C:    cs.GetCRC32C(),
+				HasCrc32C: cs.HasCRC32C,
 			},
 		},
 	})
@@ -530,6 +539,9 @@ func createBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
 		assert.Equal(t, storeKey, meta.StoreKey)
 		assert.Equal(t, recordKey, meta.RecordKey)
 		assert.Equal(t, int64(len(content)), meta.Size)
+		// The server always sets the checksums regardless of what the client sends.
+		assert.NotEmpty(t, meta.Md5)
+		assert.True(t, meta.HasCrc32C)
 	}
 
 	t.Cleanup(func() {
@@ -539,6 +551,14 @@ func createBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
 			RecordKey: recordKey,
 		})
 	})
+}
+
+// createBlob calls createBlobWithChecksums with both MD5 and CRC32C.
+func createBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
+	storeKey, recordKey string, content []byte) {
+	digest := checksums.NewDigest()
+	digest.Write(content)
+	createBlobWithChecksums(ctx, t, client, storeKey, recordKey, content, digest.Checksums())
 }
 
 func verifyBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
@@ -562,6 +582,20 @@ func verifyBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
 		assert.Equal(t, storeKey, meta.StoreKey)
 		assert.Equal(t, recordKey, meta.RecordKey)
 		assert.Equal(t, int64(len(expectedContent)), meta.Size)
+
+		if len(expectedContent) > 0 {
+			md5 := md5.New()
+			md5.Write(expectedContent)
+			assert.Equal(t, md5.Sum(nil), meta.Md5)
+
+			crc32c := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+			crc32c.Write(expectedContent)
+			assert.True(t, meta.HasCrc32C)
+			assert.Equal(t, crc32c.Sum32(), meta.Crc32C)
+		} else {
+			assert.Empty(t, meta.Md5)
+			assert.False(t, meta.HasCrc32C)
+		}
 	}
 
 	recvd := 0

@@ -19,6 +19,8 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,11 +40,14 @@ func TestBlobRef_Save(t *testing.T) {
 	)
 
 	blob := BlobRef{
-		Size:      size,
-		Status:    StatusInitializing,
-		StoreKey:  store,
-		RecordKey: record,
+		Size:       size,
+		Status:     StatusInitializing,
+		StoreKey:   store,
+		RecordKey:  record,
+		Checksums:  checksumstest.RandomChecksums(t),
+		Timestamps: timestamps.New(),
 	}
+
 	expected := []datastore.Property{
 		{
 			Name:  "Size",
@@ -69,8 +74,9 @@ func TestBlobRef_Save(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, expected, actual[:len(expected)])
-		if assert.Equal(t, 6, len(actual)) {
-			assert.Equal(t, "Timestamps", actual[5].Name)
+		if assert.Equal(t, 9, len(actual)) {
+			checksumstest.AssertPropertyListMatch(t, blob.Checksums, actual[5:8])
+			assert.Equal(t, "Timestamps", actual[8].Name)
 		}
 	}
 }
@@ -105,7 +111,9 @@ func TestBlobRef_Load(t *testing.T) {
 		Status:    StatusReady,
 		StoreKey:  store,
 		RecordKey: record,
+		Checksums: checksumstest.RandomChecksums(t),
 	}
+	properties = append(properties, checksumstest.ChecksumsToProperties(t, expected.Checksums)...)
 	actual := new(BlobRef)
 	err := actual.Load(properties)
 	if assert.NoError(t, err) {
@@ -126,11 +134,13 @@ func TestBlobRef_ToProto(t *testing.T) {
 		record = "record"
 	)
 	b := NewBlobRef(size, store, record)
+	b.Checksums = checksumstest.RandomChecksums(t)
 
 	proto := b.ToProto()
 	if assert.NotNil(t, proto) {
 		assert.Equal(t, b.StoreKey, proto.GetStoreKey())
 		assert.Equal(t, b.RecordKey, proto.GetRecordKey())
 		assert.Equal(t, b.Size, proto.GetSize())
+		checksumstest.AssertProtoEqual(t, b.Checksums, proto)
 	}
 }
