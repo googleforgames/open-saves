@@ -22,6 +22,7 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -68,6 +69,7 @@ func TestMetaDBTest_TestAssertEqualRecord(t *testing.T) {
 				StringValue: "string value",
 			},
 		},
+		Checksums: checksumstest.RandomChecksums(t),
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(100, 0),
 			UpdatedAt: time.Unix(110, 0),
@@ -90,6 +92,7 @@ func TestMetaDBTest_TestAssertEqualBlobRef(t *testing.T) {
 		Status:    blobref.StatusInitializing,
 		StoreKey:  "storeKey",
 		RecordKey: "recordKey",
+		Checksums: checksumstest.RandomChecksums(t),
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(100, 0),
 			UpdatedAt: time.Unix(200, 0),
@@ -106,11 +109,12 @@ func TestMetaDBTest_TestAssertEqualBlobRef(t *testing.T) {
 
 func TestMetaDBTest_TestAssertEqualChunkRef(t *testing.T) {
 	original := &chunkref.ChunkRef{
-		Key:     uuid.MustParse("DEF55B54-F5CE-439C-9639-9F53104B9D0B"),
-		BlobRef: uuid.MustParse("E9C53FEB-2FB2-41DA-9465-81B2F59710CE"),
-		Status:  blobref.StatusError,
-		Number:  42,
-		Size:    24,
+		Key:       uuid.MustParse("DEF55B54-F5CE-439C-9639-9F53104B9D0B"),
+		BlobRef:   uuid.MustParse("E9C53FEB-2FB2-41DA-9465-81B2F59710CE"),
+		Status:    blobref.StatusError,
+		Number:    42,
+		Size:      24,
+		Checksums: checksumstest.RandomChecksums(t),
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: time.Unix(100, 0),
 			UpdatedAt: time.Unix(200, 0),

@@ -20,6 +20,7 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -31,13 +32,16 @@ type ChunkRef struct {
 	Key uuid.UUID `datastore:"-"`
 	// BlobRef is the key of parent BlobRef.
 	BlobRef uuid.UUID `datastore:"-"`
-
 	// Number is the position of the chunk in the BlobRef.
 	Number int32
 	// Size is the byte size of the chunk.
 	Size int32
 	// Status is the current status of the chunk.
 	blobref.Status
+
+	// Checksums contains checksums for the chunk object.
+	checksums.Checksums `datastore:",flatten"`
+
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
 	Timestamps timestamps.Timestamps
@@ -66,13 +70,17 @@ func (c *ChunkRef) LoadKey(k *datastore.Key) error {
 	return nil
 }
 
-// Save and Load replicates the default behaviors, however, they are required
-// for the KeyLoader interface.
+// Save and Load explictly need to call Checksums.Save/Load because the datastore
+// library doesn't call them for flattened fields.
 
+// Load implements the Datastore PropertyLoadSaver interface and converts Datastore
+// properties to corresponding struct fields.
 func (c *ChunkRef) Load(ps []datastore.Property) error {
 	return datastore.LoadStruct(c, ps)
 }
 
+// Save implements the Datastore PropertyLoadSaver interface and converts struct fields
+// to Datastore properties.
 func (c *ChunkRef) Save() ([]datastore.Property, error) {
 	return datastore.SaveStruct(c)
 }
@@ -127,5 +135,8 @@ func (c *ChunkRef) ToProto() *pb.ChunkMetadata {
 		SessionId: c.BlobRef.String(),
 		Number:    int64(c.Number),
 		Size:      int64(c.Size),
+		Md5:       c.MD5,
+		Crc32C:    c.GetCRC32C(),
+		HasCrc32C: c.HasCRC32C,
 	}
 }

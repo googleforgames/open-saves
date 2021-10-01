@@ -18,6 +18,7 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
@@ -38,6 +39,11 @@ type BlobRef struct {
 	// Chunked is whether the BlobRef is chunked or not.
 	Chunked bool
 
+	// Checksums have checksums for each blob object associated with the BlobRef entity.
+	// Record.{MD5,CRC32C} must be used for inline blobs, and
+	// ChunkRef.{MD5,CRC32C} must be used for chunked blobs.
+	checksums.Checksums `datastore:",flatten"`
+
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
 	Timestamps timestamps.Timestamps
@@ -49,8 +55,8 @@ var _ datastore.KeyLoader = new(BlobRef)
 
 // These functions need to be implemented here instead of the datastore package because
 // go doesn't permit to define additional receivers in another package.
-// Save and Load replicates the default behaviors, however, they are required
-// for the KeyLoader interface.
+// Save and Load explictly need to call Checksums.Save/Load because the datastore
+// library doesn't call them for flattened fields.
 
 // Save implements the Datastore PropertyLoadSaver interface and converts the properties
 // field in the struct to separate Datastore properties.
@@ -109,5 +115,8 @@ func (b *BlobRef) ToProto() *pb.BlobMetadata {
 		StoreKey:  b.StoreKey,
 		RecordKey: b.RecordKey,
 		Size:      b.Size,
+		Md5:       b.MD5,
+		Crc32C:    b.GetCRC32C(),
+		HasCrc32C: b.HasCRC32C,
 	}
 }
