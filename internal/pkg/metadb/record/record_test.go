@@ -21,6 +21,7 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -43,6 +44,7 @@ func TestRecord_Save(t *testing.T) {
 		OwnerID:      "owner",
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		Tags:         []string{"a", "b"},
+		Checksums:    checksumstest.RandomChecksums(t),
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
@@ -53,7 +55,7 @@ func TestRecord_Save(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	if assert.Len(t, properties, 8, "Save didn't return the expected number of elements.") {
+	if assert.Len(t, properties, 11, "Save didn't return the expected number of elements.") {
 		idx := 2
 		assert.Equal(t, []datastore.Property{
 			{
@@ -98,6 +100,11 @@ func TestRecord_Save(t *testing.T) {
 				Value:   "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 				NoIndex: true,
 			},
+		}, properties[idx:idx+3])
+		idx += 3
+		checksumstest.AssertPropertyListMatch(t, record.Checksums, properties[idx:idx+3])
+		idx += 3
+		assert.Equal(t, []datastore.Property{
 			{
 				Name: "Timestamps",
 				Value: &datastore.Entity{
@@ -131,6 +138,7 @@ func TestRecord_Load(t *testing.T) {
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6")
+	checksums := checksumstest.RandomChecksums(t)
 	properties := []datastore.Property{
 		{
 			Name:  "Blob",
@@ -191,6 +199,7 @@ func TestRecord_Load(t *testing.T) {
 			},
 		},
 	}
+	properties = append(properties, checksumstest.ChecksumsToProperties(t, checksums)...)
 	var record Record
 	if err := record.Load(properties); err != nil {
 		t.Fatalf("Load should not return an error: %v", err)
@@ -207,6 +216,7 @@ func TestRecord_Load(t *testing.T) {
 		OwnerID:      "owner",
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		Tags:         []string{"a", "b"},
+		Checksums:    checksums,
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
@@ -353,6 +363,7 @@ func TestRecord_CacheKey(t *testing.T) {
 }
 
 func TestRecord_SerializeRecord(t *testing.T) {
+	testBlob := []byte("some-bytes")
 	rr := []*Record{
 		{
 			Timestamps: timestamps.Timestamps{
@@ -382,11 +393,12 @@ func TestRecord_SerializeRecord(t *testing.T) {
 			},
 		},
 		{
-			Key:      "some-key",
-			Blob:     []byte("some-bytes"),
-			BlobSize: 64,
-			OwnerID:  "new-owner",
-			Tags:     []string{"tag1", "tag2"},
+			Key:       "some-key",
+			Blob:      testBlob,
+			BlobSize:  int64(len(testBlob)),
+			OwnerID:   "new-owner",
+			Tags:      []string{"tag1", "tag2"},
+			Checksums: checksumstest.RandomChecksums(t),
 			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),

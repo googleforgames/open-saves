@@ -28,6 +28,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
@@ -253,10 +254,19 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 		)
 	}
 	blob := buffer.Bytes()
+	digest := checksums.NewDigest()
+	digest.Write(blob)
+	checksums := digest.Checksums()
+	if err := checksums.ValidateIfPresent(meta); err != nil {
+		log.Error(err)
+		return err
+	}
+	// UpdateRecord also marks any associated external blob for deletion.
 	record, err := s.metaDB.UpdateRecord(ctx, meta.GetStoreKey(), meta.GetRecordKey(),
 		func(record *record.Record) (*record.Record, error) {
 			record.Blob = blob
 			record.BlobSize = size
+			record.Checksums = checksums
 			return record, nil
 		})
 	if err != nil {
@@ -302,6 +312,7 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 	}()
 
 	written := int64(0)
+	digest := checksums.NewDigest()
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -321,6 +332,7 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 			return err
 		}
 		written += int64(n)
+		digest.Write(fragment)
 	}
 	err = writer.Close()
 	writer = nil
@@ -338,6 +350,11 @@ func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.Open
 		s.blobRefFail(ctx, blobref)
 		return status.Errorf(codes.DataLoss,
 			"Written byte length (%v) != blob length in metadata sent from client (%v)", written, meta.GetSize())
+	}
+	blobref.Checksums = digest.Checksums()
+	if err := blobref.ValidateIfPresent(meta); err != nil {
+		log.Error(err)
+		return err
 	}
 	record, _, err := s.metaDB.PromoteBlobRefToCurrent(ctx, blobref)
 	if err != nil {
@@ -381,6 +398,9 @@ func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRe
 		log.Errorf("GetBlobRef returned error for blob ref (%v): %v", record.ExternalBlob, err)
 		return err
 	}
+
+	meta := blobref.ToProto()
+	stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Metadata{Metadata: meta}})
 
 	reader, err := s.blobStore.NewReader(ctx, blobref.ObjectPath())
 	if err != nil {
@@ -426,15 +446,13 @@ func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_Ge
 		return err
 	}
 
-	meta := &pb.BlobMetadata{
-		StoreKey:  req.GetStoreKey(),
-		RecordKey: rr.Key,
-		Size:      rr.BlobSize,
-	}
-	stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Metadata{Metadata: meta}})
 	if rr.ExternalBlob != uuid.Nil {
 		return s.getExternalBlob(ctx, req, stream, rr)
 	}
+
+	// Handle the inline blob here.
+	meta := rr.GetInlineBlobMetadata()
+	stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Metadata{Metadata: meta}})
 	err = stream.Send(&pb.GetBlobResponse{Response: &pb.GetBlobResponse_Content{Content: rr.Blob}})
 	if err != nil {
 		log.Errorf("GetBlob: Stream send error for store (%v), record (%v): %v", req.GetRecordKey(), rr.Key, err)
@@ -508,6 +526,7 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	}()
 
 	written := 0
+	digest := checksums.NewDigest()
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -526,6 +545,7 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 			log.Errorf("UploadChunk: BlobStore write error: %v", err)
 			return err
 		}
+		digest.Write(fragment)
 		written += n
 		// TODO(yuryu): This is not suitable for unit tests until we make the value
 		// configurable, or have a BlobStore mock.
@@ -550,6 +570,13 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	// Update the chunk size based on the actual bytes written
 	// MarkChunkRefReady commits the new change to Datastore
 	chunk.Size = int32(written)
+	chunk.Checksums = digest.Checksums()
+
+	if err := chunk.ValidateIfPresent(meta); err != nil {
+		log.Error(err)
+		return err
+	}
+
 	if err := s.metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
 		log.Errorf("Failed to update chunkref metadata (%v): %v", chunk.Key, err)
 		s.chunkRefFail(ctx, chunk)

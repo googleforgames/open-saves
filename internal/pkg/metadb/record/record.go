@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,6 +40,10 @@ type Record struct {
 	Tags         []string
 	OpaqueString string `datastore:",noindex"`
 
+	// Checksums have checksums for inline blobs.
+	// Note that a BlobRef object doesn't exist for inline blobs.
+	checksums.Checksums `datastore:",flatten"`
+
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
 	Timestamps timestamps.Timestamps
@@ -58,8 +63,8 @@ var _ cache.Cacheable = new(Record)
 
 const externalBlobPropertyName = "ExternalBlob"
 
-// Save and Load for Record replicate the default behaviors, however, they are
-// explicitly required to implement the KeyLoader interface.
+// Save and Load replicates the default behaviors, however, they are required
+// for the KeyLoader interface.
 
 // Save implements the Datastore PropertyLoadSaver interface and converts struct fields
 // to Datastore properties.
@@ -70,6 +75,7 @@ func (r *Record) Save() ([]datastore.Property, error) {
 	}
 	properties = append(properties,
 		timestamps.UUIDToDatastoreProperty(externalBlobPropertyName, r.ExternalBlob, false))
+
 	return properties, nil
 }
 
@@ -159,4 +165,16 @@ func (r *Record) EncodeBytes() ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+// GetInlineBlobMetadata returns a BlobMetadata proto for the inline blob.
+func (r *Record) GetInlineBlobMetadata() *pb.BlobMetadata {
+	return &pb.BlobMetadata{
+		StoreKey:  r.StoreKey,
+		RecordKey: r.Key,
+		Size:      r.BlobSize,
+		Md5:       r.MD5,
+		Crc32C:    r.GetCRC32C(),
+		HasCrc32C: r.HasCRC32C,
+	}
 }
