@@ -55,8 +55,8 @@ var _ datastore.KeyLoader = new(BlobRef)
 
 // These functions need to be implemented here instead of the datastore package because
 // go doesn't permit to define additional receivers in another package.
-// Save and Load explictly need to call Checksums.Save/Load because the datastore
-// library doesn't call them for flattened fields.
+// Save and Load replicates the default behaviors, however, they are required
+// for the KeyLoader interface.
 
 // Save implements the Datastore PropertyLoadSaver interface and converts the properties
 // field in the struct to separate Datastore properties.

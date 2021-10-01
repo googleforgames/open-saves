@@ -70,8 +70,8 @@ func (c *ChunkRef) LoadKey(k *datastore.Key) error {
 	return nil
 }
 
-// Save and Load explictly need to call Checksums.Save/Load because the datastore
-// library doesn't call them for flattened fields.
+// Save and Load replicates the default behaviors, however, they are required
+// for the KeyLoader interface.
 
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.

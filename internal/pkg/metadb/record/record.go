@@ -63,8 +63,8 @@ var _ cache.Cacheable = new(Record)
 
 const externalBlobPropertyName = "ExternalBlob"
 
-// Save and Load explictly need to call Checksums.Save/Load because the datastore
-// library doesn't call them for flattened fields.
+// Save and Load replicates the default behaviors, however, they are required
+// for the KeyLoader interface.
 
 // Save implements the Datastore PropertyLoadSaver interface and converts struct fields
 // to Datastore properties.
