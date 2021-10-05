@@ -597,12 +597,13 @@ func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.Commi
 		log.Errorf("Cannot retrieve chunked blob metadata for session (%v): %v", blobKey, err)
 		return nil, err
 	}
-	_, blob, err = s.metaDB.PromoteBlobRefToCurrent(ctx, blob)
+	record, blob, err := s.metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
 		log.Errorf("PromoteBlobRefToCurrent failed for object %v: %v", blob.ObjectPath(), err)
 		// Do not delete the blob object here. Leave it to the garbage collector.
 		return nil, err
 	}
+	s.cacheRecord(ctx, record, req.GetHint())
 	return blob.ToProto(), nil
 }
 
