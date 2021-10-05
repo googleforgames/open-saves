@@ -15,19 +15,20 @@ With Open Saves, game developers can run a cloud-native storage system that is:
 - Fast: With a built-in caching system, Open Saves optimizes data placements based on access frequency and data size, all to achieve both low latency for smaller binary objects and high throughput for big objects.
 - Scalable: The Open Saves API server can run on either [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine), or [Cloud Run](https://cloud.google.com/run). Both platforms can scale out to handle hundreds of thousands of requests per second. Open Saves also stores data in Google [Datastore](https://cloud.google.com/datastore) and [Cloud Storage](https://cloud.google.com/storage), and can handle hundreds of gigabytes of data.
 
-For more information, see the [Overview](./docs/overview.md). To get started with deploying Open Saves, check out the [deployment guide](./docs/deploying.md).
+## Table of Contents
 
-For more information about the API, refer to the [API reference](./docs/reference.md).
+- [Overview](./docs/overview.md)
+- [Key terms](.docs/key-terms.md)
+- Using Open Saves
+  - [Deployment guide](./docs/deploying.md)
+  - [API reference](./docs/reference.md)
+- Contributing to Open Saves
+  - [How to contribute](docs/contributing.md)
+  - [Open Saves development guide](docs/development.md)
 
 ## Disclaimer
 
 This software is currently beta, and subject to change. It is not yet ready to serve production workloads.
-
-## Contributing to the project
-
-Check out [How to Contribute](docs/contributing.md) before contributing to the project.
-
-The [Open Saves development guide](docs/development.md) has detailed instructions on getting the source code, making changes, testing, and submitting a pull request to Open Saves.
 
 ## Code of Conduct
 
