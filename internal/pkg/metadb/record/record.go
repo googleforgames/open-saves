@@ -129,14 +129,12 @@ func FromProto(storeKey string, p *pb.Record) *Record {
 		return new(Record)
 	}
 	return &Record{
-		Key:            p.GetKey(),
-		BlobSize:       p.GetBlobSize(),
-		OwnerID:        p.GetOwnerId(),
-		Tags:           p.GetTags(),
-		Chunked:        p.GetChunked(),
-		NumberOfChunks: p.GetNumberOfChunks(),
-		Properties:     NewPropertyMapFromProto(p.GetProperties()),
-		OpaqueString:   p.GetOpaqueString(),
+		Key:          p.GetKey(),
+		BlobSize:     p.GetBlobSize(),
+		OwnerID:      p.GetOwnerId(),
+		Tags:         p.GetTags(),
+		Properties:   NewPropertyMapFromProto(p.GetProperties()),
+		OpaqueString: p.GetOpaqueString(),
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: p.GetCreatedAt().AsTime(),
 			UpdatedAt: p.GetUpdatedAt().AsTime(),

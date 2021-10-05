@@ -583,7 +583,7 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 		// Do not delete the chunk object here. Leave it to the garbage collector.
 		return err
 	}
-	return stream.SendAndClose(meta)
+	return stream.SendAndClose(chunk.ToProto())
 }
 
 func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.CommitChunkedUploadRequest) (*pb.BlobMetadata, error) {

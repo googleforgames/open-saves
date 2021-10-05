@@ -292,8 +292,8 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	proto := &pb.Record{
 		Key:            "key",
 		BlobSize:       int64(len(testBlob)),
-		Chunked:        false,
-		NumberOfChunks: 0,
+		Chunked:        true,
+		NumberOfChunks: 100,
 		Properties: map[string]*pb.Property{
 			"prop1": {
 				Type:  pb.Property_INTEGER,
@@ -311,11 +311,9 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		UpdatedAt:    timestamppb.New(updatedAt),
 	}
 	expected := &Record{
-		Key:            "key",
-		BlobSize:       int64(len(testBlob)),
-		ExternalBlob:   uuid.Nil,
-		Chunked:        false,
-		NumberOfChunks: 0,
+		Key:          "key",
+		BlobSize:     int64(len(testBlob)),
+		ExternalBlob: uuid.Nil,
 		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
