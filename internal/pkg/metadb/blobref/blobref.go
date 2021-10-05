@@ -18,6 +18,7 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 )
 
@@ -37,6 +38,11 @@ type BlobRef struct {
 	RecordKey string
 	// Chunked is whether the BlobRef is chunked or not.
 	Chunked bool
+
+	// Checksums have checksums for each blob object associated with the BlobRef entity.
+	// Record.{MD5,CRC32C} must be used for inline blobs, and
+	// ChunkRef.{MD5,CRC32C} must be used for chunked blobs.
+	checksums.Checksums `datastore:",flatten"`
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
@@ -109,5 +115,8 @@ func (b *BlobRef) ToProto() *pb.BlobMetadata {
 		StoreKey:  b.StoreKey,
 		RecordKey: b.RecordKey,
 		Size:      b.Size,
+		Md5:       b.MD5,
+		Crc32C:    b.GetCRC32C(),
+		HasCrc32C: b.HasCRC32C,
 	}
 }

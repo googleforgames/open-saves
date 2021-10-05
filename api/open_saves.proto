@@ -436,6 +436,23 @@ message BlobMetadata {
 
   // Performance hints (write only).
   Hint hint = 4;
+
+  // md5 is the MD5 hash of the blob content.
+  // If supplied for uploads, the server validates the content using the hash value.
+  // For downloads, the server returns the stored hash value of the blob content.
+  // The length of the hash value is 0 (not present) or 16 (present) bytes.
+  bytes md5 = 5;
+
+  // crc32c is the CRC32C checksum of the blob content.
+  // Specifically, it uses the Castagnoli polynomial. https://pkg.go.dev/hash/crc32#pkg-constants
+  // If supplied for uploads, the server validates the content using the checksum.
+  // For downloads, the server returns the checksum of the blob content.
+  // Open Saves provides both MD5 and CRC32C because CRC32C is often used by
+  // Cloud object storage services.
+  uint32 crc32c = 6;
+
+  // has_crc32c indicates if crc32c is present.
+  bool has_crc32c = 7;
 }
 
 message CreateChunkedBlobRequest {
@@ -480,7 +497,22 @@ message ChunkMetadata {
   // Performance hints (write only).
   Hint hint = 4;
 
-  // TODO(yuryu): Add checksum
+  // md5 is the MD5 hash of the chunk content.
+  // If supplied for uploads, the server validates the content using the hash value.
+  // For downloads, the server returns the stored hash value of the chunk content.
+  // The length of the hash value is 0 (not present) or 16 (present) bytes.
+  bytes md5 = 5;
+
+  // crc32c is the CRC32C checksum of the chunk content.
+  // Specifically, it uses the Castagnoli polynomial. https://pkg.go.dev/hash/crc32#pkg-constants
+  // If supplied for uploads, the server validates the content using the checksum.
+  // For downloads, the server returns the checksum of the chunk content.
+  // Open Saves provides both MD5 and CRC32C because CRC32C is often used by
+  // Cloud object storage services.
+  uint32 crc32c = 6;
+
+  // has_crc32c indicates if crc32c is present.
+  bool has_crc32c = 7;
 }
 
 message CommitChunkedUploadRequest {
