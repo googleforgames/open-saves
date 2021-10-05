@@ -31,14 +31,16 @@ var _ datastore.PropertyLoadSaver = new(PropertyMap)
 // Record represents a Open Saves record in the metadata database.
 // See the Open Saves API definition for details.
 type Record struct {
-	Key          string `datastore:"-"`
-	Blob         []byte `datastore:",noindex"`
-	BlobSize     int64
-	ExternalBlob uuid.UUID `datastore:"-"`
-	Properties   PropertyMap
-	OwnerID      string
-	Tags         []string
-	OpaqueString string `datastore:",noindex"`
+	Key            string `datastore:"-"`
+	Blob           []byte `datastore:",noindex"`
+	BlobSize       int64
+	ExternalBlob   uuid.UUID `datastore:"-"`
+	NumberOfChunks int64
+	Chunked        bool
+	Properties     PropertyMap
+	OwnerID        string
+	Tags           []string
+	OpaqueString   string `datastore:",noindex"`
 
 	// Checksums have checksums for inline blobs.
 	// Note that a BlobRef object doesn't exist for inline blobs.
@@ -106,14 +108,16 @@ func (r *Record) LoadKey(k *datastore.Key) error {
 // ToProto converts the struct to a proto.
 func (r *Record) ToProto() *pb.Record {
 	ret := &pb.Record{
-		Key:          r.Key,
-		BlobSize:     r.BlobSize,
-		OwnerId:      r.OwnerID,
-		Tags:         r.Tags,
-		Properties:   r.Properties.ToProto(),
-		OpaqueString: r.OpaqueString,
-		CreatedAt:    timestamppb.New(r.Timestamps.CreatedAt),
-		UpdatedAt:    timestamppb.New(r.Timestamps.UpdatedAt),
+		Key:            r.Key,
+		BlobSize:       r.BlobSize,
+		OwnerId:        r.OwnerID,
+		Chunked:        r.Chunked,
+		NumberOfChunks: r.NumberOfChunks,
+		Tags:           r.Tags,
+		Properties:     r.Properties.ToProto(),
+		OpaqueString:   r.OpaqueString,
+		CreatedAt:      timestamppb.New(r.Timestamps.CreatedAt),
+		UpdatedAt:      timestamppb.New(r.Timestamps.UpdatedAt),
 	}
 	return ret
 }
