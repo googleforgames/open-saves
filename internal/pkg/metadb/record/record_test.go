@@ -33,10 +33,12 @@ func TestRecord_Save(t *testing.T) {
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("34E1A605-C0FD-4A3D-A9ED-9BA42CAFAF6E")
 	record := &Record{
-		Key:          "key",
-		Blob:         testBlob,
-		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: uuid.Nil,
+		Key:            "key",
+		Blob:           testBlob,
+		BlobSize:       int64(len(testBlob)),
+		ExternalBlob:   uuid.Nil,
+		Chunked:        false,
+		NumberOfChunks: 0,
 		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
@@ -55,8 +57,8 @@ func TestRecord_Save(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	if assert.Len(t, properties, 11, "Save didn't return the expected number of elements.") {
-		idx := 2
+	if assert.Len(t, properties, 13, "Save didn't return the expected number of elements.") {
+		idx := 4
 		assert.Equal(t, []datastore.Property{
 			{
 				Name:    "Blob",
@@ -66,6 +68,15 @@ func TestRecord_Save(t *testing.T) {
 			{
 				Name:  "BlobSize",
 				Value: int64(len(testBlob)),
+			},
+			{
+				Name:    "NumberOfChunks",
+				Value:   int64(0),
+				NoIndex: false,
+			},
+			{
+				Name:  "Chunked",
+				Value: false,
 			},
 		}, properties[:idx])
 		assert.Equal(t, properties[idx].Name, "Properties")
@@ -231,10 +242,12 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	record := &Record{
-		Key:          "key",
-		Blob:         testBlob,
-		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: uuid.Nil,
+		Key:            "key",
+		Blob:           testBlob,
+		BlobSize:       int64(len(testBlob)),
+		ExternalBlob:   uuid.Nil,
+		Chunked:        true,
+		NumberOfChunks: 1,
 		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
@@ -249,8 +262,10 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 		},
 	}
 	expected := &pb.Record{
-		Key:      "key",
-		BlobSize: int64(len(testBlob)),
+		Key:            "key",
+		BlobSize:       int64(len(testBlob)),
+		Chunked:        true,
+		NumberOfChunks: 1,
 		Properties: map[string]*pb.Property{
 			"prop1": {
 				Type:  pb.Property_INTEGER,
@@ -275,8 +290,10 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	proto := &pb.Record{
-		Key:      "key",
-		BlobSize: int64(len(testBlob)),
+		Key:            "key",
+		BlobSize:       int64(len(testBlob)),
+		Chunked:        false,
+		NumberOfChunks: 0,
 		Properties: map[string]*pb.Property{
 			"prop1": {
 				Type:  pb.Property_INTEGER,
@@ -294,9 +311,11 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		UpdatedAt:    timestamppb.New(updatedAt),
 	}
 	expected := &Record{
-		Key:          "key",
-		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: uuid.Nil,
+		Key:            "key",
+		BlobSize:       int64(len(testBlob)),
+		ExternalBlob:   uuid.Nil,
+		Chunked:        false,
+		NumberOfChunks: 0,
 		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
