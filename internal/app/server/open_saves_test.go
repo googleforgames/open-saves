@@ -16,8 +16,6 @@ package server
 
 import (
 	"context"
-	"crypto/md5"
-	"hash/crc32"
 	"io"
 	"net"
 	"testing"
@@ -584,14 +582,13 @@ func verifyBlob(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
 		assert.Equal(t, int64(len(expectedContent)), meta.Size)
 
 		if len(expectedContent) > 0 {
-			md5 := md5.New()
-			md5.Write(expectedContent)
-			assert.Equal(t, md5.Sum(nil), meta.Md5)
+			digest := checksums.NewDigest()
+			digest.Write(expectedContent)
+			checksums := digest.Checksums()
 
-			crc32c := crc32.New(crc32.MakeTable(crc32.Castagnoli))
-			crc32c.Write(expectedContent)
+			assert.Equal(t, checksums.MD5, meta.Md5)
 			assert.True(t, meta.HasCrc32C)
-			assert.Equal(t, crc32c.Sum32(), meta.Crc32C)
+			assert.Equal(t, checksums.GetCRC32C(), meta.Crc32C)
 		} else {
 			assert.Empty(t, meta.Md5)
 			assert.False(t, meta.HasCrc32C)
@@ -1085,4 +1082,200 @@ func TestOpenSaves_AtomicIncDecInt(t *testing.T) {
 	})
 	assert.Nil(t, res)
 	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func uploadChunk(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
+	sessionId string, number int64, content []byte) {
+	t.Helper()
+
+	digest := checksums.NewDigest()
+	digest.Write(content)
+	cs := digest.Checksums()
+
+	ucc, err := client.UploadChunk(ctx)
+	if err != nil {
+		t.Errorf("CreateBlob returned error: %v", err)
+		return
+	}
+
+	err = ucc.Send(&pb.UploadChunkRequest{
+		Request: &pb.UploadChunkRequest_Metadata{
+			Metadata: &pb.ChunkMetadata{
+				SessionId: sessionId,
+				Number:    number,
+				Md5:       cs.MD5,
+				Crc32C:    cs.GetCRC32C(),
+				HasCrc32C: cs.HasCRC32C,
+			},
+		},
+	})
+	if err != nil {
+		t.Errorf("UploadChunkClient.Send failed on sending metadata: %v", err)
+		return
+	}
+
+	sent := 0
+	for {
+		if sent >= len(content) {
+			break
+		}
+		toSend := streamBufferSize
+		if toSend > len(content)-sent {
+			toSend = len(content) - sent
+		}
+		err = ucc.Send(&pb.UploadChunkRequest{
+			Request: &pb.UploadChunkRequest_Content{
+				Content: content[sent : sent+toSend],
+			},
+		})
+		if err != nil {
+			t.Errorf("CreateBlobClient.Send failed on sending content: %v", err)
+		}
+		sent += toSend
+	}
+	assert.Equal(t, len(content), sent)
+
+	meta, err := ucc.CloseAndRecv()
+	if err != nil {
+		t.Errorf("CreateBlobClient.CloseAndRecv failed: %v", err)
+		return
+	}
+	if assert.NotNil(t, meta) {
+		assert.Equal(t, sessionId, meta.SessionId)
+		assert.Equal(t, number, meta.Number)
+		assert.Equal(t, int64(len(content)), meta.Size)
+		// The server always sets the checksums regardless of what the client sends.
+		assert.NotEmpty(t, meta.Md5)
+		assert.True(t, meta.HasCrc32C)
+	}
+}
+
+func verifyChunk(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
+	storeKey, recordKey string, sessionId string, number int64, expectedContent []byte) {
+	t.Helper()
+	gbc, err := client.GetBlobChunk(ctx, &pb.GetBlobChunkRequest{
+		StoreKey:    storeKey,
+		RecordKey:   recordKey,
+		ChunkNumber: number,
+	})
+	if err != nil {
+		t.Errorf("GetBlobChunk returned error: %v", err)
+		return
+	}
+	res, err := gbc.Recv()
+	if err != nil {
+		t.Errorf("GetBlobChunkClient.Recv returned error: %v", err)
+		return
+	}
+	meta := res.GetMetadata()
+	if assert.NotNil(t, meta, "First returned message must be metadata") {
+		assert.Equal(t, sessionId, meta.SessionId)
+		assert.Equal(t, number, meta.Number)
+		assert.Equal(t, int64(len(expectedContent)), meta.Size)
+
+		if len(expectedContent) > 0 {
+			digest := checksums.NewDigest()
+			digest.Write(expectedContent)
+			checksums := digest.Checksums()
+
+			assert.Equal(t, checksums.MD5, meta.Md5)
+			assert.True(t, meta.HasCrc32C)
+			assert.Equal(t, checksums.GetCRC32C(), meta.Crc32C)
+		} else {
+			assert.Empty(t, meta.Md5)
+			assert.False(t, meta.HasCrc32C)
+		}
+	}
+
+	recvd := 0
+	for {
+		res, err = gbc.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("GetBlobChunkClient.Recv returned error: %v", err)
+			return
+		}
+		content := res.GetContent()
+		if assert.NotNil(t, content, "Second returned message must be content") {
+			assert.Equal(t, expectedContent[recvd:recvd+len(content)], content)
+			recvd += len(content)
+		}
+	}
+	assert.Equal(t, int64(recvd), meta.Size, "Received bytes should match")
+}
+
+func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.NewString()}
+	setupTestRecord(ctx, t, client, store.Key, record)
+
+	const chunkSize = 1*1024*1024 + 13 // 1 Mi + 13 B
+	const numberOfChunks = 4
+	testChunk := make([]byte, chunkSize)
+	for i := 0; i < chunkSize; i++ {
+		testChunk[i] = byte(i % 256)
+	}
+
+	beforeCreateChunk := time.Now()
+	var sessionId string
+	if res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+		ChunkSize: chunkSize,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, res) {
+			_, err := uuid.Parse(res.SessionId)
+			assert.NoError(t, err)
+			sessionId = res.SessionId
+		}
+	}
+	t.Cleanup(func() {
+		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
+	})
+
+	for i := 0; i < numberOfChunks; i++ {
+		uploadChunk(ctx, t, client, sessionId, int64(i), testChunk)
+	}
+
+	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
+		SessionId: sessionId,
+	}); assert.NoError(t, err) {
+		assert.Equal(t, int64(len(testChunk)*numberOfChunks), meta.Size)
+		assert.False(t, meta.HasCrc32C)
+		assert.Empty(t, meta.Md5)
+		assert.Equal(t, store.Key, meta.StoreKey)
+		assert.Equal(t, record.Key, meta.RecordKey)
+	}
+
+	// Check if the metadata is reflected to the record as well.
+	if updatedRecord, err := client.GetRecord(ctx, &pb.GetRecordRequest{
+		StoreKey: store.Key, Key: record.Key,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, updatedRecord) {
+			assert.Equal(t, int64(len(testChunk)*numberOfChunks), updatedRecord.BlobSize)
+			assert.Equal(t, int64(numberOfChunks), updatedRecord.NumberOfChunks)
+			assert.True(t, updatedRecord.Chunked)
+			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
+			assert.True(t, beforeCreateChunk.Before(updatedRecord.GetUpdatedAt().AsTime()))
+		}
+	}
+
+	for i := 0; i < numberOfChunks; i++ {
+		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
+	}
+
+	// Deletion test
+	if _, err := client.DeleteBlob(ctx, &pb.DeleteBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	}); err != nil {
+		t.Errorf("DeleteBlob failed: %v", err)
+	}
+	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
 }

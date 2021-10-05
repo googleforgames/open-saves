@@ -513,6 +513,8 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Nil(t, promoRecord.Blob)
 			assert.Equal(t, blobKey, promoRecord.ExternalBlob)
 			assert.Equal(t, blob.Size, promoRecord.BlobSize)
+			assert.Zero(t, promoRecord.Chunked)
+			assert.Zero(t, promoRecord.NumberOfChunks)
 			assert.True(t, beforePromo.Before(promoRecord.Timestamps.UpdatedAt))
 			assert.NotEqual(t, record.Timestamps.Signature, promoRecord.Timestamps.Signature)
 		}
@@ -545,6 +547,8 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Equal(t, uuid.Nil, delPendRecord.ExternalBlob)
 			assert.Empty(t, delPendRecord.Blob)
 			assert.Zero(t, delPendRecord.BlobSize)
+			assert.Zero(t, delPendRecord.Chunked)
+			assert.Zero(t, delPendRecord.NumberOfChunks)
 		}
 		if assert.NotNil(t, delPendBlob) {
 			assert.Equal(t, blobref.StatusPendingDeletion, delPendBlob.Status)
@@ -935,7 +939,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 	ds := newDatastoreClient(ctx, t)
 
-	store, record, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
+	store, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
 
 	// Create Chunks with Initializing state
 	chunks := []*chunkref.ChunkRef{}
@@ -961,9 +965,14 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 			assert.Equal(t, blobref.StatusReady, got.Status)
 		}
 	}
-	_, blobRetrieved, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
+	record, blobRetrieved, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
 		t.Fatalf("PromoteBlobRefToCurrent failed: %v", err)
+	}
+	if assert.NotNil(t, record) {
+		assert.EqualValues(t, testChunKSize*testChunkCount, record.BlobSize)
+		assert.EqualValues(t, testChunkCount, record.NumberOfChunks)
+		assert.True(t, record.Chunked)
 	}
 	if assert.NotNil(t, blobRetrieved) {
 		assert.EqualValues(t, testChunKSize*testChunkCount, blobRetrieved.Size)
@@ -985,8 +994,14 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	}
 
 	// Delete chunks and blob
-	if _, _, err := metaDB.RemoveBlobFromRecord(ctx, store.Key, record.Key); err != nil {
+	if record, _, err := metaDB.RemoveBlobFromRecord(ctx, store.Key, record.Key); err != nil {
 		t.Fatalf("RemoveBlobFromRecord should work with Chunked blobs")
+	} else {
+		if assert.NotNil(t, record) {
+			assert.Zero(t, record.BlobSize)
+			assert.False(t, record.Chunked)
+			assert.Zero(t, record.NumberOfChunks)
+		}
 	}
 
 	// Check if child chunks are marked as well

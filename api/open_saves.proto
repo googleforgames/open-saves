@@ -518,6 +518,9 @@ message ChunkMetadata {
 message CommitChunkedUploadRequest {
   // session_id is the ID of a chunked upload session to commit.
   string session_id = 1;
+
+  // Performance hints.
+  Hint hint = 2;
 }
 
 message AbortChunkedUploadRequest {

@@ -461,16 +461,17 @@ func (m *MetaDB) getReadyChunks(ctx context.Context, tx *ds.Transaction, blob *b
 	return chunks, nil
 }
 
-func (m *MetaDB) chunkObjectsSizeSum(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) (int64, error) {
+// return size, number of chunks, error
+func (m *MetaDB) chunkObjectsSizeSum(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) (int64, int64, error) {
 	chunks, err := m.getReadyChunks(ctx, tx, blob)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	size := int64(0)
 	for _, chunk := range chunks {
 		size += int64(chunk.Size)
 	}
-	return size, nil
+	return size, int64(len(chunks)), nil
 }
 
 // PromoteBlobRefToCurrent promotes the provided BlobRef object as a current
@@ -503,11 +504,14 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 		// Update the blob size for chunked uploads
 		if blob.Chunked {
 			// TODO(yuryu): should check if chunks are continuous?
-			size, err := m.chunkObjectsSizeSum(ctx, tx, blob)
+			size, num, err := m.chunkObjectsSizeSum(ctx, tx, blob)
 			if err != nil {
 				return err
 			}
+			record.NumberOfChunks = num
 			blob.Size = size
+		} else {
+			record.NumberOfChunks = 0
 		}
 		if blob.Status != blobref.StatusReady {
 			if blob.Ready() != nil {
@@ -521,6 +525,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 
 		record.BlobSize = blob.Size
 		record.ExternalBlob = blob.Key
+		record.Chunked = blob.Chunked
 		record.Timestamps.Update()
 		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record)); err != nil {
 			return err
@@ -552,6 +557,8 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 		}
 
 		record.BlobSize = 0
+		record.Chunked = false
+		record.NumberOfChunks = 0
 		if record.ExternalBlob == uuid.Nil && len(record.Blob) > 0 {
 			record = removeInlineBlob(record)
 			record.Timestamps.Update()
