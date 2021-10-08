@@ -18,7 +18,7 @@ With Open Saves, game developers can run a cloud-native storage system that is:
 ## Table of Contents
 
 - [Overview](./docs/overview.md)
-- [Key terms](.docs/key-terms.md)
+- [Key terms](./docs/key-terms.md)
 - Using Open Saves
   - [Deployment guide](./docs/deploying.md)
   - [API reference](./docs/reference.md)
