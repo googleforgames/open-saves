@@ -72,7 +72,7 @@ func (c *Checksums) ValidateIfPresent(p ChecksumsProto) error {
 		if p.GetCrc32C() != c.GetCRC32C() {
 			return status.Errorf(codes.DataLoss,
 				"CRC32C checksums didn't match: provided[%v], calculated[%v]",
-				p.GetCrc32C(), p.GetCrc32C())
+				p.GetCrc32C(), c.GetCRC32C())
 		}
 	}
 	return nil
