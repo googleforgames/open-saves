@@ -223,6 +223,13 @@ message Record {
   // big and does not fit in the properties. This will not be indexed or
   // queryable. The current size limit is 32KiB.
   string opaque_string = 11;
+
+  // Signature is a server-generated unique UUID that is updated each time
+  // the server updates the record. The server returns the current signature
+  // for read requests. The client may optionally populate this field and send
+  // update requests, and the server will check the value against the latest value
+  // and abort the request if they don't match.
+  bytes signature = 12;
 }
 
 // Performance optimization hints for the server.

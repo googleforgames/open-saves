@@ -118,15 +118,23 @@ func (r *Record) ToProto() *pb.Record {
 		OpaqueString:   r.OpaqueString,
 		CreatedAt:      timestamppb.New(r.Timestamps.CreatedAt),
 		UpdatedAt:      timestamppb.New(r.Timestamps.UpdatedAt),
+		Signature:      r.Timestamps.Signature[:],
 	}
 	return ret
 }
 
 // FromProto creates a new Record instance from a proto.
 // Passing nil returns a zero-initialized proto.
-func FromProto(storeKey string, p *pb.Record) *Record {
+func FromProto(storeKey string, p *pb.Record) (*Record, error) {
 	if p == nil {
-		return new(Record)
+		return new(Record), nil
+	}
+	signature := uuid.Nil
+	if len(p.GetSignature()) != 0 {
+		var err error
+		if signature, err = uuid.FromBytes(p.GetSignature()); err != nil {
+			return nil, err
+		}
 	}
 	return &Record{
 		Key:          p.GetKey(),
@@ -138,9 +146,10 @@ func FromProto(storeKey string, p *pb.Record) *Record {
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: p.GetCreatedAt().AsTime(),
 			UpdatedAt: p.GetUpdatedAt().AsTime(),
+			Signature: signature,
 		},
 		StoreKey: storeKey,
-	}
+	}, nil
 }
 
 // CacheKey returns a cache key string to manage cached entries.
