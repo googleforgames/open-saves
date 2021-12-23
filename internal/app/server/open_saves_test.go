@@ -334,6 +334,45 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	assert.True(t, beforeUpdate.Before(record.GetUpdatedAt().AsTime()))
 }
 
+func TestOpenSaves_UpdateRecordWithSignature(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	recordKey := uuid.NewString()
+	created := setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key:     recordKey,
+		OwnerId: t.Name(),
+	})
+
+	assert.NotEmpty(t, created.Signature)
+	assert.NotEqual(t, uuid.Nil, created.Signature)
+
+	updateReq := &pb.UpdateRecordRequest{
+		StoreKey: storeKey,
+		Record: &pb.Record{
+			Key:          recordKey,
+			OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
+			Signature:    created.Signature,
+		},
+	}
+	if record, err := client.UpdateRecord(ctx, updateReq); assert.NoErrorf(t, err, "UpdateRecord failed: %v", err) {
+		assert.Equal(t, recordKey, record.Key)
+		assert.Equal(t, record.OpaqueString, updateReq.Record.OpaqueString)
+		assert.NotEqual(t, created.Signature, record.Signature)
+	}
+
+	dummyUUID := uuid.New()
+	updateReq.Record.Signature = dummyUUID[:]
+	if record, err := client.UpdateRecord(ctx, updateReq); assert.Error(t, err) {
+		assert.Nil(t, record)
+		assert.Equal(t, codes.Aborted, status.Code(err))
+	}
+}
+
 func TestOpenSaves_ListStoresNamePerfectMatch(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")

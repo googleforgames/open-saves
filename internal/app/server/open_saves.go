@@ -203,7 +203,7 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	if err != nil {
 		log.Warnf("UpdateRecord failed for store(%s), record (%s): %v",
 			req.GetStoreKey(), req.GetRecord().GetKey(), err)
-		return nil, status.Convert(err).Err()
+		return nil, err
 	}
 
 	// Update cache store.
