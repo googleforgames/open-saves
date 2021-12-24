@@ -119,6 +119,12 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 		}
 		assertTimestampsWithinDelta(t, expected.GetCreatedAt(), actual.GetCreatedAt())
 		assertTimestampsWithinDelta(t, expected.GetUpdatedAt(), actual.GetUpdatedAt())
+		if u, err := uuid.FromBytes(actual.Signature); assert.NoError(t, err) {
+			v, _ := uuid.FromBytes(expected.Signature)
+			if v != uuid.Nil {
+				assert.Equal(t, v, u)
+			}
+		}
 	}
 }
 
@@ -227,6 +233,7 @@ func setupTestRecordWithHint(ctx context.Context, t *testing.T, client pb.OpenSa
 		record.UpdatedAt = res.GetUpdatedAt()
 		assertEqualRecord(t, record, res)
 		assert.True(t, res.GetCreatedAt().AsTime().Equal(res.GetUpdatedAt().AsTime()))
+		assert.NotEqual(t, uuid.Nil, record.Signature)
 	}
 	return res
 }
@@ -289,6 +296,7 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 		t.Errorf("GetRecord failed: %v", err)
 	}
 	assertEqualRecord(t, record, record2)
+	assert.NotEqual(t, uuid.Nil, record2.Signature)
 	assert.Equal(t, record.GetCreatedAt(), record2.GetCreatedAt())
 	assert.Equal(t, record.GetUpdatedAt(), record2.GetUpdatedAt())
 }
@@ -332,6 +340,7 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	assert.True(t, created.GetCreatedAt().AsTime().Equal(record.GetCreatedAt().AsTime()))
 	assert.NotEqual(t, record.GetCreatedAt().AsTime(), record.GetUpdatedAt().AsTime())
 	assert.True(t, beforeUpdate.Before(record.GetUpdatedAt().AsTime()))
+	assert.NotEqual(t, created.Signature, record.Signature)
 }
 
 func TestOpenSaves_UpdateRecordWithSignature(t *testing.T) {
@@ -660,7 +669,7 @@ func TestOpenSaves_InlineBlobSimple(t *testing.T) {
 	store := &pb.Store{Key: uuid.NewString()}
 	setupTestStore(ctx, t, client, store)
 	record := &pb.Record{Key: uuid.NewString()}
-	setupTestRecord(ctx, t, client, store.Key, record)
+	createdRecord := setupTestRecord(ctx, t, client, store.Key, record)
 
 	beforeCreateBlob := time.Now()
 	testBlob := []byte{0x42, 0x24, 0x00, 0x20, 0x20}
@@ -675,6 +684,7 @@ func TestOpenSaves_InlineBlobSimple(t *testing.T) {
 			assert.Equal(t, int64(len(testBlob)), updatedRecord.BlobSize)
 			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
 			assert.True(t, beforeCreateBlob.Before(updatedRecord.GetUpdatedAt().AsTime()))
+			assert.NotEqual(t, createdRecord.Signature, updatedRecord.Signature)
 		}
 	}
 
@@ -690,6 +700,12 @@ func TestOpenSaves_InlineBlobSimple(t *testing.T) {
 		t.Errorf("DeleteBlob failed: %v", err)
 	}
 	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+
+	if r, err := client.GetRecord(ctx, &pb.GetRecordRequest{
+		StoreKey: store.Key, Key: record.Key,
+	}); assert.NoError(t, err) {
+		assert.NotEqual(t, updatedRecord.Signature, r.Signature)
+	}
 }
 
 func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
@@ -699,7 +715,7 @@ func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
 	store := &pb.Store{Key: uuid.NewString()}
 	setupTestStore(ctx, t, client, store)
 	record := &pb.Record{Key: uuid.NewString()}
-	setupTestRecord(ctx, t, client, store.Key, record)
+	record = setupTestRecord(ctx, t, client, store.Key, record)
 
 	const blobSize = 4*1024*1024 + 13 // 4 Mi + 13 B
 	testBlob := make([]byte, blobSize)
@@ -719,6 +735,7 @@ func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
 			assert.Equal(t, int64(len(testBlob)), updatedRecord.BlobSize)
 			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
 			assert.True(t, beforeCreateBlob.Before(updatedRecord.GetUpdatedAt().AsTime()))
+			assert.NotEqual(t, record.Signature, updatedRecord.Signature)
 		}
 	}
 
@@ -907,7 +924,7 @@ func TestOpenSaves_CompareAndSwap(t *testing.T) {
 		},
 	}
 
-	setupTestRecord(ctx, t, client, storeKey, rr)
+	rr = setupTestRecord(ctx, t, client, storeKey, rr)
 
 	newRequest := func(oldValue, value *pb.Property) *pb.CompareAndSwapRequest {
 		return &pb.CompareAndSwapRequest{
@@ -922,10 +939,16 @@ func TestOpenSaves_CompareAndSwap(t *testing.T) {
 	res, err := client.CompareAndSwap(ctx, newRequest(
 		record.NewIntegerPropertyProto(41), record.NewIntegerPropertyProto(42)))
 	assertCASResponse(t, err, res, false, record.NewIntegerPropertyProto(42))
+	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
+		assert.Equal(t, rr.Signature, actual.Signature)
+	}
 
 	res, err = client.CompareAndSwap(ctx, newRequest(
 		record.NewIntegerPropertyProto(42), record.NewIntegerPropertyProto(43)))
 	assertCASResponse(t, err, res, true, record.NewIntegerPropertyProto(42))
+	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
+		assert.NotEqual(t, rr.Signature, actual.Signature)
+	}
 
 	res, err = client.CompareAndSwap(ctx, newRequest(
 		record.NewIntegerPropertyProto(43), record.NewStringPropertyProto("hello, world")))
@@ -967,7 +990,7 @@ func TestOpenSaves_AtomicIntMethods(t *testing.T) {
 			"string":         record.NewStringPropertyProto("Lorem ipsum"),
 		},
 	}
-	setupTestRecord(ctx, t, client, storeKey, rr)
+	rr = setupTestRecord(ctx, t, client, storeKey, rr)
 
 	newRequest := func(value int64) *pb.AtomicIntRequest {
 		return &pb.AtomicIntRequest{
@@ -980,12 +1003,18 @@ func TestOpenSaves_AtomicIntMethods(t *testing.T) {
 
 	res, err := client.CompareAndSwapGreaterInt(ctx, newRequest(42))
 	assertAtomicIntResponse(t, err, res, false, 43)
+	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
+		assert.Equal(t, rr.Signature, actual.Signature)
+	}
 
 	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(43))
 	assertAtomicIntResponse(t, err, res, false, 43)
 
 	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(44))
 	assertAtomicIntResponse(t, err, res, true, 43)
+	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
+		assert.NotEqual(t, rr.Signature, actual.Signature)
+	}
 
 	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(-1))
 	assertAtomicIntResponse(t, err, res, false, 44)
@@ -1252,7 +1281,7 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 	store := &pb.Store{Key: uuid.NewString()}
 	setupTestStore(ctx, t, client, store)
 	record := &pb.Record{Key: uuid.NewString()}
-	setupTestRecord(ctx, t, client, store.Key, record)
+	record = setupTestRecord(ctx, t, client, store.Key, record)
 
 	const chunkSize = 1*1024*1024 + 13 // 1 Mi + 13 B
 	const numberOfChunks = 4
@@ -1280,6 +1309,10 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 
 	for i := 0; i < numberOfChunks; i++ {
 		uploadChunk(ctx, t, client, sessionId, int64(i), testChunk)
+		// UploadChunk shouldn't update Signature.
+		if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: store.Key, Key: record.Key}); assert.NoError(t, err) {
+			assert.Equal(t, record.Signature, actual.Signature)
+		}
 	}
 
 	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
@@ -1302,6 +1335,7 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 			assert.True(t, updatedRecord.Chunked)
 			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
 			assert.True(t, beforeCreateChunk.Before(updatedRecord.GetUpdatedAt().AsTime()))
+			assert.NotEqual(t, record.Signature, updatedRecord.Signature)
 		}
 	}
 
