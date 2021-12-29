@@ -104,7 +104,11 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 }
 
 func (s *openSavesServer) CreateRecord(ctx context.Context, req *pb.CreateRecordRequest) (*pb.Record, error) {
-	record := record.FromProto(req.GetStoreKey(), req.GetRecord())
+	record, err := record.FromProto(req.GetStoreKey(), req.GetRecord())
+	if err != nil {
+		log.Errorf("Invalid record proto for store (%s), record (%s): %v", req.GetStoreKey(), req.GetRecord().GetKey(), err)
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid record proto: %v", err)
+	}
 	newRecord, err := s.metaDB.InsertRecord(ctx, req.StoreKey, record)
 	if err != nil {
 		log.Warnf("CreateRecord failed for store (%s), record (%s): %v",
@@ -177,9 +181,17 @@ func (s *openSavesServer) GetRecord(ctx context.Context, req *pb.GetRecordReques
 }
 
 func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecordRequest) (*pb.Record, error) {
-	updateTo := record.FromProto(req.GetStoreKey(), req.GetRecord())
+	updateTo, err := record.FromProto(req.GetStoreKey(), req.GetRecord())
+	if err != nil {
+		log.Errorf("Invalid proto for store (%s), record (%s): %v", req.GetStoreKey(), req.GetRecord().GetKey(), err)
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid record proto: %v", err)
+	}
 	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), updateTo.Key,
 		func(r *record.Record) (*record.Record, error) {
+			if updateTo.Timestamps.Signature != uuid.Nil && r.Timestamps.Signature != updateTo.Timestamps.Signature {
+				return nil, status.Errorf(codes.Aborted, "Signature mismatch: expected (%v), actual (%v)",
+					updateTo.Timestamps.Signature.String(), r.Timestamps.Signature.String())
+			}
 			r.OwnerID = updateTo.OwnerID
 			r.Properties = updateTo.Properties
 			r.Tags = updateTo.Tags
@@ -191,7 +203,7 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	if err != nil {
 		log.Warnf("UpdateRecord failed for store(%s), record (%s): %v",
 			req.GetStoreKey(), req.GetRecord().GetKey(), err)
-		return nil, status.Convert(err).Err()
+		return nil, err
 	}
 
 	// Update cache store.

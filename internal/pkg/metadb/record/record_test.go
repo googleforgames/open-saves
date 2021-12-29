@@ -241,6 +241,7 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	signature := uuid.MustParse("70E894AE-1020-42E8-9710-3E2D408BC356")
 	record := &Record{
 		Key:            "key",
 		Blob:           testBlob,
@@ -258,7 +259,7 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
-			Signature: uuid.MustParse("70E894AE-1020-42E8-9710-3E2D408BC356"),
+			Signature: signature,
 		},
 	}
 	expected := &pb.Record{
@@ -281,6 +282,7 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		CreatedAt:    timestamppb.New(createdAt),
 		UpdatedAt:    timestamppb.New(updatedAt),
+		Signature:    signature[:],
 	}
 	assert.Equal(t, expected, record.ToProto())
 }
@@ -289,6 +291,7 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	signature := uuid.MustParse("076D7253-9AA0-48DE-B4AF-965E87B0A1C6")
 	proto := &pb.Record{
 		Key:            "key",
 		BlobSize:       int64(len(testBlob)),
@@ -309,6 +312,7 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		CreatedAt:    timestamppb.New(createdAt),
 		UpdatedAt:    timestamppb.New(updatedAt),
+		Signature:    signature[:],
 	}
 	expected := &Record{
 		Key:          "key",
@@ -324,18 +328,21 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		Timestamps: timestamps.Timestamps{
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
+			Signature: signature,
 		},
 		StoreKey: "test store key",
 	}
-	actual := FromProto("test store key", proto)
+	actual, err := FromProto("test store key", proto)
 	assert.Equal(t, expected, actual)
+	assert.NoError(t, err)
 }
 
 func TestRecord_NewRecordFromProtoNil(t *testing.T) {
 	expected := new(Record)
-	actual := FromProto("", nil)
+	actual, err := FromProto("", nil)
 	assert.NotNil(t, actual)
 	assert.Equal(t, expected, actual)
+	assert.NoError(t, err)
 }
 
 func TestRecord_LoadKey(t *testing.T) {
@@ -429,5 +436,33 @@ func TestRecord_SerializeRecord(t *testing.T) {
 		decoded := new(Record)
 		assert.NoError(t, decoded.DecodeBytes(e))
 		assert.Equal(t, r, decoded)
+	}
+}
+
+func TestRecord_EmptyInvalidSignature(t *testing.T) {
+	const testKey = "key"
+
+	proto := &pb.Record{
+		Key:       testKey,
+		CreatedAt: timestamppb.New(time.Unix(100, 0)),
+		UpdatedAt: timestamppb.New(time.Unix(110, 0)),
+		Signature: nil,
+	}
+	if rr, err := FromProto("", proto); assert.NoError(t, err) {
+		if assert.NotNil(t, rr) {
+			assert.Equal(t, testKey, rr.Key)
+			assert.Equal(t, uuid.Nil, rr.Timestamps.Signature)
+		}
+	}
+	proto.Signature = []byte{}
+	if rr, err := FromProto("", proto); assert.NoError(t, err) {
+		if assert.NotNil(t, rr) {
+			assert.Equal(t, testKey, rr.Key)
+			assert.Equal(t, uuid.Nil, rr.Timestamps.Signature)
+		}
+	}
+	proto.Signature = []byte{0xff}
+	if rr, err := FromProto("", proto); assert.Error(t, err) {
+		assert.Nil(t, rr)
 	}
 }
