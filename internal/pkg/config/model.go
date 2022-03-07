@@ -35,7 +35,7 @@ type RedisConfig struct {
 	Pool    RedisPool
 }
 
-// RedisPool as defined in redis.Pool
+// RedisPool as defined in https://pkg.go.dev/github.com/gomodule/redigo/redis#Pool
 type RedisPool struct {
 	MaxIdle     int
 	MaxActive   int
