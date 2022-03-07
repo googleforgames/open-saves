@@ -1,13 +1,11 @@
-server:
-  port: 6000
-  cloud: "gcp"
-  bucket: ""
-  project: ""
-  logLevel: "info"
-redis:
-  address: "localhost:6379"
-  pool:
-    maxIdle: 200
-    maxActive: 2000
-    idleTimeout: 3540
-    wait: false
+open_saves_port: 6000
+open_saves_cloud: "gcp"
+open_saves_bucket: ""
+open_saves_project: ""
+log_level: "info"
+
+redis_address: "localhost:6379"
+redis_pool_maxIdle: 500
+redis_pool_maxActive: 10000
+redis_pool_idleTimeout: 0
+redis_pool_wait: false

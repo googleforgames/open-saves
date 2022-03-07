@@ -31,7 +31,7 @@ func main() {
 		panic(fmt.Errorf("error loading config file: %w", err))
 	}
 
-	ll, err := log.ParseLevel(viper.GetString(config.LOG_LEVEL))
+	ll, err := log.ParseLevel(viper.GetString(config.LogLevel))
 	if err != nil {
 		ll = log.InfoLevel
 	}

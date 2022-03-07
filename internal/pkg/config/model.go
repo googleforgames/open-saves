@@ -3,18 +3,17 @@ package config
 import "time"
 
 const (
-	OPEN_SAVES_PORT    = "server.port"
-	OPEN_SAVES_CLOUD   = "server.cloud"
-	OPEN_SAVES_BUCKET  = "server.bucket"
-	OPEN_SAVES_PROJECT = "server.project"
-	OPEN_SAVES_CACHE   = "redis.address"
-	LOG_LEVEL          = "server.logLevel"
+	OpenSavesPort    = "open_saves_port"
+	OpenSavesCloud   = "open_saves_cloud"
+	OpenSavesBucket  = "open_saves_bucket"
+	OpenSavesProject = "open_saves_project"
+	LogLevel         = "log_level"
 
-	REDIS_ADDRESS           = "redis.address"
-	REDIS_POOL_MAX_IDLE     = "redis.pool.MaxIdle"
-	REDIS_POOL_MAX_ACTIVE   = "redis.pool.MaxActive"
-	REDIS_POOL_IDLE_TIMEOUT = "redis.pool.IdleTimeout"
-	REDIS_POOL_WAIT         = "redis.pool.Wait"
+	RedisAddress         = "redis_address"
+	RedisPoolMaxIdle     = "redis_pool_maxIdle"
+	RedisPoolMaxActive   = "redis_pool_maxActive"
+	RedisPoolIdleTimeout = "redis_pool_idleTimeout"
+	RedisPoolWait        = "redis_pool_wait"
 )
 
 type ServiceConfig struct {

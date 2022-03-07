@@ -29,53 +29,39 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	// Environment variable overrides
-	if err := viper.BindEnv(OPEN_SAVES_PORT, "OPEN_SAVES_PORT"); err != nil {
-		log.Warning("cannot bind env var with %s", OPEN_SAVES_PORT)
-	}
-	if err := viper.BindEnv(OPEN_SAVES_CLOUD, "OPEN_SAVES_CLOUD"); err != nil {
-		log.Warning("cannot bind env var with %s", OPEN_SAVES_CLOUD)
-	}
-	if err := viper.BindEnv(OPEN_SAVES_BUCKET, "OPEN_SAVES_BUCKET"); err != nil {
-		log.Warning("cannot bind env var with %s", OPEN_SAVES_BUCKET)
-	}
-	if err := viper.BindEnv(OPEN_SAVES_PROJECT, "OPEN_SAVES_PROJECT"); err != nil {
-		log.Warning("cannot bind env var with %s", OPEN_SAVES_PROJECT)
-	}
-	if err := viper.BindEnv(OPEN_SAVES_CACHE, "OPEN_SAVES_CACHE"); err != nil {
-		log.Warning("cannot bind env var with %s", OPEN_SAVES_CACHE)
-	}
-	if err := viper.BindEnv(LOG_LEVEL, "LOG_LEVEL"); err != nil {
-		log.Warning("cannot bind env var with %s", LOG_LEVEL)
+	viper.AutomaticEnv()
+	if err := viper.BindEnv(RedisAddress, "OPEN_SAVES_CACHE", "REDIS_ADDRESS"); err != nil {
+		log.Warning("cannot bind env var %s with %s", "OPEN_SAVES_CACHE", RedisAddress)
 	}
 
 	// Reads command line arguments, for backward compatibility
 	var (
-		port     = flag.Uint("port", viper.GetUint(OPEN_SAVES_PORT), "The port number to run Open Saves on")
-		cloud    = flag.String("cloud", viper.GetString(OPEN_SAVES_CLOUD), "The public cloud provider you wish to run Open Saves on")
-		bucket   = flag.String("bucket", viper.GetString(OPEN_SAVES_BUCKET), "The bucket which will hold Open Saves blobs")
-		project  = flag.String("project", viper.GetString(OPEN_SAVES_PROJECT), "The GCP project ID to use for Datastore")
-		cache    = flag.String("cache", viper.GetString(OPEN_SAVES_CACHE), "The address of the cache store instance")
-		logLevel = flag.String("log", viper.GetString(LOG_LEVEL), "The level to log messages at")
+		port     = flag.Uint("port", viper.GetUint(OpenSavesPort), "The port number to run Open Saves on")
+		cloud    = flag.String("cloud", viper.GetString(OpenSavesCloud), "The public cloud provider you wish to run Open Saves on")
+		bucket   = flag.String("bucket", viper.GetString(OpenSavesBucket), "The bucket which will hold Open Saves blobs")
+		project  = flag.String("project", viper.GetString(OpenSavesProject), "The GCP project ID to use for Datastore")
+		cache    = flag.String("cache", viper.GetString(RedisAddress), "The address of the cache store instance")
+		logLevel = flag.String("log", viper.GetString(LogLevel), "The level to log messages at")
 	)
 	flag.Parse()
 
-	if *port != viper.GetUint(OPEN_SAVES_PORT) {
-		viper.Set(OPEN_SAVES_PORT, port)
+	if *port != viper.GetUint(OpenSavesPort) {
+		viper.Set(OpenSavesPort, port)
 	}
-	if *cloud != viper.GetString(OPEN_SAVES_CLOUD) {
-		viper.Set(OPEN_SAVES_CLOUD, *cloud)
+	if *cloud != viper.GetString(OpenSavesCloud) {
+		viper.Set(OpenSavesCloud, *cloud)
 	}
-	if *bucket != viper.GetString(OPEN_SAVES_BUCKET) {
-		viper.Set(OPEN_SAVES_BUCKET, *bucket)
+	if *bucket != viper.GetString(OpenSavesBucket) {
+		viper.Set(OpenSavesBucket, *bucket)
 	}
-	if *project != viper.GetString(OPEN_SAVES_PROJECT) {
-		viper.Set(OPEN_SAVES_PROJECT, *project)
+	if *project != viper.GetString(OpenSavesProject) {
+		viper.Set(OpenSavesProject, *project)
 	}
-	if *cache != viper.GetString(OPEN_SAVES_CACHE) {
-		viper.Set(OPEN_SAVES_CACHE, *cache)
+	if *cache != viper.GetString(RedisAddress) {
+		viper.Set(RedisAddress, *cache)
 	}
-	if *logLevel != viper.GetString(LOG_LEVEL) {
-		viper.Set(LOG_LEVEL, *logLevel)
+	if *logLevel != viper.GetString(LogLevel) {
+		viper.Set(LogLevel, *logLevel)
 	}
 
 	if *cloud == "" {
@@ -92,11 +78,11 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	serverConfig := ServerConfig{
-		Address: fmt.Sprintf(":%d", viper.GetUint(OPEN_SAVES_PORT)),
-		Cloud:   viper.GetString(OPEN_SAVES_CLOUD),
-		Bucket:  viper.GetString(OPEN_SAVES_BUCKET),
-		Project: viper.GetString(OPEN_SAVES_PROJECT),
-		Cache:   viper.GetString(OPEN_SAVES_CACHE),
+		Address: fmt.Sprintf(":%d", viper.GetUint(OpenSavesPort)),
+		Cloud:   viper.GetString(OpenSavesCloud),
+		Bucket:  viper.GetString(OpenSavesBucket),
+		Project: viper.GetString(OpenSavesProject),
+		Cache:   viper.GetString(RedisAddress),
 	}
 
 	// Cloud Run environment populates the PORT env var, so check for it here.
@@ -110,13 +96,13 @@ func Load(path string) (*ServiceConfig, error) {
 
 	// Redis configuration
 	redisPool := RedisPool{
-		MaxIdle:     viper.GetInt(REDIS_POOL_MAX_IDLE),
-		MaxActive:   viper.GetInt(REDIS_POOL_MAX_ACTIVE),
-		IdleTimeout: time.Duration(viper.GetUint(REDIS_POOL_IDLE_TIMEOUT)) * time.Second,
-		Wait:        viper.GetBool(REDIS_POOL_WAIT),
+		MaxIdle:     viper.GetInt(RedisPoolMaxIdle),
+		MaxActive:   viper.GetInt(RedisPoolMaxActive),
+		IdleTimeout: time.Duration(viper.GetUint(RedisPoolIdleTimeout)) * time.Second,
+		Wait:        viper.GetBool(RedisPoolWait),
 	}
 	redisConfig := RedisConfig{
-		Address: viper.GetString(REDIS_ADDRESS),
+		Address: viper.GetString(RedisAddress),
 		Pool:    redisPool,
 	}
 
