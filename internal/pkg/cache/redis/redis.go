@@ -16,10 +16,8 @@ package redis
 
 import (
 	"context"
-	"github.com/googleforgames/open-saves/internal/pkg/config"
-	"time"
-
 	"github.com/gomodule/redigo/redis"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 )
 
 // Redis is an implementation of the cache.Cache interface.
@@ -33,9 +31,8 @@ func NewRedis(address string, opts ...redis.DialOption) *Redis {
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", address, opts...)
 		},
-		MaxIdle:     200,
-		MaxActive:   2000,
-		IdleTimeout: time.Duration(3540) * time.Second,
+		MaxIdle:   500,
+		MaxActive: 10000,
 	}
 	return &Redis{
 		redisPool: rp,
