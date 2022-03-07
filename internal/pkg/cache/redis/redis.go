@@ -16,6 +16,8 @@ package redis
 
 import (
 	"context"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -31,8 +33,25 @@ func NewRedis(address string, opts ...redis.DialOption) *Redis {
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", address, opts...)
 		},
-		MaxIdle:   500,
-		MaxActive: 10000,
+		MaxIdle:     200,
+		MaxActive:   2000,
+		IdleTimeout: time.Duration(3540) * time.Second,
+	}
+	return &Redis{
+		redisPool: rp,
+	}
+}
+
+// NewRedis creates a new Redis instance.
+func NewRedisWithConfig(cfg *config.RedisConfig, opts ...redis.DialOption) *Redis {
+	rp := &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", cfg.Address, opts...)
+		},
+		MaxIdle:     cfg.Pool.MaxIdle,
+		MaxActive:   cfg.Pool.MaxActive,
+		IdleTimeout: cfg.Pool.IdleTimeout,
+		Wait:        cfg.Pool.Wait,
 	}
 	return &Redis{
 		redisPool: rp,

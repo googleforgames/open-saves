@@ -1,0 +1,13 @@
+server:
+  port: 6000
+  cloud: "gcp"
+  bucket: ""
+  project: ""
+  logLevel: "info"
+redis:
+  address: "localhost:6379"
+  pool:
+    maxIdle: 200
+    maxActive: 2000
+    idleTimeout: 3540
+    wait: false
