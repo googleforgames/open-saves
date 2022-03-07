@@ -1,9 +1,9 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"os"
 	"strconv"
@@ -31,49 +31,48 @@ func Load(path string) (*ServiceConfig, error) {
 	// Environment variable overrides
 	viper.AutomaticEnv()
 	if err := viper.BindEnv(RedisAddress, "OPEN_SAVES_CACHE", "REDIS_ADDRESS"); err != nil {
-		log.Warning("cannot bind env var %s with %s", "OPEN_SAVES_CACHE", RedisAddress)
+		log.Warning("cannot bind env var %s to %s", "OPEN_SAVES_CACHE", RedisAddress)
 	}
 
 	// Reads command line arguments, for backward compatibility
-	var (
-		port     = flag.Uint("port", viper.GetUint(OpenSavesPort), "The port number to run Open Saves on")
-		cloud    = flag.String("cloud", viper.GetString(OpenSavesCloud), "The public cloud provider you wish to run Open Saves on")
-		bucket   = flag.String("bucket", viper.GetString(OpenSavesBucket), "The bucket which will hold Open Saves blobs")
-		project  = flag.String("project", viper.GetString(OpenSavesProject), "The GCP project ID to use for Datastore")
-		cache    = flag.String("cache", viper.GetString(RedisAddress), "The address of the cache store instance")
-		logLevel = flag.String("log", viper.GetString(LogLevel), "The level to log messages at")
-	)
-	flag.Parse()
+	pflag.Uint("port", 6000, "The port number to run Open Saves on")
+	pflag.String("cloud", "gcp", "The public cloud provider you wish to run Open Saves on")
+	pflag.String("bucket", "", "The bucket which will hold Open Saves blobs")
+	pflag.String("project", "", "The GCP project ID to use for Datastore")
+	pflag.String("cache", "", "The address of the cache store instance")
+	pflag.String("log", "", "The level to log messages at")
 
-	if *port != viper.GetUint(OpenSavesPort) {
-		viper.Set(OpenSavesPort, port)
+	if err := viper.BindPFlag(OpenSavesPort, pflag.Lookup("port")); err != nil {
+		log.Warning("cannot bind flag %s to %s", "port", OpenSavesPort)
 	}
-	if *cloud != viper.GetString(OpenSavesCloud) {
-		viper.Set(OpenSavesCloud, *cloud)
+	if err := viper.BindPFlag(OpenSavesCloud, pflag.Lookup("cloud")); err != nil {
+		log.Warning("cannot bind flag %s to %s", "cloud", OpenSavesCloud)
 	}
-	if *bucket != viper.GetString(OpenSavesBucket) {
-		viper.Set(OpenSavesBucket, *bucket)
+	if err := viper.BindPFlag(OpenSavesBucket, pflag.Lookup("bucket")); err != nil {
+		log.Warning("cannot bind flag %s to %s", "bucket", OpenSavesBucket)
 	}
-	if *project != viper.GetString(OpenSavesProject) {
-		viper.Set(OpenSavesProject, *project)
+	if err := viper.BindPFlag(OpenSavesProject, pflag.Lookup("project")); err != nil {
+		log.Warning("cannot bind flag %s to %s", "project", OpenSavesProject)
 	}
-	if *cache != viper.GetString(RedisAddress) {
-		viper.Set(RedisAddress, *cache)
+	if err := viper.BindPFlag(RedisAddress, pflag.Lookup("cache")); err != nil {
+		log.Warning("cannot bind flag %s to %s", "cache", RedisAddress)
 	}
-	if *logLevel != viper.GetString(LogLevel) {
-		viper.Set(LogLevel, *logLevel)
+	if err := viper.BindPFlag(LogLevel, pflag.Lookup("log")); err != nil {
+		log.Warning("cannot bind flag %s to %s", "log", LogLevel)
 	}
+	pflag.Parse()
 
-	if *cloud == "" {
+	// Log fatal error when required config is missing
+	if viper.GetString(OpenSavesCloud) == "" {
 		log.Fatal("missing -cloud argument for cloud provider")
 	}
-	if *bucket == "" {
+	if viper.GetString(OpenSavesBucket) == "" {
 		log.Fatal("missing -bucket argument for storing blobs")
 	}
-	if *project == "" {
+	if viper.GetString(OpenSavesProject) == "" {
 		log.Fatal("missing -project argument")
 	}
-	if *cache == "" {
+	if viper.GetString(RedisAddress) == "" {
 		log.Fatal("missing -cache argument for cache store")
 	}
 

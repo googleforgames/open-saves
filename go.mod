@@ -9,6 +9,7 @@ require (
 	github.com/gomodule/redigo v1.8.5
 	github.com/google/uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.0
 	github.com/vmihailenco/msgpack/v5 v5.3.4
