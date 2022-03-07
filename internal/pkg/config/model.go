@@ -35,6 +35,7 @@ type RedisConfig struct {
 	Pool    RedisPool
 }
 
+// RedisPool as defined in redis.Pool
 type RedisPool struct {
 	MaxIdle     int
 	MaxActive   int
