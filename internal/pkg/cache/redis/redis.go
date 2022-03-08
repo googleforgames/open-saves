@@ -20,6 +20,7 @@ import (
 	"syscall"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 )
 
 const BrokenPipeRetries = 3
@@ -31,12 +32,29 @@ type Redis struct {
 
 // NewRedis creates a new Redis instance.
 func NewRedis(address string, opts ...redis.DialOption) *Redis {
+	cfg := &config.RedisConfig{
+		Address: address,
+		Pool: config.RedisPool{
+			MaxIdle:     500,
+			MaxActive:   10000,
+			IdleTimeout: 0,
+			Wait:        false,
+		},
+	}
+
+	return NewRedisWithConfig(cfg, opts...)
+}
+
+// NewRedis creates a new Redis instance.
+func NewRedisWithConfig(cfg *config.RedisConfig, opts ...redis.DialOption) *Redis {
 	rp := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", address, opts...)
+			return redis.Dial("tcp", cfg.Address, opts...)
 		},
-		MaxIdle:   500,
-		MaxActive: 10000,
+		MaxIdle:     cfg.Pool.MaxIdle,
+		MaxActive:   cfg.Pool.MaxActive,
+		IdleTimeout: cfg.Pool.IdleTimeout,
+		Wait:        cfg.Pool.Wait,
 	}
 	return &Redis{
 		redisPool: rp,
