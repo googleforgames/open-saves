@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"io"
 
 	"github.com/google/uuid"
@@ -58,32 +59,32 @@ type openSavesServer struct {
 var _ pb.OpenSavesServer = new(openSavesServer)
 
 // newOpenSavesServer creates a new instance of the Open Saves server.
-func newOpenSavesServer(ctx context.Context, cloud, project, bucket, cacheAddr string) (*openSavesServer, error) {
+func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSavesServer, error) {
 	log.Infof("Creating a new Open Saves server instance: cloud = %v, project = %v, bucket = %v, cache address = %v",
-		cloud, project, bucket, cacheAddr)
+		cfg.ServerConfig.Cloud, cfg.ServerConfig.Project, cfg.ServerConfig.Bucket, cfg.RedisConfig.Address)
 
-	switch cloud {
+	switch cfg.ServerConfig.Cloud {
 	case "gcp":
 		log.Infoln("Instantiating Open Saves server on GCP")
-		gcs, err := blob.NewBlobGCP(bucket)
+		gcs, err := blob.NewBlobGCP(cfg.ServerConfig.Bucket)
 		if err != nil {
 			return nil, err
 		}
-		metadb, err := metadb.NewMetaDB(ctx, project)
+		metadb, err := metadb.NewMetaDB(ctx, cfg.ServerConfig.Project)
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		cache := cache.New(redis.NewRedis(cacheAddr))
+		cache := cache.New(redis.NewRedisWithConfig(&cfg.RedisConfig))
 		server := &openSavesServer{
-			cloud:      cloud,
+			cloud:      cfg.ServerConfig.Cloud,
 			blobStore:  gcs,
 			metaDB:     metadb,
 			cacheStore: cache,
 		}
 		return server, nil
 	default:
-		return nil, fmt.Errorf("cloud provider(%q) is not yet supported", cloud)
+		return nil, fmt.Errorf("cloud provider(%q) is not yet supported", cfg.ServerConfig.Cloud)
 	}
 }
 

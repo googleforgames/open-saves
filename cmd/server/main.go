@@ -16,70 +16,27 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"os"
-	"strconv"
-
 	"github.com/googleforgames/open-saves/internal/app/server"
 	"github.com/googleforgames/open-saves/internal/pkg/cmd"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 func main() {
-	defaultPort := cmd.GetEnvVarUInt("OPEN_SAVES_PORT", 6000)
-	defaultCloud := cmd.GetEnvVarString("OPEN_SAVES_CLOUD", "gcp")
-	defaultBucket := cmd.GetEnvVarString("OPEN_SAVES_BUCKET", "")
-	defaultProject := cmd.GetEnvVarString("OPEN_SAVES_PROJECT", "")
-	defaultCache := cmd.GetEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
-	defaultLogLevel := cmd.GetEnvVarString("LOG_LEVEL", "info")
-
-	var (
-		port     = flag.Uint("port", uint(defaultPort), "The port number to run Open Saves on")
-		cloud    = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
-		bucket   = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
-		project  = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
-		cache    = flag.String("cache", defaultCache, "The address of the cache store instance")
-		logLevel = flag.String("log", defaultLogLevel, "The level to log messages at")
-	)
-
-	flag.Parse()
-	if *cloud == "" {
-		log.Fatal("missing -cloud argument for cloud provider")
-	}
-	if *bucket == "" {
-		log.Fatal("missing -bucket argument for storing blobs")
-	}
-	if *project == "" {
-		log.Fatal("missing -project argument")
-	}
-	if *cache == "" {
-		log.Fatal("missing -cache argument for cache store")
+	configPath := cmd.GetEnvVarString("OPEN_SAVES_CONFIG", "/configs/")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		panic(fmt.Errorf("error loading config file: %w", err))
 	}
 
-	ll, err := log.ParseLevel(*logLevel)
+	ll, err := log.ParseLevel(viper.GetString(config.LogLevel))
 	if err != nil {
 		ll = log.InfoLevel
 	}
 	log.SetLevel(ll)
 	log.Infof("Log level is: %s", ll.String())
-
-	cfg := &server.Config{
-		Address: fmt.Sprintf(":%d", *port),
-		Cloud:   *cloud,
-		Bucket:  *bucket,
-		Project: *project,
-		Cache:   *cache,
-	}
-
-	// Cloud Run environment populates the PORT env var, so check for it here.
-	if p := os.Getenv("PORT"); p != "" {
-		p, err := strconv.ParseUint(p, 10, 64)
-		if err != nil {
-			log.Fatal("failed to parse PORT env variable, make sure it is of type uint")
-		}
-		cfg.Address = fmt.Sprintf(":%d", p)
-	}
 
 	ctx := context.Background()
 	if err := server.Run(ctx, "tcp", cfg); err != nil {

@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"io"
 	"net"
 	"testing"
@@ -52,7 +53,25 @@ const (
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
 	t.Helper()
-	impl, err := newOpenSavesServer(ctx, cloud, testProject, testBucket, testCacheAddr)
+	cfg := &config.ServiceConfig{
+		ServerConfig: config.ServerConfig{
+			Address: ":6000",
+			Cloud:   cloud,
+			Bucket:  testBucket,
+			Cache:   testCacheAddr,
+			Project: testProject,
+		},
+		RedisConfig: config.RedisConfig{
+			Address: testCacheAddr,
+			Pool: config.RedisPool{
+				MaxIdle:     500,
+				MaxActive:   10000,
+				IdleTimeout: 0,
+				Wait:        false,
+			},
+		},
+	}
+	impl, err := newOpenSavesServer(ctx, cfg)
 	if err != nil {
 		t.Fatalf("Failed to create a new Open Saves server instance: %v", err)
 	}

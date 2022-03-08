@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"net"
 
 	log "github.com/sirupsen/logrus"
@@ -25,31 +26,22 @@ import (
 	pb "github.com/googleforgames/open-saves/api"
 )
 
-// Config defines common fields needed to start Open Saves.
-type Config struct {
-	Address string
-	Cloud   string
-	Bucket  string
-	Cache   string
-	Project string
-}
-
 // Run starts the Open Saves gRPC service.
-func Run(ctx context.Context, network string, cfg *Config) error {
-	log.Infof("starting server on %s %s", network, cfg.Address)
+func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
+	log.Infof("starting server on %s %s", network, cfg.ServerConfig.Address)
 
-	lis, err := net.Listen(network, cfg.Address)
+	lis, err := net.Listen(network, cfg.ServerConfig.Address)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err := lis.Close(); err != nil {
-			log.Errorf("Failed to close %s %s: %v", network, cfg.Address, err)
+			log.Errorf("Failed to close %s %s: %v", network, cfg.ServerConfig.Address, err)
 		}
 	}()
 
 	s := grpc.NewServer()
-	server, err := newOpenSavesServer(ctx, cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
+	server, err := newOpenSavesServer(ctx, cfg)
 	if err != nil {
 		return err
 	}
