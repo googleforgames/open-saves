@@ -31,7 +31,7 @@ func Load(path string) (*ServiceConfig, error) {
 	// Environment variable overrides
 	viper.AutomaticEnv()
 	if err := viper.BindEnv(RedisAddress, "OPEN_SAVES_CACHE", "REDIS_ADDRESS"); err != nil {
-		log.Warning("cannot bind env var %s to %s", "OPEN_SAVES_CACHE", RedisAddress)
+		log.Warningf("cannot bind env var %s to %s", "OPEN_SAVES_CACHE", RedisAddress)
 	}
 
 	// Reads command line arguments, for backward compatibility
@@ -43,22 +43,22 @@ func Load(path string) (*ServiceConfig, error) {
 	pflag.String("log", "", "The level to log messages at")
 
 	if err := viper.BindPFlag(OpenSavesPort, pflag.Lookup("port")); err != nil {
-		log.Warning("cannot bind flag %s to %s", "port", OpenSavesPort)
+		log.Warningf("cannot bind flag %s to %s", "port", OpenSavesPort)
 	}
 	if err := viper.BindPFlag(OpenSavesCloud, pflag.Lookup("cloud")); err != nil {
-		log.Warning("cannot bind flag %s to %s", "cloud", OpenSavesCloud)
+		log.Warningf("cannot bind flag %s to %s", "cloud", OpenSavesCloud)
 	}
 	if err := viper.BindPFlag(OpenSavesBucket, pflag.Lookup("bucket")); err != nil {
-		log.Warning("cannot bind flag %s to %s", "bucket", OpenSavesBucket)
+		log.Warningf("cannot bind flag %s to %s", "bucket", OpenSavesBucket)
 	}
 	if err := viper.BindPFlag(OpenSavesProject, pflag.Lookup("project")); err != nil {
-		log.Warning("cannot bind flag %s to %s", "project", OpenSavesProject)
+		log.Warningf("cannot bind flag %s to %s", "project", OpenSavesProject)
 	}
 	if err := viper.BindPFlag(RedisAddress, pflag.Lookup("cache")); err != nil {
-		log.Warning("cannot bind flag %s to %s", "cache", RedisAddress)
+		log.Warningf("cannot bind flag %s to %s", "cache", RedisAddress)
 	}
 	if err := viper.BindPFlag(LogLevel, pflag.Lookup("log")); err != nil {
-		log.Warning("cannot bind flag %s to %s", "log", LogLevel)
+		log.Warningf("cannot bind flag %s to %s", "log", LogLevel)
 	}
 	pflag.Parse()
 

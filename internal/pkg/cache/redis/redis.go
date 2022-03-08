@@ -32,16 +32,17 @@ type Redis struct {
 
 // NewRedis creates a new Redis instance.
 func NewRedis(address string, opts ...redis.DialOption) *Redis {
-	rp := &redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", address, opts...)
+	cfg := &config.RedisConfig{
+		Address: address,
+		Pool: config.RedisPool{
+			MaxIdle:     500,
+			MaxActive:   10000,
+			IdleTimeout: 0,
+			Wait:        false,
 		},
-		MaxIdle:   500,
-		MaxActive: 10000,
 	}
-	return &Redis{
-		redisPool: rp,
-	}
+
+	return NewRedisWithConfig(cfg, opts...)
 }
 
 // NewRedis creates a new Redis instance.
