@@ -5,7 +5,9 @@ open_saves_project: ""
 log_level: "info"
 
 redis_address: "localhost:6379"
-redis_pool_maxIdle: 500
-redis_pool_maxActive: 10000
-redis_pool_idleTimeout: 0
-redis_pool_wait: false
+redis_max_idle: 500
+redis_pool_size: 10000
+redis_idle_timeout: 0
+redis_max_retries: 3
+redis_min_retry_backoff: "8ms"
+redis_max_retry_backoff: "512ms"

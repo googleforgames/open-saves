@@ -10,10 +10,12 @@ const (
 	LogLevel         = "log_level"
 
 	RedisAddress         = "redis_address"
-	RedisPoolMaxIdle     = "redis_pool_maxIdle"
-	RedisPoolMaxActive   = "redis_pool_maxActive"
-	RedisPoolIdleTimeout = "redis_pool_idleTimeout"
-	RedisPoolWait        = "redis_pool_wait"
+	RedisMinIdleConns    = "redis_min_idle_conns"
+	RedisPoolSize        = "redis_pool_size"
+	RedisIdleTimeout     = "redis_idle_timeout"
+	RedisMaxRetries      = "redis_max_retries"
+	RedisMinRetryBackoff = "redis_min_retry_backoff"
+	RedisMaxRetryBackoff = "redis_max_retry_backoff"
 )
 
 type ServiceConfig struct {
@@ -30,15 +32,15 @@ type ServerConfig struct {
 	Project string
 }
 
+// RedisConfig as defined in https://pkg.go.dev/github.com/go-redis/redis/v8#Options
 type RedisConfig struct {
 	Address string
-	Pool    RedisPool
-}
 
-// RedisPool as defined in https://pkg.go.dev/github.com/gomodule/redigo/redis#Pool
-type RedisPool struct {
-	MaxIdle     int
-	MaxActive   int
-	IdleTimeout time.Duration
-	Wait        bool
+	MaxRetries      int
+	MinRetyBackoff  time.Duration
+	MaxRetryBackoff time.Duration
+
+	MinIdleConns int
+	PoolSize     int
+	IdleTimeout  time.Duration
 }
