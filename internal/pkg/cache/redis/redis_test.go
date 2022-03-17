@@ -43,11 +43,11 @@ func TestRedis_All(t *testing.T) {
 
 	val, err := r.Get(ctx, "hello")
 	assert.NoError(t, err)
-	assert.Equal(t, val, by)
+	assert.Equal(t, by, val)
 
 	keys, err = r.ListKeys(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, keys, []string{"hello"})
+	assert.Equal(t, []string{"hello"}, keys)
 
 	assert.NoError(t, r.Delete(ctx, "hello"))
 
