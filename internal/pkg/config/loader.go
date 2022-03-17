@@ -2,12 +2,13 @@ package config
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"os"
 	"strconv"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 func Load(path string) (*ServiceConfig, error) {
@@ -94,15 +95,14 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	// Redis configuration
-	redisPool := RedisPool{
-		MaxIdle:     viper.GetInt(RedisPoolMaxIdle),
-		MaxActive:   viper.GetInt(RedisPoolMaxActive),
-		IdleTimeout: time.Duration(viper.GetUint(RedisPoolIdleTimeout)) * time.Second,
-		Wait:        viper.GetBool(RedisPoolWait),
-	}
 	redisConfig := RedisConfig{
-		Address: viper.GetString(RedisAddress),
-		Pool:    redisPool,
+		Address:         viper.GetString(RedisAddress),
+		MaxRetries:      viper.GetInt(RedisMaxRetries),
+		MinRetyBackoff:  viper.GetDuration(RedisMinRetryBackoff),
+		MaxRetryBackoff: viper.GetDuration(RedisMaxRetryBackoff),
+		MinIdleConns:    viper.GetInt(RedisMinIdleConns),
+		PoolSize:        viper.GetInt(RedisPoolSize),
+		IdleTimeout:     time.Duration(viper.GetUint(RedisIdleTimeout)) * time.Second,
 	}
 
 	return &ServiceConfig{

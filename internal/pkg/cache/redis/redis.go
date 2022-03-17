@@ -16,170 +16,66 @@ package redis
 
 import (
 	"context"
-	"errors"
-	"syscall"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 )
 
-const BrokenPipeRetries = 3
-
 // Redis is an implementation of the cache.Cache interface.
 type Redis struct {
-	redisPool *redis.Pool
+	c *redis.Client
 }
 
 // NewRedis creates a new Redis instance.
-func NewRedis(address string, opts ...redis.DialOption) *Redis {
+func NewRedis(address string) *Redis {
 	cfg := &config.RedisConfig{
 		Address: address,
-		Pool: config.RedisPool{
-			MaxIdle:     500,
-			MaxActive:   10000,
-			IdleTimeout: 0,
-			Wait:        false,
-		},
 	}
 
-	return NewRedisWithConfig(cfg, opts...)
+	return NewRedisWithConfig(cfg)
 }
 
 // NewRedis creates a new Redis instance.
-func NewRedisWithConfig(cfg *config.RedisConfig, opts ...redis.DialOption) *Redis {
-	rp := &redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", cfg.Address, opts...)
-		},
-		MaxIdle:     cfg.Pool.MaxIdle,
-		MaxActive:   cfg.Pool.MaxActive,
-		IdleTimeout: cfg.Pool.IdleTimeout,
-		Wait:        cfg.Pool.Wait,
+func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
+	o := &redis.Options{
+		Addr:         cfg.Address,
+		MinIdleConns: cfg.MinIdleConns,
+		PoolSize:     cfg.PoolSize,
+		IdleTimeout:  cfg.IdleTimeout,
 	}
+
+	c := redis.NewClient(o)
+
 	return &Redis{
-		redisPool: rp,
+		c: c,
 	}
 }
 
 // Set adds a key-value pair to the redis instance.
 func (r *Redis) Set(ctx context.Context, key string, value []byte) error {
-	return retryOnBrokenPipe(BrokenPipeRetries, func() error {
-		conn, err := r.redisPool.GetContext(ctx)
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-
-		_, err = conn.Do("SET", key, value)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	return r.c.Set(ctx, key, string(value), 0).Err()
 }
 
 // Get retrieves the value for a given key.
 func (r *Redis) Get(ctx context.Context, key string) ([]byte, error) {
-	return retryOnBrokenPipeBytes(BrokenPipeRetries, func() ([]byte, error) {
-		conn, err := r.redisPool.GetContext(ctx)
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-
-		val, err := redis.Bytes(conn.Do("GET", key))
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	})
+	val, err := r.c.Get(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(val), nil
 }
 
 // Delete deletes the key from the redis instance.
 func (r *Redis) Delete(ctx context.Context, key string) error {
-	return retryOnBrokenPipe(BrokenPipeRetries, func() error {
-		conn, err := r.redisPool.GetContext(ctx)
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-
-		_, err = conn.Do("DEL", key)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	return r.c.Del(ctx, key).Err()
 }
 
 // FlushAll removes all key-value pairs from the redis instance.
 func (r *Redis) FlushAll(ctx context.Context) error {
-	return retryOnBrokenPipe(BrokenPipeRetries, func() error {
-		conn, err := r.redisPool.GetContext(ctx)
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-
-		_, err = conn.Do("FLUSHALL")
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	return r.c.FlushAll(ctx).Err()
 }
 
 // ListKeys lists all the keys in the redis instance.
 func (r *Redis) ListKeys(ctx context.Context) ([]string, error) {
-	return retryOnBrokenPipeStrings(BrokenPipeRetries, func() ([]string, error) {
-		conn, err := r.redisPool.GetContext(ctx)
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-
-		keys, err := redis.Strings(conn.Do("KEYS", "*"))
-		if err != nil {
-			return nil, err
-		}
-		return keys, nil
-	})
-}
-
-func retryOnBrokenPipe(attempts int, fn func() error) error {
-	if err := fn(); err != nil {
-		if errors.Is(err, syscall.EPIPE) {
-			if attempts--; attempts > 0 {
-				return retryOnBrokenPipe(attempts, fn)
-			}
-		}
-		return err
-	}
-	return nil
-}
-
-func retryOnBrokenPipeBytes(attempts int, fn func() ([]byte, error)) ([]byte, error) {
-	b, err := fn()
-	if err != nil {
-		if errors.Is(err, syscall.EPIPE) {
-			if attempts--; attempts > 0 {
-				return retryOnBrokenPipeBytes(attempts, fn)
-			}
-		}
-		return nil, err
-	}
-	return b, nil
-}
-
-func retryOnBrokenPipeStrings(attempts int, fn func() ([]string, error)) ([]string, error) {
-	s, err := fn()
-	if err != nil {
-		if errors.Is(err, syscall.EPIPE) {
-			if attempts--; attempts > 0 {
-				return retryOnBrokenPipeStrings(attempts, fn)
-			}
-		}
-		return nil, err
-	}
-	return s, nil
+	return r.c.Keys(ctx, "*").Result()
 }

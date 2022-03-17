@@ -16,11 +16,12 @@ package server
 
 import (
 	"context"
-	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"io"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
@@ -62,13 +63,9 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 			Project: testProject,
 		},
 		RedisConfig: config.RedisConfig{
-			Address: testCacheAddr,
-			Pool: config.RedisPool{
-				MaxIdle:     500,
-				MaxActive:   10000,
-				IdleTimeout: 0,
-				Wait:        false,
-			},
+			Address:     testCacheAddr,
+			PoolSize:    10000,
+			IdleTimeout: 0,
 		},
 	}
 	impl, err := newOpenSavesServer(ctx, cfg)
