@@ -18,9 +18,11 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	mock_cache "github.com/googleforgames/open-saves/internal/pkg/cache/mock"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,14 +34,14 @@ func TestCache_Simple(t *testing.T) {
 	testBinary := []byte{0x42, 0x24, 0x00, 0x12}
 	ctx := context.Background()
 
-	cache := New(driver)
+	cache := New(driver, &config.CacheConfig{DefaultTTL: 42 * time.Second})
 	if cache == nil {
 		t.Fatal("cache.New returned nil")
 	}
 
 	cacheable.EXPECT().CacheKey().Return(testCacheKey)
 	cacheable.EXPECT().EncodeBytes().Return(testBinary, nil)
-	driver.EXPECT().Set(ctx, testCacheKey, testBinary).Return(nil)
+	driver.EXPECT().Set(ctx, testCacheKey, testBinary, 42*time.Second).Return(nil)
 
 	assert.NoError(t, cache.Set(ctx, cacheable))
 
@@ -62,7 +64,7 @@ func TestCache_TooBigToCache(t *testing.T) {
 	const testCacheKey = "testcache/key"
 	ctx := context.Background()
 
-	cache := New(driver)
+	cache := New(driver, &config.CacheConfig{})
 	if cache == nil {
 		t.Fatal("cache.New returned nil")
 	}
@@ -80,7 +82,7 @@ func TestCache_TooBigToCache(t *testing.T) {
 
 	cacheable.EXPECT().EncodeBytes().Return(testBytes, nil)
 	cacheable.EXPECT().CacheKey().Return(testCacheKey)
-	driver.EXPECT().Set(ctx, testCacheKey, testBytes).Return(nil)
+	driver.EXPECT().Set(ctx, testCacheKey, testBytes, time.Duration(0)).Return(nil)
 
 	assert.NoError(t, cache.Set(ctx, cacheable))
 

@@ -17,7 +17,9 @@ package redis
 import (
 	"context"
 	"testing"
+	"time"
 
+	redis "github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,11 +41,18 @@ func TestRedis_All(t *testing.T) {
 	assert.Error(t, err)
 
 	by := []byte("byte")
-	assert.NoError(t, r.Set(ctx, "hello", by))
+	assert.NoError(t, r.Set(ctx, "hello", by, 0))
 
 	val, err := r.Get(ctx, "hello")
 	assert.NoError(t, err)
 	assert.Equal(t, by, val)
+
+	// test with TTL. The resolution is one millisecond.
+	assert.NoError(t, r.Set(ctx, "withTTL", by, 1*time.Millisecond))
+	time.Sleep(2 * time.Millisecond)
+	val, err = r.Get(ctx, "withTTL")
+	assert.ErrorIs(t, redis.Nil, err)
+	assert.Nil(t, val)
 
 	keys, err = r.ListKeys(ctx)
 	assert.NoError(t, err)
