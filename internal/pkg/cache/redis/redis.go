@@ -16,6 +16,7 @@ package redis
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
@@ -52,8 +53,8 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 }
 
 // Set adds a key-value pair to the redis instance.
-func (r *Redis) Set(ctx context.Context, key string, value []byte) error {
-	return r.c.Set(ctx, key, string(value), 0).Err()
+func (r *Redis) Set(ctx context.Context, key string, value []byte, expiration time.Duration) error {
+	return r.c.Set(ctx, key, string(value), expiration).Err()
 }
 
 // Get retrieves the value for a given key.
