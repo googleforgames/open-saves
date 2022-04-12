@@ -16,6 +16,9 @@ package cache
 
 import (
 	"context"
+	"time"
+
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 )
 
 const defaultMaxSizeToCache int = 10 * 1024 * 1024 // 10 MB
@@ -24,12 +27,14 @@ const defaultMaxSizeToCache int = 10 * 1024 * 1024 // 10 MB
 type Cache struct {
 	driver         Driver
 	MaxSizeToCache int
+	Config         *config.CacheConfig
 }
 
-func New(driver Driver) *Cache {
+func New(driver Driver, config *config.CacheConfig) *Cache {
 	return &Cache{
 		driver:         driver,
 		MaxSizeToCache: defaultMaxSizeToCache,
+		Config:         config,
 	}
 }
 
@@ -44,7 +49,7 @@ func (c *Cache) Set(ctx context.Context, object Cacheable) error {
 	if len(encoded) > c.MaxSizeToCache {
 		return c.Delete(ctx, object.CacheKey())
 	}
-	return c.driver.Set(ctx, object.CacheKey(), encoded)
+	return c.driver.Set(ctx, object.CacheKey(), encoded, c.Config.DefaultTTL)
 }
 
 // Get takes a key string, and a Cacheable object. It fetches an object from the cache,
@@ -81,7 +86,7 @@ type Cacheable interface {
 
 // Driver interface defines common operations for the cache store.
 type Driver interface {
-	Set(ctx context.Context, key string, value []byte) error
+	Set(ctx context.Context, key string, value []byte, expiration time.Duration) error
 	Get(ctx context.Context, key string) ([]byte, error)
 	Delete(ctx context.Context, key string) error
 	ListKeys(ctx context.Context) ([]string, error)

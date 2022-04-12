@@ -23,6 +23,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
@@ -64,7 +65,7 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		cache := cache.New(redis.NewRedis(cfg.Cache))
+		cache := cache.New(redis.NewRedis(cfg.Cache), &config.CacheConfig{})
 		c := &Collector{
 			blob:   gcs,
 			metaDB: metadb,
