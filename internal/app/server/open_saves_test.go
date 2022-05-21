@@ -769,7 +769,7 @@ func TestOpenSaves_ExternalBlobSimple(t *testing.T) {
 	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
 }
 
-func TestOpenSaves_QueryRecords_Filter(t *testing.T) {
+func TestOpenSaves_QueryRecords_EqualityFilter(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
@@ -822,6 +822,63 @@ func TestOpenSaves_QueryRecords_Filter(t *testing.T) {
 
 	assert.Equal(t, storeKey, resp.StoreKeys[0])
 	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, stringVal1)
+}
+
+func TestOpenSaves_QueryRecords_InequalityFilter(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	recordKey1 := uuid.NewString()
+	intVal1 := &pb.Property_IntegerValue{IntegerValue: 10}
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey1,
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: intVal1,
+			},
+		},
+	})
+
+	recordKey2 := uuid.NewString()
+	intVal2 := &pb.Property_IntegerValue{IntegerValue: 20}
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey2,
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: intVal2,
+			},
+		},
+	})
+
+	intVal3 := &pb.Property_IntegerValue{IntegerValue: 0}
+	queryReq := &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		Filters: []*pb.QueryFilter{
+			{
+				PropertyName: "prop1",
+				Operator:     pb.FilterOperator_GREATER,
+				Value: &pb.Property{
+					Type:  pb.Property_INTEGER,
+					Value: intVal3,
+				},
+			},
+		},
+	}
+	resp, err := client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+	// Both records match the query.
+	require.Equal(t, 2, len(resp.Records))
+	require.Equal(t, 2, len(resp.StoreKeys))
+
+	assert.Equal(t, storeKey, resp.StoreKeys[0])
+	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal1)
+	assert.Equal(t, resp.Records[1].Properties["prop1"].Value, intVal2)
 }
 
 func TestOpenSaves_QueryRecords_Owner(t *testing.T) {

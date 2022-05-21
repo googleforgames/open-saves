@@ -17,11 +17,11 @@
 resource "google_datastore_index" "blob_status_updated_at" {
   kind = "blob"
   properties {
-    name = "Status"
+    name      = "Status"
     direction = "ASCENDING"
   }
   properties {
-    name = "Timestamps.UpdatedAt"
+    name      = "Timestamps.UpdatedAt"
     direction = "ASCENDING"
   }
 }
@@ -29,11 +29,24 @@ resource "google_datastore_index" "blob_status_updated_at" {
 resource "google_datastore_index" "chunk_status_updated_at" {
   kind = "chunk"
   properties {
-    name = "Status"
+    name      = "Status"
     direction = "ASCENDING"
   }
   properties {
-    name = "Timestamps.UpdatedAt"
+    name      = "Timestamps.UpdatedAt"
     direction = "ASCENDING"
+  }
+}
+
+resource "google_datastore_index" "default_indexed_properties" {
+  kind     = "record"
+  ancestor = "ALL_ANCESTORS"
+  properties {
+    name      = "Properties.prop1"
+    direction = "ASCENDING"
+  }
+  properties {
+    name      = "Properties.prop1"
+    direction = "DESCENDING"
   }
 }
