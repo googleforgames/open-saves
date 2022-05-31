@@ -700,7 +700,6 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 	case pb.FilterOperator_LESS_OR_EQUAL:
 		filter += "<="
 	default:
-		// TODO(hongalex): implement inequality filters
 		return nil, status.Errorf(codes.Unimplemented, "unknown filter operator detected: %+v", f.Operator)
 	}
 	return q.Filter(filter, record.ExtractValue(f.Value)), nil

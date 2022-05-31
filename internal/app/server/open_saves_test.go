@@ -872,6 +872,7 @@ func TestOpenSaves_QueryRecords_InequalityFilter(t *testing.T) {
 	}
 	resp, err := client.QueryRecords(ctx, queryReq)
 	require.NoError(t, err)
+
 	// Both records match the query.
 	require.Equal(t, 2, len(resp.Records))
 	require.Equal(t, 2, len(resp.StoreKeys))
@@ -879,6 +880,16 @@ func TestOpenSaves_QueryRecords_InequalityFilter(t *testing.T) {
 	assert.Equal(t, storeKey, resp.StoreKeys[0])
 	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal1)
 	assert.Equal(t, resp.Records[1].Properties["prop1"].Value, intVal2)
+
+	// Run a new query that matches only one record.
+	queryReq.Filters[0].Value.Value = &pb.Property_IntegerValue{IntegerValue: 15}
+
+	resp, err = client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(resp.Records))
+
+	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal2)
 }
 
 func TestOpenSaves_QueryRecords_Owner(t *testing.T) {
