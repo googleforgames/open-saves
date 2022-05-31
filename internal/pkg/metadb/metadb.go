@@ -17,6 +17,7 @@ package metadb
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	ds "cloud.google.com/go/datastore"
@@ -696,7 +697,8 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 }
 
 // QueryRecords returns a list of records that match the given filters and their stores.
-func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey, owner string, tags []string) ([]*record.Record, []string, error) {
+// TODO(https://github.com/googleforgames/open-saves/issues/339): consider refactoring this to fewer arguments.
+func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey, owner string, tags []string, orders []*pb.SortOrder) ([]*record.Record, []string, error) {
 	query := m.newQuery(recordKind)
 	if storeKey != "" {
 		dsKey := m.createStoreKey(storeKey)
@@ -714,6 +716,15 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 	}
 	for _, t := range tags {
 		query = query.Filter(tagsField+"=", t)
+	}
+	for _, s := range orders {
+		switch s.Order {
+		case pb.SortOrder_ASC:
+			query = query.Order(fmt.Sprintf("%s.%s", propertiesField, s.PropertyName))
+		case pb.SortOrder_DESC:
+			query = query.Order(fmt.Sprintf("%s.%s", "-"+propertiesField, s.PropertyName))
+		default:
+		}
 	}
 	iter := m.client.Run(ctx, query)
 

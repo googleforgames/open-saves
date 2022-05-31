@@ -890,6 +890,56 @@ func TestOpenSaves_QueryRecords_Tags(t *testing.T) {
 	assert.Contains(t, resp.Records[0].Tags, "hello")
 }
 
+func TestOpenSaves_QueryRecords_Order(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	recordKey1 := uuid.NewString()
+	intVal1 := &pb.Property_IntegerValue{IntegerValue: 5}
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey1,
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: intVal1,
+			},
+		},
+	})
+
+	recordKey2 := uuid.NewString()
+	intVal2 := &pb.Property_IntegerValue{IntegerValue: 10}
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey2,
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: intVal2,
+			},
+		},
+	})
+
+	queryReq := &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		Orders: []*pb.SortOrder{
+			{
+				PropertyName: "prop1",
+				Order:        pb.SortOrder_DESC,
+			},
+		},
+	}
+	resp, err := client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(resp.Records))
+	require.Equal(t, 2, len(resp.StoreKeys))
+
+	assert.Equal(t, storeKey, resp.StoreKeys[0])
+	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal2)
+}
+
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
