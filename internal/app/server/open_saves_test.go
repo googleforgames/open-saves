@@ -934,10 +934,10 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 	resp, err := client.QueryRecords(ctx, queryReq)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(resp.Records))
-	require.Equal(t, 2, len(resp.StoreKeys))
 
-	assert.Equal(t, storeKey, resp.StoreKeys[0])
+	// Verify these records are returned in descending order.
 	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal2)
+	assert.Equal(t, resp.Records[1].Properties["prop1"].Value, intVal1)
 }
 
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
