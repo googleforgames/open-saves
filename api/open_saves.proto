@@ -357,7 +357,8 @@ message QueryRecordsRequest {
   // owner_id is the owner of records, represented as an external user ID.
   string owner_id = 4;
 
-  // List of sort orders to return records.
+  // List of sort orders to return records. These SortOrders are applied 
+  // in sequence.
   repeated SortOrder orders = 5;
 
 }
@@ -393,18 +394,16 @@ message QueryFilter {
 message SortOrder {
   // Direction is the ways to sort a list of records returned by querying.
   enum Direction {
-    // No default sort order.
-    NONE = 0;
     // Sort by ascending order.
-    ASC = 1;
+    ASC = 0;
     // Sort by descending order.
-    DESC = 2;
+    DESC = 1;
   }
 
   // Property name to order by.
   string property_name = 1;
 
-  // Direction to sort by.
+  // Direction to sort by (either ascending or descending).
   Direction order = 2;
 }
 
