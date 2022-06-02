@@ -686,14 +686,24 @@ func (m *MetaDB) GetChildChunkRefs(ctx context.Context, blobKey uuid.UUID) *chun
 	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
 
+// addPropertyFilter augments a query with the QueryFilter operations.
 func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
+	filter := propertiesField + "." + f.PropertyName
 	switch f.Operator {
 	case pb.FilterOperator_EQUAL:
-		return q.Filter(propertiesField+"."+f.PropertyName+"=", record.ExtractValue(f.Value)), nil
+		filter += "="
+	case pb.FilterOperator_GREATER:
+		filter += ">"
+	case pb.FilterOperator_LESS:
+		filter += "<"
+	case pb.FilterOperator_GREATER_OR_EQUAL:
+		filter += ">="
+	case pb.FilterOperator_LESS_OR_EQUAL:
+		filter += "<="
 	default:
-		// TODO(hongalex): implement inequality filters
-		return nil, status.Errorf(codes.Unimplemented, "only the equality operator is supported currently")
+		return nil, status.Errorf(codes.Unimplemented, "unknown filter operator detected: %+v", f.Operator)
 	}
+	return q.Filter(filter, record.ExtractValue(f.Value)), nil
 }
 
 // QueryRecords returns a list of records that match the given filters and their stores.
