@@ -924,10 +924,10 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 
 	queryReq := &pb.QueryRecordsRequest{
 		StoreKey: storeKey,
-		Orders: []*pb.SortOrder{
+		SortOrders: []*pb.SortOrder{
 			{
 				PropertyName: "prop1",
-				Order:        pb.SortOrder_DESC,
+				Direction:        pb.SortOrder_DESC,
 			},
 		},
 	}

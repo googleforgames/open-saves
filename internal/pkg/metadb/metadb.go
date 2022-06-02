@@ -718,7 +718,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 		query = query.Filter(tagsField+"=", t)
 	}
 	for _, s := range orders {
-		switch s.Order {
+		switch s.Direction {
 		case pb.SortOrder_ASC:
 			query = query.Order(fmt.Sprintf("%s.%s", propertiesField, s.PropertyName))
 		case pb.SortOrder_DESC:
