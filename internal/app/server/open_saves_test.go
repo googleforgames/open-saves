@@ -1050,7 +1050,7 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 		},
 	}
 	_, err = client.QueryRecords(ctx, queryReq)
-	require.NoError(t, err)
+	require.Error(t, err)
 }
 
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
