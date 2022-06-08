@@ -47,7 +47,9 @@ const (
 )
 
 var (
-	ErrNoUpdate = errors.New("UpdateRecord doesn't need to commit the change")
+	ErrNoUpdate             = errors.New("UpdateRecord doesn't need to commit the change")
+	ErrInvalidSortProperty  = errors.New("QueryRecord: got invalid sort property in SortOrder.Property")
+	ErrInvalidSortDirection = errors.New("QueryRecord: got invalid direction in SortOrder.Directin")
 )
 
 // MetaDB is a metadata database manager of Open Saves.
@@ -728,12 +730,25 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 		query = query.Filter(tagsField+"=", t)
 	}
 	for _, s := range orders {
+		var property string
+		switch s.Property {
+		case pb.SortOrder_CREATED_AT:
+			property = "Timestamps.CreatedAt"
+		case pb.SortOrder_UPDATED_AT:
+			property = "Timestamps.UpdatedAt"
+		case pb.SortOrder_USER_PROPERTY:
+			property = fmt.Sprintf("%s.%s", propertiesField, s.UserPropertyName)
+		default:
+			return nil, nil, ErrInvalidSortProperty
+		}
+
 		switch s.Direction {
 		case pb.SortOrder_ASC:
-			query = query.Order(fmt.Sprintf("%s.%s", propertiesField, s.PropertyName))
+			query = query.Order(property)
 		case pb.SortOrder_DESC:
-			query = query.Order(fmt.Sprintf("%s.%s", "-"+propertiesField, s.PropertyName))
+			query = query.Order("-" + property)
 		default:
+			return nil, nil, ErrInvalidSortDirection
 		}
 	}
 	iter := m.client.Run(ctx, query)

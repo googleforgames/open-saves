@@ -360,7 +360,6 @@ message QueryRecordsRequest {
   // List of sort orders to return records. These SortOrders are applied 
   // in sequence.
   repeated SortOrder sort_orders = 5;
-
 }
 
 // FilterOperator has a list of comperators.
@@ -400,11 +399,17 @@ message SortOrder {
     DESC = 1;
   }
 
-  // Property name to order by.
-  string property_name = 1;
-
   // Direction to sort by (either ascending or descending).
   Direction direction = 2;
+
+  enum Property {
+    UPDATED_AT = 0;
+    CREATED_AT = 1;
+    USER_PROPERTY = 2;
+  }
+
+  Property property = 3;
+  string user_property_name = 4;
 }
 
 message QueryRecordsResponse {

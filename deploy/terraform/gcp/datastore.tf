@@ -49,4 +49,15 @@ resource "google_datastore_index" "default_indexed_properties" {
     name      = "Properties.prop1"
     direction = "DESCENDING"
   }
+
+  properties {
+    name      = "Timestamps.CreatedAt"
+    direction = "ASCENDING"
+  }
+
+
+  properties {
+    name      = "Timestamps.UpdatedAt"
+    direction = "ASCENDING"
+  }
 }
