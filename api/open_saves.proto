@@ -402,13 +402,19 @@ message SortOrder {
   // Direction to sort by (either ascending or descending).
   Direction direction = 2;
 
+  // Property to sort by, which can either be system defined properties
+  // or a user property.
   enum Property {
     UPDATED_AT = 0;
     CREATED_AT = 1;
     USER_PROPERTY = 2;
   }
 
+  // Property to sort by. If using a user defined property, user_property_name
+  // must be passed in as well.
   Property property = 3;
+
+  // The name of the user defined property.
   string user_property_name = 4;
 }
 

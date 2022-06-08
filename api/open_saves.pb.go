@@ -199,6 +199,8 @@ func (SortOrder_Direction) EnumDescriptor() ([]byte, []int) {
 	return file_api_open_saves_proto_rawDescGZIP(), []int{13, 0}
 }
 
+// Property to sort by, which can either be system defined properties
+// or a user property.
 type SortOrder_Property int32
 
 const (
@@ -1247,9 +1249,12 @@ type SortOrder struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Direction to sort by (either ascending or descending).
-	Direction        SortOrder_Direction `protobuf:"varint,2,opt,name=direction,proto3,enum=opensaves.SortOrder_Direction" json:"direction,omitempty"`
-	Property         SortOrder_Property  `protobuf:"varint,3,opt,name=property,proto3,enum=opensaves.SortOrder_Property" json:"property,omitempty"`
-	UserPropertyName string              `protobuf:"bytes,4,opt,name=user_property_name,json=userPropertyName,proto3" json:"user_property_name,omitempty"`
+	Direction SortOrder_Direction `protobuf:"varint,2,opt,name=direction,proto3,enum=opensaves.SortOrder_Direction" json:"direction,omitempty"`
+	// Property to sort by. If using a user defined property, user_property_name
+	// must be passed in as well.
+	Property SortOrder_Property `protobuf:"varint,3,opt,name=property,proto3,enum=opensaves.SortOrder_Property" json:"property,omitempty"`
+	// The name of the user defined property.
+	UserPropertyName string `protobuf:"bytes,4,opt,name=user_property_name,json=userPropertyName,proto3" json:"user_property_name,omitempty"`
 }
 
 func (x *SortOrder) Reset() {
