@@ -1026,6 +1026,31 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 	// Just make sure there's no error returned by this query.
 	require.NoError(t, err)
 	require.Equal(t, 2, len(resp.Records))
+
+	// Test errors
+	queryReq = &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
+				Property:  pb.SortOrder_USER_PROPERTY,
+				Direction: pb.SortOrder_ASC,
+			},
+		},
+	}
+	_, err = client.QueryRecords(ctx, queryReq)
+	require.Error(t, err)
+
+	queryReq = &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
+				Property:  pb.SortOrder_CREATED_AT,
+				Direction: 3,
+			},
+		},
+	}
+	_, err = client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
 }
 
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
