@@ -24,12 +24,12 @@ indexes:
   ancestor: yes
   properties:
   - name: Properties.prop1
-    direction: desc
 
 - kind: record
   ancestor: yes
   properties:
-  - name: Timestamps.CreatedAt 
+  - name: Timestamps.CreatedAt
+
 
 - kind: record
   ancestor: yes
