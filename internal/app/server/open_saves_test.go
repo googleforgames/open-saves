@@ -1038,7 +1038,7 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 		},
 	}
 	_, err = client.QueryRecords(ctx, queryReq)
-	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 
 	queryReq = &pb.QueryRecordsRequest{
 		StoreKey: storeKey,
@@ -1050,7 +1050,7 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 		},
 	}
 	_, err = client.QueryRecords(ctx, queryReq)
-	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
