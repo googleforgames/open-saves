@@ -740,7 +740,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 			}
 			property = fmt.Sprintf("%s.%s", propertiesField, s.UserPropertyName)
 		default:
-			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder property type: %v", s.Property)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder property value: %v", s.Property)
 		}
 
 		switch s.Direction {
@@ -749,7 +749,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 		case pb.SortOrder_DESC:
 			query = query.Order("-" + property)
 		default:
-			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction type: %v", s.Direction)
+			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction value: %v", s.Direction)
 		}
 	}
 	iter := m.client.Run(ctx, query)
