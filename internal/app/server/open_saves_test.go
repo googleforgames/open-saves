@@ -1071,6 +1071,36 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
+func TestOpenSaves_QueryRecords_Limit(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	recordKey1 := uuid.NewString()
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey1,
+	})
+
+	recordKey2 := uuid.NewString()
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey2,
+	})
+
+	queryReq := &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		Limit:    1,
+	}
+	resp, err := client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+	// Make sure the query only returns 1 record.
+	require.Equal(t, 1, len(resp.Records))
+	require.Equal(t, 1, len(resp.StoreKeys))
+
+}
+
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
