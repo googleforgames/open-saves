@@ -360,6 +360,9 @@ message QueryRecordsRequest {
   // List of sort orders to return records. These SortOrders are applied 
   // in sequence.
   repeated SortOrder sort_orders = 5;
+
+  // the limit of the number of records to return.
+  int32 limit = 6;
 }
 
 // FilterOperator has a list of comperators.
