@@ -18,3 +18,19 @@ indexes:
   ancestor: yes
   properties:
   - name: Properties.prop1
+    direction: asc 
+
+- kind: record
+  ancestor: yes
+  properties:
+  - name: Properties.prop1
+
+- kind: record
+  ancestor: yes
+  properties:
+  - name: Timestamps.CreatedAt
+
+- kind: record
+  ancestor: yes
+  properties:
+  - name: Timestamps.UpdatedAt

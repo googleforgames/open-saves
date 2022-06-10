@@ -343,6 +343,7 @@ message GetRecordRequest {
 // QueryRecordsRequest contains conditions to search particular records.
 // Multiple conditions are AND'ed together.
 message QueryRecordsRequest {
+
   // store_key is the primary key of the store.
   // Optional and the method queries all stores when omitted.
   string store_key = 1;
@@ -355,6 +356,10 @@ message QueryRecordsRequest {
 
   // owner_id is the owner of records, represented as an external user ID.
   string owner_id = 4;
+
+  // List of sort orders to return records. These SortOrders are applied 
+  // in sequence.
+  repeated SortOrder sort_orders = 5;
 }
 
 // FilterOperator has a list of comperators.
@@ -371,6 +376,7 @@ enum FilterOperator {
   LESS_OR_EQUAL = 4;
 }
 
+
 // QueryFilter is a filtering condition when querying records.
 message QueryFilter {
   // Propety name of the filter.
@@ -381,6 +387,35 @@ message QueryFilter {
 
   // Value to compare the property with.
   Property value = 3;
+}
+
+// SortOrder is a way to order records returned by QueryRecords.
+message SortOrder {
+  // Direction is the ways to sort a list of records returned by querying.
+  enum Direction {
+    // Sort by ascending order.
+    ASC = 0;
+    // Sort by descending order.
+    DESC = 1;
+  }
+
+  // Direction to sort by (either ascending or descending).
+  Direction direction = 2;
+
+  // Property to sort by, which can either be system defined properties
+  // or a user property.
+  enum Property {
+    UPDATED_AT = 0;
+    CREATED_AT = 1;
+    USER_PROPERTY = 2;
+  }
+
+  // Property to sort by. If using a user defined property, user_property_name
+  // must be passed in as well.
+  Property property = 3;
+
+  // The name of the user defined property.
+  string user_property_name = 4;
 }
 
 message QueryRecordsResponse {

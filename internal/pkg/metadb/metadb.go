@@ -17,6 +17,8 @@ package metadb
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 	"time"
 
 	ds "cloud.google.com/go/datastore"
@@ -706,7 +708,8 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 }
 
 // QueryRecords returns a list of records that match the given filters and their stores.
-func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey, owner string, tags []string) ([]*record.Record, []string, error) {
+// TODO(https://github.com/googleforgames/open-saves/issues/339): consider refactoring this to fewer arguments.
+func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, storeKey, owner string, tags []string, orders []*pb.SortOrder) ([]*record.Record, []string, error) {
 	query := m.newQuery(recordKind)
 	if storeKey != "" {
 		dsKey := m.createStoreKey(storeKey)
@@ -724,6 +727,31 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 	}
 	for _, t := range tags {
 		query = query.Filter(tagsField+"=", t)
+	}
+	for _, s := range orders {
+		var property string
+		switch s.Property {
+		case pb.SortOrder_CREATED_AT:
+			property = "Timestamps.CreatedAt"
+		case pb.SortOrder_UPDATED_AT:
+			property = "Timestamps.UpdatedAt"
+		case pb.SortOrder_USER_PROPERTY:
+			if s.UserPropertyName == "" {
+				return nil, nil, status.Error(codes.InvalidArgument, "got empty user sort property")
+			}
+			property = fmt.Sprintf("%s.%s", propertiesField, s.UserPropertyName)
+		default:
+			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder property value: %v", s.Property)
+		}
+
+		switch s.Direction {
+		case pb.SortOrder_ASC:
+			query = query.Order(strconv.Quote(property))
+		case pb.SortOrder_DESC:
+			query = query.Order("-" + strconv.Quote(property))
+		default:
+			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction value: %v", s.Direction)
+		}
 	}
 	iter := m.client.Run(ctx, query)
 
