@@ -362,7 +362,7 @@ message QueryRecordsRequest {
   repeated SortOrder sort_orders = 5;
 
   // the limit of the number of records to return.
-  int64 limit = 6;
+  int32 limit = 6;
 }
 
 // FilterOperator has a list of comperators.
