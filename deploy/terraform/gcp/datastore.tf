@@ -55,7 +55,6 @@ resource "google_datastore_index" "default_indexed_properties" {
     direction = "ASCENDING"
   }
 
-
   properties {
     name      = "Timestamps.UpdatedAt"
     direction = "ASCENDING"

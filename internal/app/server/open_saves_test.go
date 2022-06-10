@@ -1016,6 +1016,24 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 		StoreKey: storeKey,
 		SortOrders: []*pb.SortOrder{
 			{
+				Property:         pb.SortOrder_USER_PROPERTY,
+				UserPropertyName: "prop1",
+				Direction:        pb.SortOrder_ASC,
+			},
+		},
+	}
+	resp, err = client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(resp.Records))
+
+	// Verify these records are returned in ascending order.
+	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal1)
+	assert.Equal(t, resp.Records[1].Properties["prop1"].Value, intVal2)
+
+	queryReq = &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
 				Property:  pb.SortOrder_UPDATED_AT,
 				Direction: pb.SortOrder_ASC,
 			},

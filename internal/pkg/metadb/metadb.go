@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	ds "cloud.google.com/go/datastore"
@@ -745,9 +746,9 @@ func (m *MetaDB) QueryRecords(ctx context.Context, filters []*pb.QueryFilter, st
 
 		switch s.Direction {
 		case pb.SortOrder_ASC:
-			query = query.Order(property)
+			query = query.Order(strconv.Quote(property))
 		case pb.SortOrder_DESC:
-			query = query.Order("-" + property)
+			query = query.Order("-" + strconv.Quote(property))
 		default:
 			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction value: %v", s.Direction)
 		}
