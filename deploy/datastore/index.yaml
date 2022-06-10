@@ -30,7 +30,6 @@ indexes:
   properties:
   - name: Timestamps.CreatedAt
 
-
 - kind: record
   ancestor: yes
   properties:
