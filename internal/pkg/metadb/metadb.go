@@ -711,24 +711,24 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 // TODO(https://github.com/googleforgames/open-saves/issues/339): consider refactoring this to fewer arguments.
 func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) ([]*record.Record, []string, error) {
 	query := m.newQuery(recordKind)
-	if req.StoreKey != "" {
-		dsKey := m.createStoreKey(req.StoreKey)
+	if req.GetStoreKey() != "" {
+		dsKey := m.createStoreKey(req.GetStoreKey())
 		query = query.Ancestor(dsKey)
 	}
-	if owner := req.OwnerId; owner != "" {
+	if owner := req.GetOwnerId(); owner != "" {
 		query = query.Filter(ownerField+"=", owner)
 	}
-	for _, f := range req.Filters {
+	for _, f := range req.GetFilters() {
 		q, err := addPropertyFilter(query, f)
 		if err != nil {
 			return nil, nil, err
 		}
 		query = q
 	}
-	for _, t := range req.Tags {
+	for _, t := range req.GetTags() {
 		query = query.Filter(tagsField+"=", t)
 	}
-	for _, s := range req.SortOrders {
+	for _, s := range req.GetSortOrders() {
 		var property string
 		switch s.Property {
 		case pb.SortOrder_CREATED_AT:
@@ -753,8 +753,8 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction value: %v", s.Direction)
 		}
 	}
-	if req.Limit > 0 {
-		query = query.Limit(int(req.Limit))
+	if limit := req.GetLimit(); limit > 0 {
+		query = query.Limit(int(limit))
 	}
 	iter := m.client.Run(ctx, query)
 
