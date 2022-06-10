@@ -824,6 +824,8 @@ func TestOpenSaves_QueryRecords_EqualityFilter(t *testing.T) {
 	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, stringVal1)
 }
 
+// NOTE: this test requires composite indexes to be created. You can find the corresponding index
+// configuration in deploy/datastore/index.yaml
 func TestOpenSaves_QueryRecords_InequalityFilter(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
@@ -956,6 +958,117 @@ func TestOpenSaves_QueryRecords_Tags(t *testing.T) {
 	require.Equal(t, 1, len(resp.StoreKeys))
 
 	assert.Contains(t, resp.Records[0].Tags, "hello")
+}
+
+// NOTE: this test requires composite indexes to be created. You can find the corresponding index
+// configuration in deploy/datastore/index.yaml
+func TestOpenSaves_QueryRecords_Order(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	recordKey1 := uuid.NewString()
+	intVal1 := &pb.Property_IntegerValue{IntegerValue: 5}
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey1,
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: intVal1,
+			},
+		},
+	})
+
+	recordKey2 := uuid.NewString()
+	intVal2 := &pb.Property_IntegerValue{IntegerValue: 10}
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key: recordKey2,
+		Properties: map[string]*pb.Property{
+			"prop1": {
+				Type:  pb.Property_INTEGER,
+				Value: intVal2,
+			},
+		},
+	})
+
+	queryReq := &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
+				Property:         pb.SortOrder_USER_PROPERTY,
+				UserPropertyName: "prop1",
+				Direction:        pb.SortOrder_DESC,
+			},
+		},
+	}
+	resp, err := client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(resp.Records))
+
+	// Verify these records are returned in descending order.
+	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal2)
+	assert.Equal(t, resp.Records[1].Properties["prop1"].Value, intVal1)
+
+	queryReq = &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
+				Property:         pb.SortOrder_USER_PROPERTY,
+				UserPropertyName: "prop1",
+				Direction:        pb.SortOrder_ASC,
+			},
+		},
+	}
+	resp, err = client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(resp.Records))
+
+	// Verify these records are returned in ascending order.
+	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal1)
+	assert.Equal(t, resp.Records[1].Properties["prop1"].Value, intVal2)
+
+	queryReq = &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
+				Property:  pb.SortOrder_UPDATED_AT,
+				Direction: pb.SortOrder_ASC,
+			},
+		},
+	}
+	resp, err = client.QueryRecords(ctx, queryReq)
+	// These records are created at the same time so no way of verifying the order.
+	// Just make sure there's no error returned by this query.
+	require.NoError(t, err)
+	require.Equal(t, 2, len(resp.Records))
+
+	// Test errors
+	queryReq = &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
+				Property:  pb.SortOrder_USER_PROPERTY,
+				Direction: pb.SortOrder_ASC,
+			},
+		},
+	}
+	_, err = client.QueryRecords(ctx, queryReq)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	queryReq = &pb.QueryRecordsRequest{
+		StoreKey: storeKey,
+		SortOrders: []*pb.SortOrder{
+			{
+				Property:  pb.SortOrder_CREATED_AT,
+				Direction: 3,
+			},
+		},
+	}
+	_, err = client.QueryRecords(ctx, queryReq)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
