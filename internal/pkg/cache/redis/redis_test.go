@@ -19,17 +19,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	redis "github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRedis_All(t *testing.T) {
 	ctx := context.Background()
 
-	// Use a local instance of Redis for tests. This
-	// requires starting a redis server prior to test
-	// invocation.
-	r := NewRedis("localhost:6379")
+	// Use miniredis for tests.
+	s := miniredis.RunT(t)
+	r := NewRedis(s.Addr())
+	require.NotNil(t, r)
 
 	assert.NoError(t, r.FlushAll(ctx))
 
@@ -49,7 +51,7 @@ func TestRedis_All(t *testing.T) {
 
 	// test with TTL. The resolution is one millisecond.
 	assert.NoError(t, r.Set(ctx, "withTTL", by, 1*time.Millisecond))
-	time.Sleep(2 * time.Millisecond)
+	s.FastForward(2 * time.Millisecond)
 	val, err = r.Get(ctx, "withTTL")
 	assert.ErrorIs(t, redis.Nil, err)
 	assert.Nil(t, val)

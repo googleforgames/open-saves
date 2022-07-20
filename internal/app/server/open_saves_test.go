@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 
 	"cloud.google.com/go/datastore"
@@ -44,7 +45,6 @@ const (
 	testProject    = "triton-for-games-dev"
 	testBucket     = "gs://triton-integration"
 	testBufferSize = 1024 * 1024
-	testCacheAddr  = "localhost:6379"
 	// The threshold of comparing times.
 	// Since the server will actually access the backend datastore,
 	// we need enough time to prevent flaky tests.
@@ -54,16 +54,18 @@ const (
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
 	t.Helper()
+	r := miniredis.RunT(t)
+
 	cfg := &config.ServiceConfig{
 		ServerConfig: config.ServerConfig{
 			Address: ":6000",
 			Cloud:   cloud,
 			Bucket:  testBucket,
-			Cache:   testCacheAddr,
+			Cache:   r.Addr(),
 			Project: testProject,
 		},
 		RedisConfig: config.RedisConfig{
-			Address:     testCacheAddr,
+			Address:     r.Addr(),
 			PoolSize:    10000,
 			IdleTimeout: 0,
 		},
