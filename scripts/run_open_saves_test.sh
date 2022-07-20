@@ -13,7 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Start the redis-server, which runs on localhost:6379 by default
-redis-server &
-sleep 5
 make all test

@@ -23,7 +23,7 @@ ENV DEBIAN_FRONTEND="noninteractive"
 RUN apt-get -q update && \
     apt-get -qy upgrade && \
     apt-get install -qy protobuf-compiler curl git make \
-    build-essential redis-server && \
+    build-essential && \
     apt-get clean
 
 RUN curl -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz && \
