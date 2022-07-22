@@ -514,7 +514,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Equal(t, blobKey, promoRecord.ExternalBlob)
 			assert.Equal(t, blob.Size, promoRecord.BlobSize)
 			assert.Zero(t, promoRecord.Chunked)
-			assert.Zero(t, promoRecord.NumberOfChunks)
+			assert.Zero(t, promoRecord.ChunkCount)
 			assert.True(t, beforePromo.Before(promoRecord.Timestamps.UpdatedAt))
 			assert.NotEqual(t, record.Timestamps.Signature, promoRecord.Timestamps.Signature)
 		}
@@ -548,7 +548,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Empty(t, delPendRecord.Blob)
 			assert.Zero(t, delPendRecord.BlobSize)
 			assert.Zero(t, delPendRecord.Chunked)
-			assert.Zero(t, delPendRecord.NumberOfChunks)
+			assert.Zero(t, delPendRecord.ChunkCount)
 		}
 		if assert.NotNil(t, delPendBlob) {
 			assert.Equal(t, blobref.StatusPendingDeletion, delPendBlob.Status)
@@ -971,7 +971,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	}
 	if assert.NotNil(t, record) {
 		assert.EqualValues(t, testChunKSize*testChunkCount, record.BlobSize)
-		assert.EqualValues(t, testChunkCount, record.NumberOfChunks)
+		assert.EqualValues(t, testChunkCount, record.ChunkCount)
 		assert.True(t, record.Chunked)
 	}
 	if assert.NotNil(t, blobRetrieved) {
@@ -1000,7 +1000,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 		if assert.NotNil(t, record) {
 			assert.Zero(t, record.BlobSize)
 			assert.False(t, record.Chunked)
-			assert.Zero(t, record.NumberOfChunks)
+			assert.Zero(t, record.ChunkCount)
 		}
 	}
 

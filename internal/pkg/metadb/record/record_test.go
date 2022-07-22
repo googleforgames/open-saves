@@ -33,12 +33,12 @@ func TestRecord_Save(t *testing.T) {
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("34E1A605-C0FD-4A3D-A9ED-9BA42CAFAF6E")
 	record := &Record{
-		Key:            "key",
-		Blob:           testBlob,
-		BlobSize:       int64(len(testBlob)),
-		ExternalBlob:   uuid.Nil,
-		Chunked:        false,
-		NumberOfChunks: 0,
+		Key:          "key",
+		Blob:         testBlob,
+		BlobSize:     int64(len(testBlob)),
+		ExternalBlob: uuid.Nil,
+		Chunked:      false,
+		ChunkCount:   0,
 		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
@@ -70,7 +70,7 @@ func TestRecord_Save(t *testing.T) {
 				Value: int64(len(testBlob)),
 			},
 			{
-				Name:    "NumberOfChunks",
+				Name:    "ChunkCount",
 				Value:   int64(0),
 				NoIndex: false,
 			},
@@ -243,12 +243,12 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("70E894AE-1020-42E8-9710-3E2D408BC356")
 	record := &Record{
-		Key:            "key",
-		Blob:           testBlob,
-		BlobSize:       int64(len(testBlob)),
-		ExternalBlob:   uuid.Nil,
-		Chunked:        true,
-		NumberOfChunks: 1,
+		Key:          "key",
+		Blob:         testBlob,
+		BlobSize:     int64(len(testBlob)),
+		ExternalBlob: uuid.Nil,
+		Chunked:      true,
+		ChunkCount:   1,
 		Properties: PropertyMap{
 			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
 			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
@@ -263,10 +263,10 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 		},
 	}
 	expected := &pb.Record{
-		Key:            "key",
-		BlobSize:       int64(len(testBlob)),
-		Chunked:        true,
-		NumberOfChunks: 1,
+		Key:        "key",
+		BlobSize:   int64(len(testBlob)),
+		Chunked:    true,
+		ChunkCount: 1,
 		Properties: map[string]*pb.Property{
 			"prop1": {
 				Type:  pb.Property_INTEGER,
@@ -293,10 +293,10 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
 	signature := uuid.MustParse("076D7253-9AA0-48DE-B4AF-965E87B0A1C6")
 	proto := &pb.Record{
-		Key:            "key",
-		BlobSize:       int64(len(testBlob)),
-		Chunked:        true,
-		NumberOfChunks: 100,
+		Key:        "key",
+		BlobSize:   int64(len(testBlob)),
+		Chunked:    true,
+		ChunkCount: 100,
 		Properties: map[string]*pb.Property{
 			"prop1": {
 				Type:  pb.Property_INTEGER,

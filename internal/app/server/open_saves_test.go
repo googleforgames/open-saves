@@ -1513,7 +1513,7 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 	record = setupTestRecord(ctx, t, client, store.Key, record)
 
 	const chunkSize = 1*1024*1024 + 13 // 1 Mi + 13 B
-	const numberOfChunks = 4
+	const chunkCount = 4
 	testChunk := make([]byte, chunkSize)
 	for i := 0; i < chunkSize; i++ {
 		testChunk[i] = byte(i % 256)
@@ -1536,7 +1536,7 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
 	})
 
-	for i := 0; i < numberOfChunks; i++ {
+	for i := 0; i < chunkCount; i++ {
 		uploadChunk(ctx, t, client, sessionId, int64(i), testChunk)
 		// UploadChunk shouldn't update Signature.
 		if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: store.Key, Key: record.Key}); assert.NoError(t, err) {
@@ -1547,7 +1547,7 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
 		SessionId: sessionId,
 	}); assert.NoError(t, err) {
-		assert.Equal(t, int64(len(testChunk)*numberOfChunks), meta.Size)
+		assert.Equal(t, int64(len(testChunk)*chunkCount), meta.Size)
 		assert.False(t, meta.HasCrc32C)
 		assert.Empty(t, meta.Md5)
 		assert.Equal(t, store.Key, meta.StoreKey)
@@ -1559,8 +1559,8 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 		StoreKey: store.Key, Key: record.Key,
 	}); assert.NoError(t, err) {
 		if assert.NotNil(t, updatedRecord) {
-			assert.Equal(t, int64(len(testChunk)*numberOfChunks), updatedRecord.BlobSize)
-			assert.Equal(t, int64(numberOfChunks), updatedRecord.NumberOfChunks)
+			assert.Equal(t, int64(len(testChunk)*chunkCount), updatedRecord.BlobSize)
+			assert.Equal(t, int64(chunkCount), updatedRecord.ChunkCount)
 			assert.True(t, updatedRecord.Chunked)
 			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
 			assert.True(t, beforeCreateChunk.Before(updatedRecord.GetUpdatedAt().AsTime()))
@@ -1568,7 +1568,7 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < numberOfChunks; i++ {
+	for i := 0; i < chunkCount; i++ {
 		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
 	}
 
