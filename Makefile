@@ -14,21 +14,24 @@
 
 BIN_DIR = build
 API_DIR = api
+DOC_DIR = docs
 PROTOC = protoc
 
-CACHE_MOCKED = internal/pkg/cache/cache.go
 CACHE_MOCK = internal/pkg/cache/mock/mock_cache.go
 
 MOCKS_GENERATED = ${CACHE_MOCK}
 
 SERVER_BIN = ${BIN_DIR}/server
 COLLECTOR_BIN = ${BIN_DIR}/collector
-OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.go ${API_DIR}/open_saves_grpc.pb.go
-ALL_TARGETS = ${SERVER_BIN} ${COLLECTOR_BIN} ${OPENSAVES_GO_PROTOS} ${MOCKS_GENERATED}
+OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.gb \
+	${API_DIR}/open_saves_grpc.pb.go
+REFERENCE_DOC = ${DOC_DIR}/reference.md
+ALL_TARGETS = ${SERVER_BIN} ${COLLECTOR_BIN} ${OPENSAVES_GO_PROTOS} \
+	${MOCKS_GENERATED} ${REFERENCE_DOC}
 
-.PHONY: all clean test server protos mocks FORCE
+.PHONY: all clean test server protos mocks docs install-tools FORCE
 
-all: server collector
+all: server collector mocks docs
 
 server: ${SERVER_BIN}
 
@@ -36,14 +39,19 @@ collector: ${COLLECTOR_BIN}
 
 mocks: ${MOCKS_GENERATED}
 
-${SERVER_BIN}: cmd/server/main.go protos mocks FORCE
+docs: ${REFERENCE_DOC}
+
+${REFERENCE_DOC}: ${API_DIR}/open_saves.proto
+	${PROTOC} --doc_out=$(dir $@) --doc_opt=markdown,$(notdir $@) $<
+
+${SERVER_BIN}: cmd/server/main.go protos FORCE
 	go build -o $@ $<
 
-${COLLECTOR_BIN}: cmd/collector/main.go protos mocks FORCE
+${COLLECTOR_BIN}: cmd/collector/main.go protos FORCE
 	go build -o $@ $<
 
-${CACHE_MOCK}: ${CACHE_MOCKED}
-	mockgen -source "$<" -destination "$@"
+${CACHE_MOCK}: internal/pkg/cache/cache.go
+	go generate $<
 
 clean:
 	rm -f ${ALL_TARGETS}
@@ -54,9 +62,6 @@ test: all
 protos: ${OPENSAVES_GO_PROTOS}
 
 ${OPENSAVES_GO_PROTOS}: ${API_DIR}/open_saves.proto
-	$(PROTOC) -I. \
-		--go_out=. --go_opt=paths=source_relative \
-		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
-  		$<
+	go generate ./$(dir $<)
 
 FORCE:
