@@ -13,9 +13,27 @@
 # limitations under the License.
 
 # Use the official Golang image to create a build artifact.
+# This base builder image will also used by Cloud Build.
 # This is based on Debian and sets the GOPATH to /go.
 # https://hub.docker.com/_/golang
 FROM golang:1.17 AS builder
+
+ENV PROTOC_VERSION=21.3
+ENV GO111MODULE=on
+ENV DEBIAN_FRONTEND="noninteractive"
+
+RUN apt-get -q update && \
+    apt-get install -qy unzip && \
+    apt-get clean
+
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
+    unzip -d protoc protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
+    cp protoc/bin/protoc /usr/local/bin && \
+    cp -rf protoc/include/google /usr/local/bin && \
+    rm -rf protoc
+
+# The second step builds all binaries.
+FROM base AS amd64
 
 WORKDIR /src
 
@@ -24,14 +42,13 @@ COPY . ./open-saves
 
 WORKDIR /src/open-saves
 
-ENV GO111MODULE=on \
-  CGO_ENABLED=0 \
-  GOOS=linux \
-  GOARCH=amd64
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
 
-# Build the binary.
-RUN go build -o build/server cmd/server/main.go 
-RUN go build -o build/collector cmd/collector/main.go
+# Build the binaries.
+RUN make install-tools
+RUN make
 
 # Build the garbage collector image.
 #
@@ -41,7 +58,7 @@ RUN go build -o build/collector cmd/collector/main.go
 FROM alpine:3 AS collector
 RUN apk add --no-cache ca-certificates
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /src/open-saves/build/collector /collector
+COPY --from=amd64 /src/open-saves/build/collector /collector
 
 CMD ["/collector"]
 
@@ -56,8 +73,8 @@ FROM alpine:3 AS server
 RUN apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
-COPY --from=builder /src/open-saves/build/server /server
-COPY --from=builder /src/open-saves/configs /configs
+COPY --from=amd64 /src/open-saves/build/server /server
+COPY --from=amd64 /src/open-saves/configs /configs
 
 # Run the web service on container startup.
 CMD ["/server"]

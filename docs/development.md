@@ -153,31 +153,45 @@ We use Cloud Build to run build tests for the GitHub repository. It is occasiona
 necessary to update the base image to upgrade to a new Go version, add a new build
 dependency, etc.
 
-The base image is built using scripts/open-saves-builder-base.Dockerfile. You can build
-a new image locally by running scripts/build-open-saves-builder-base.sh.
+The base image is built using the [Dockerfile](../Dockerfile). It has two external dependencies.
+- Go
+- [protobuf](https://github.com/protocolbuffers/protobuf/)
 
-After building the image, you can push it to Cloud Container Repository by running
+Change the tag in the first line of to use a newer version of Go.
 
-```bash
-docker push gcr.io/triton-for-games-dev/open-saves-builder-base:testing
+For example, to upgrade Go 1.17 to 1.18, change the line
+
+```Dockerfile
+FROM golang:1.17 AS base
 ```
 
-Then, change the image tag in scripts/cloudbuild.Dockerfile from latest to
-testing, run
+to
 
-```bash
-gcloud builds submit .
+```Dockerfile
+FROM golang:1.18 AS base
 ```
 
-in the top directory, and make sure the tests still pass.
+To upgrade to a newer protobuf compiler, change the line with `PROTOC_VERSION`.
 
-After verifying, you can revert the change in cloudbuild.Dockerfile, merge the
-changes to the main branch on GitHub, and tag and push the new image as latest
-by running
+After changing the files, run `scripts/build_open_saves_builder_base.sh` to update the builder image.
+The command takes a tag as an argument.
+Change the tag when upgrading the toolkits or making significant changes to the builder.
+
+For example, `1.17` would be the first builder with Go 1.17.
+When upgrading Go to 1.18, change the tag to `1.18`.
+If you're upgrading the protobuf compiler or making other changes, you can add a minor number such as `1.18.1`.
+
+Change `cloudbuild.yaml` when you change the builder tag.
+The builder is specified as
+
+```yaml
+  _BUILDER: "us-docker.pkg.dev/${PROJECT_ID}/open-saves-builder/open-saves-builder:1.17"
+```
+
+You can test the new configuration by running
 
 ```bash
-docker tag open-saves-builder-base:latest gcr.io/triton-for-games-dev/open-saves-builder-base:latest
-docker push gcr.io/triton-for-games-dev/open-saves-builder-base:latest
+gcloud builds submit . --project=triton-for-games-dev
 ```
 
 ## Updating public images
