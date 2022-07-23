@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.2
-// source: api/open_saves.proto
+// source: open_saves.proto
 
 package opensaves
 
@@ -1259,5 +1259,5 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "api/open_saves.proto",
+	Metadata: "open_saves.proto",
 }
