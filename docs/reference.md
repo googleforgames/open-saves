@@ -636,7 +636,7 @@ Record represents each entity in the Open Saves database.
 | updated_at | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | updated_at is the point in time in UTC when the Record is updated on the Open Saves server. It is managed by the server and updated every time the Record is updated. |
 | chunked | [bool](#bool) |  | chunked is set true if the attached blob is chunked, otherwise false. |
 | chunk_count | [int64](#int64) |  | The number of chunks in the associated chunked blob. |
-| opaque_string | [string](#string) |  | Opaque string where you can store any utf-8 string (e.g. JSON) that is too big and does not fit in the properties. This will not be indexed or queryable. The current size limit is 32KiB. |
+| opaque_string | [string](#string) |  | Opaque string where you can store any utf-8 string (e.g. JSON) that is too big and does not fit in the properties. This will not be indexed or queryable. The maximum length is 1,048,487 bytes on Datastore but the actual limit might be smaller because the total Record size is capped at 1,048,572 bytes. |
 | signature | [bytes](#bytes) |  | Signature is a server-generated unique UUID that is updated each time the server updates the record. The server returns the current signature for read requests. The client may optionally populate this field and send update requests, and the server will check the value against the latest value and abort the request if they don&#39;t match. |
 
 

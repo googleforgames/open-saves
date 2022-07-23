@@ -221,7 +221,10 @@ message Record {
 
   // Opaque string where you can store any utf-8 string (e.g. JSON) that is too
   // big and does not fit in the properties. This will not be indexed or
-  // queryable. The current size limit is 32KiB.
+  // queryable.
+  // The maximum length is 1,048,487 bytes on Datastore but the actual limit
+  // might be smaller because the total Record size is capped at 1,048,572
+  // bytes.
   string opaque_string = 11;
 
   // Signature is a server-generated unique UUID that is updated each time
