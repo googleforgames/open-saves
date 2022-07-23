@@ -45,7 +45,6 @@ type ServerConfig struct {
 	Address string
 	Cloud   string
 	Bucket  string
-	Cache   string
 	Project string
 }
 

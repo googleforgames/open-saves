@@ -61,7 +61,6 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 			Address: ":6000",
 			Cloud:   cloud,
 			Bucket:  testBucket,
-			Cache:   r.Addr(),
 			Project: testProject,
 		},
 		RedisConfig: config.RedisConfig{
