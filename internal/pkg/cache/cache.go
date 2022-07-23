@@ -14,6 +14,8 @@
 
 package cache
 
+//go:generate go run github.com/golang/mock/mockgen -source cache.go -destination mock/mock_cache.go
+
 import (
 	"context"
 	"time"

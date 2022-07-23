@@ -61,7 +61,6 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 			Address: ":6000",
 			Cloud:   cloud,
 			Bucket:  testBucket,
-			Cache:   r.Addr(),
 			Project: testProject,
 		},
 		RedisConfig: config.RedisConfig{
@@ -333,12 +332,11 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 		OwnerId: "owner",
 	})
 
-	const testBlobSize = int64(123)
 	updateReq := &pb.UpdateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
 			Key:          recordKey,
-			BlobSize:     testBlobSize,
+			BlobSize:     123,
 			OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		},
 	}
@@ -349,7 +347,7 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 	}
 	expected := &pb.Record{
 		Key:          recordKey,
-		BlobSize:     testBlobSize,
+		BlobSize:     0, // should be ignored
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		CreatedAt:    created.GetCreatedAt(),
 		UpdatedAt:    timestamppb.Now(),
@@ -707,6 +705,17 @@ func TestOpenSaves_InlineBlobSimple(t *testing.T) {
 	}
 
 	// Check the blob
+	verifyBlob(ctx, t, client, store.Key, record.Key, testBlob)
+
+	// UpdateRecord should retain the inline blob.
+	client.UpdateRecord(ctx, &pb.UpdateRecordRequest{
+		StoreKey: store.Key,
+		Record: &pb.Record{
+			Key:      record.Key,
+			BlobSize: 0,
+		},
+	})
+
 	verifyBlob(ctx, t, client, store.Key, record.Key, testBlob)
 
 	// Deletion test
