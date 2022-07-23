@@ -234,13 +234,13 @@ func TestCollector_DeletesChunkedBlobs(t *testing.T) {
 	ds := newDatastoreClient(ctx, t)
 	setupTestBlobRef(ctx, t, ds, blob)
 
-	const numChunkRefs = 5
-	chunks := make([]*chunkref.ChunkRef, 0, numChunkRefs)
+	const chunkRefCount = 5
+	chunks := make([]*chunkref.ChunkRef, 0, chunkRefCount)
 
 	// 0 and 2 are old, to be deleted
 	// 1 and 3 have the applicable statuses but new
 	// 4 is still initializing
-	for i := 0; i < numChunkRefs; i++ {
+	for i := 0; i < chunkRefCount; i++ {
 		chunk := chunkref.New(blob.Key, int32(i))
 		chunk.Timestamps.CreatedAt = collector.cfg.Before
 		chunk.Timestamps.UpdatedAt = collector.cfg.Before
