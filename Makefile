@@ -64,4 +64,8 @@ protos: ${OPENSAVES_GO_PROTOS}
 ${OPENSAVES_GO_PROTOS}: ${API_DIR}/open_saves.proto
 	go generate ./$(dir $<)
 
+install-tools:
+	go list -tags tools -f '{{ join .Imports "\n" }}' ./tools | \
+	xargs -tI % -- go install %
+
 FORCE:
