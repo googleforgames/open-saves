@@ -17,11 +17,7 @@ To build Open Saves you'll need the following applications installed.
 You can install required go modules to compile protos by running:
 
 ```bash
-go get -u \
-  golang.org/x/lint/golint \
-  github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
-  github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
-  github.com/golang/protobuf/protoc-gen-go
+make install-tools
 ```
 
 Optional Software

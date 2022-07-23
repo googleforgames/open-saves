@@ -59,4 +59,8 @@ ${OPENSAVES_GO_PROTOS}: ${API_DIR}/open_saves.proto
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
   		$<
 
+install-tools:
+	go list -tags tools -f '{{ join .Imports "\n" }}' ./tools | \
+	xargs -tI % -- go install %
+
 FORCE:
