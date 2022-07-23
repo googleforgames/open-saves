@@ -37,7 +37,7 @@ steps:
     waitFor:
       - "prep"
 substitutions:
-  _BUILDER: "us-docker.pkg.dev/${PROJECT_ID}/open-saves-builder/open-saves-builder:1.17"
+  _BUILDER: "us-docker.pkg.dev/${PROJECT_ID}/open-saves-builder/open-saves-builder:1.18"
 options:
   volumes:
     - name: gopath
