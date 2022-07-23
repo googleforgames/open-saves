@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,17 @@
 
 set -e
 
+tag=$1
+
+if [[ -z $tag ]]; then
+    cmd=$(basename "$0")
+    echo "usage: $cmd [tag]"
+    echo
+    echo "Example: $cmd 1.17"
+    exit 1
+fi
+
 cd "$( dirname $( dirname "${BASH_SOURCE[0]}" ))"
 
-docker build . -f scripts/open_saves_builder_base.Dockerfile -t open-saves-builder-base:latest
-docker tag open-saves-builder-base:latest gcr.io/triton-for-games-dev/open-saves-builder-base:testing
+gcloud builds submit --config ./scripts/cloudbuild_builder.yaml \
+ --substitutions=_TAG="$1" --project=triton-for-games-dev

@@ -197,8 +197,6 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 			r.OwnerID = updateTo.OwnerID
 			r.Properties = updateTo.Properties
 			r.Tags = updateTo.Tags
-			r.Blob = updateTo.Blob
-			r.BlobSize = updateTo.BlobSize
 			r.OpaqueString = updateTo.OpaqueString
 			return r, nil
 		})

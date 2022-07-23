@@ -96,7 +96,6 @@ func Load(path string) (*ServiceConfig, error) {
 		Cloud:   viper.GetString(OpenSavesCloud),
 		Bucket:  viper.GetString(OpenSavesBucket),
 		Project: viper.GetString(OpenSavesProject),
-		Cache:   viper.GetString(RedisAddress),
 	}
 
 	// Cloud Run environment populates the PORT env var, so check for it here.
