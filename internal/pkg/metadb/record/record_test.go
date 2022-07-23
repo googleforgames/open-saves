@@ -70,13 +70,13 @@ func TestRecord_Save(t *testing.T) {
 				Value: int64(len(testBlob)),
 			},
 			{
+				Name:  "Chunked",
+				Value: false,
+			},
+			{
 				Name:    "ChunkCount",
 				Value:   int64(0),
 				NoIndex: false,
-			},
-			{
-				Name:  "Chunked",
-				Value: false,
 			},
 		}, properties[:idx])
 		assert.Equal(t, properties[idx].Name, "Properties")
