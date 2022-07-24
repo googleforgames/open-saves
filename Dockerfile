@@ -33,7 +33,7 @@ RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v${PR
     rm -rf protoc
 
 # The second step builds all binaries.
-FROM base AS amd64
+FROM builder AS amd64
 
 WORKDIR /src
 
