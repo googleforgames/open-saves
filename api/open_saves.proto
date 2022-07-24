@@ -429,10 +429,6 @@ message QueryRecordsResponse {
   // The order of keys is the same as the records field,
   // e.g. store_keys[0] is the store for records[0], and so on.
   repeated string store_keys = 2;
-
-  // Performance hints.
-  // Query caching is not supported at the moment
-  Hint hint = 3;
 }
 
 message UpdateRecordRequest {
