@@ -213,15 +213,17 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 }
 
 func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
-	records, storeKeys, err := s.metaDB.QueryRecords(ctx, req)
+	records, err := s.metaDB.QueryRecords(ctx, req)
 	if err != nil {
 		log.Warnf("QueryRecords failed for store(%s), filters(%+v): %v",
 			req.StoreKey, req.Filters, err)
 		return nil, err
 	}
 	var rr []*pb.Record
+	var storeKeys []string
 	for _, r := range records {
 		rr = append(rr, r.ToProto())
+		storeKeys = append(storeKeys, r.StoreKey)
 	}
 	return &pb.QueryRecordsResponse{
 		Records:   rr,

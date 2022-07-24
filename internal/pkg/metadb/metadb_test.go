@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
@@ -31,6 +33,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -126,16 +129,21 @@ func setupTestStoreRecord(ctx context.Context, t *testing.T, metaDB *m.MetaDB, s
 	metadbtest.AssertEqualStore(t, store, newStore, "CreateStore should return the created store.")
 	var newRecord *record.Record
 	if r != nil {
-		newRecord, err = metaDB.InsertRecord(ctx, newStore.Key, r)
-		if err != nil {
-			t.Fatalf("Could not create a new record: %v", err)
-		}
-		t.Cleanup(func() {
-			metaDB.DeleteRecord(ctx, newStore.Key, newRecord.Key)
-		})
-		metadbtest.AssertEqualRecord(t, r, newRecord, "GetRecord should return the exact same record.")
+		newRecord = setupTestRecord(ctx, t, metaDB, newStore.Key, r)
 	}
 	return newStore, newRecord
+}
+
+func setupTestRecord(ctx context.Context, t *testing.T, metaDB *m.MetaDB, storeKey string, r *record.Record) *record.Record {
+	t.Helper()
+
+	newRecord, err := metaDB.InsertRecord(ctx, storeKey, r)
+	require.NoError(t, err, "InsertRecord")
+	t.Cleanup(func() {
+		metaDB.DeleteRecord(ctx, storeKey, newRecord.Key)
+	})
+	metadbtest.AssertEqualRecord(t, r, newRecord, "GetRecord should return the exact same record.")
+	return newRecord
 }
 
 func setupTestBlobRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob *blobref.BlobRef) *blobref.BlobRef {
@@ -1203,5 +1211,106 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 		b, err = iter.Next()
 		assert.Equal(t, iterator.Done, err)
 		assert.Nil(t, b)
+	}
+}
+
+func TestMetaDB_QueryRecords(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	metaDB := newMetaDB(ctx, t)
+
+	stores := make([]*store.Store, 2)
+	for i := range stores {
+		stores[i], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: newStoreKey()}, nil)
+	}
+	records := []*record.Record{
+		{
+			Key:        newRecordKey(),
+			OwnerID:    "abc",
+			Tags:       []string{"tag1", "tag2"},
+			Properties: make(record.PropertyMap),
+		},
+		{
+			Key:        newRecordKey(),
+			OwnerID:    "cba",
+			Tags:       []string{"gat1", "gat2"},
+			Properties: make(record.PropertyMap),
+		},
+		{
+			Key:        newRecordKey(),
+			OwnerID:    "xyz",
+			Tags:       []string{"tag1", "tag2"},
+			Properties: make(record.PropertyMap),
+		},
+	}
+	records[0] = setupTestRecord(ctx, t, metaDB, stores[0].Key, records[0])
+	records[1] = setupTestRecord(ctx, t, metaDB, stores[0].Key, records[1])
+	records[2] = setupTestRecord(ctx, t, metaDB, stores[1].Key, records[2])
+
+	testCases := []struct {
+		name        string
+		req         *pb.QueryRecordsRequest
+		wantRecords []*record.Record
+		wantCode    codes.Code
+	}{
+		{
+			"OwnerId",
+			&pb.QueryRecordsRequest{
+				StoreKey: stores[0].Key,
+				OwnerId:  "abc",
+			},
+			[]*record.Record{records[0]}, codes.OK,
+		},
+		{
+			"Tags No Result",
+			&pb.QueryRecordsRequest{
+				StoreKey: stores[1].Key,
+				Tags:     []string{"tag1", "gat2"},
+			},
+			nil, codes.OK,
+		},
+		{
+			"Tags Multiple Records",
+			&pb.QueryRecordsRequest{
+				Tags: []string{"tag1"},
+			},
+			[]*record.Record{records[0], records[2]}, codes.OK,
+		},
+		{
+			"Limit",
+			&pb.QueryRecordsRequest{
+				StoreKey:   stores[0].Key,
+				SortOrders: []*pb.SortOrder{{Property: pb.SortOrder_CREATED_AT}},
+				Limit:      1,
+			},
+			[]*record.Record{records[0]}, codes.OK,
+		},
+		{
+			"Keys Only",
+			&pb.QueryRecordsRequest{
+				StoreKey: stores[0].Key,
+				OwnerId:  "abc",
+				Tags:     []string{"tag1"},
+				KeysOnly: true,
+			},
+			[]*record.Record{{Key: records[0].Key, StoreKey: records[0].StoreKey}}, codes.OK,
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rr, err := metaDB.QueryRecords(ctx, tc.req)
+			assert.Empty(t, cmp.Diff(rr, tc.wantRecords,
+				cmpopts.SortSlices(func(x, y *record.Record) bool {
+					return x.Key < y.Key
+				}),
+				cmpopts.EquateEmpty()))
+			assert.Equal(t, tc.wantCode, status.Code(err))
+			if tc.wantCode == codes.OK {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
