@@ -149,6 +149,8 @@ when creating (uploading) a new blob object.
 | md5 | [bytes](#bytes) |  | md5 is the MD5 hash of the blob content. If supplied for uploads, the server validates the content using the hash value. For downloads, the server returns the stored hash value of the blob content. The length of the hash value is 0 (not present) or 16 (present) bytes. |
 | crc32c | [uint32](#uint32) |  | crc32c is the CRC32C checksum of the blob content. Specifically, it uses the Castagnoli polynomial. https://pkg.go.dev/hash/crc32#pkg-constants If supplied for uploads, the server validates the content using the checksum. For downloads, the server returns the checksum of the blob content. Open Saves provides both MD5 and CRC32C because CRC32C is often used by Cloud object storage services. |
 | has_crc32c | [bool](#bool) |  | has_crc32c indicates if crc32c is present. |
+| chunked | [bool](#bool) |  | chunked is set true if the attached blob is chunked, otherwise false (read only). |
+| chunk_count | [int64](#int64) |  | Number of chunks (read only). |
 
 
 
@@ -164,7 +166,7 @@ when creating (uploading) a new blob object.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | session_id | [string](#string) |  | session_id is the ID of a chunk upload session. Not used for downloads. |
-| number | [int64](#int64) |  | number is the number |
+| number | [int64](#int64) |  | number is the number of the chunk. |
 | size | [int64](#int64) |  | size is a byte size of the chunk. |
 | hint | [Hint](#opensaves-Hint) |  | Performance hints (write only). |
 | md5 | [bytes](#bytes) |  | md5 is the MD5 hash of the chunk content. If supplied for uploads, the server validates the content using the hash value. For downloads, the server returns the stored hash value of the chunk content. The length of the hash value is 0 (not present) or 16 (present) bytes. |
@@ -258,6 +260,7 @@ should contain content.
 | store_key | [string](#string) |  | store_key is the key of the store that the record belongs to. |
 | record_key | [string](#string) |  | record_key is the key of the record the new blob object belongs to. |
 | chunk_size | [int64](#int64) |  | Size of each chunk |
+| chunk_count | [int64](#int64) |  | Expected number of chunks. When set to non-zero, the server checks if it has received the exact number of chunks when CommitChunkedUpload is called. |
 
 
 
