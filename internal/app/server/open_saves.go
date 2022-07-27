@@ -490,7 +490,7 @@ func (s *openSavesServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.Pi
 }
 
 func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateChunkedBlobRequest) (*pb.CreateChunkedBlobResponse, error) {
-	b := blobref.NewChunkedBlobRef(req.GetStoreKey(), req.GetRecordKey())
+	b := blobref.NewChunkedBlobRef(req.GetStoreKey(), req.GetRecordKey(), req.GetChunkCount())
 	b, err := s.metaDB.InsertBlobRef(ctx, b)
 	if err != nil {
 		log.Errorf("CreateChunkedBlob failed for store (%v), record (%v): %v", req.GetStoreKey(), req.GetRecordKey(), err)
@@ -609,7 +609,7 @@ func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.Commi
 		log.Errorf("Cannot retrieve chunked blob metadata for session (%v): %v", blobKey, err)
 		return nil, err
 	}
-	record, blob, err := s.metaDB.PromoteBlobRefToCurrent(ctx, blob)
+	record, _, err := s.metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
 		log.Errorf("PromoteBlobRefToCurrent failed for object %v: %v", blob.ObjectPath(), err)
 		// Do not delete the blob object here. Leave it to the garbage collector.
