@@ -259,7 +259,7 @@ func setupTestRecordWithHint(ctx context.Context, t *testing.T, client pb.OpenSa
 	return res
 }
 
-func funcValueToName(f interface{}) string {
+func funcValueToName(f any) string {
 	s := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 	return s[strings.LastIndex(s, ".")+1:]
 }
