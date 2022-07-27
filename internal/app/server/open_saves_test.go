@@ -16,8 +16,10 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -216,6 +218,26 @@ func cleanupBlobs(ctx context.Context, t *testing.T, storeKey, recordkey string)
 	}
 }
 
+// tryCreateRecord wraps client.CreateRecord and returns the returned values.
+// If CreateRecord succeeds, it adds a Cleanup hook to delete the record.
+func tryCreateRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClient, req *pb.CreateRecordRequest) (*pb.Record, error) {
+	t.Helper()
+	res, err := client.CreateRecord(ctx, req)
+	if err == nil {
+		storeKey := req.GetStoreKey()
+		key := res.GetKey()
+		t.Cleanup(func() {
+			cleanupBlobs(ctx, t, storeKey, key)
+			_, err = client.DeleteRecord(ctx, &pb.DeleteRecordRequest{
+				StoreKey: storeKey,
+				Key:      key,
+			})
+			assert.NoError(t, err, "DeleteRecord failed during cleanup")
+		})
+	}
+	return res, err
+}
+
 func setupTestRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClient, storeKey string, record *pb.Record) *pb.Record {
 	t.Helper()
 	return setupTestRecordWithHint(ctx, t, client, storeKey, record, nil)
@@ -228,22 +250,8 @@ func setupTestRecordWithHint(ctx context.Context, t *testing.T, client pb.OpenSa
 		Record:   record,
 		Hint:     hint,
 	}
-	res, err := client.CreateRecord(ctx, req)
-	if err != nil {
-		t.Fatalf("CreateRecord failed: %v", err)
-	}
-
-	t.Cleanup(func() {
-		cleanupBlobs(ctx, t, storeKey, record.Key)
-		req := &pb.DeleteRecordRequest{
-			StoreKey: storeKey,
-			Key:      record.Key,
-		}
-		_, err = client.DeleteRecord(ctx, req)
-		if err != nil {
-			t.Errorf("DeleteRecord failed: %v", err)
-		}
-	})
+	res, err := tryCreateRecord(ctx, t, client, req)
+	require.NoError(t, err, "CreateRecord failed")
 
 	if assert.NotNil(t, record) {
 		record.CreatedAt = res.GetCreatedAt()
@@ -1557,6 +1565,8 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 		SessionId: sessionId,
 	}); assert.NoError(t, err) {
 		assert.Equal(t, int64(len(testChunk)*chunkCount), meta.Size)
+		assert.True(t, meta.Chunked)
+		assert.Equal(t, int64(chunkCount), meta.ChunkCount)
 		assert.False(t, meta.HasCrc32C)
 		assert.Empty(t, meta.Md5)
 		assert.Equal(t, store.Key, meta.StoreKey)
@@ -1589,4 +1599,160 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 		t.Errorf("DeleteBlob failed: %v", err)
 	}
 	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+}
+
+func TestOpenSaves_UploadChunkedBlobWithChunkCount(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.NewString()}
+	record = setupTestRecord(ctx, t, client, store.Key, record)
+
+	const chunkSize = 1025
+	const chunkCount = 4
+	testChunk := make([]byte, chunkSize)
+	for i := 0; i < chunkSize; i++ {
+		testChunk[i] = byte(i % 256)
+	}
+
+	beforeCreateChunk := time.Now()
+	var sessionId string
+
+	if res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
+		StoreKey:   store.Key,
+		RecordKey:  record.Key,
+		ChunkSize:  chunkSize,
+		ChunkCount: chunkCount,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, res) {
+			_, err := uuid.Parse(res.SessionId)
+			assert.NoError(t, err)
+			sessionId = res.SessionId
+		}
+	}
+	t.Cleanup(func() {
+		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
+	})
+
+	for i := 0; i < chunkCount-1; i++ {
+		uploadChunk(ctx, t, client, sessionId, int64(i), testChunk)
+		// UploadChunk shouldn't update Signature.
+		if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: store.Key, Key: record.Key}); assert.NoError(t, err) {
+			assert.Equal(t, record.Signature, actual.Signature)
+		}
+		b, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{SessionId: sessionId})
+		assert.Nil(t, b)
+		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+	}
+	uploadChunk(ctx, t, client, sessionId, chunkCount-1, testChunk)
+
+	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
+		SessionId: sessionId,
+	}); assert.NoError(t, err) {
+		assert.Equal(t, int64(len(testChunk)*chunkCount), meta.Size)
+		assert.True(t, meta.Chunked)
+		assert.Equal(t, int64(chunkCount), meta.ChunkCount)
+		assert.False(t, meta.HasCrc32C)
+		assert.Empty(t, meta.Md5)
+		assert.Equal(t, store.Key, meta.StoreKey)
+		assert.Equal(t, record.Key, meta.RecordKey)
+	}
+
+	// Check if the metadata is reflected to the record as well.
+	if updatedRecord, err := client.GetRecord(ctx, &pb.GetRecordRequest{
+		StoreKey: store.Key, Key: record.Key,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, updatedRecord) {
+			assert.Equal(t, int64(len(testChunk)*chunkCount), updatedRecord.BlobSize)
+			assert.Equal(t, int64(chunkCount), updatedRecord.ChunkCount)
+			assert.True(t, updatedRecord.Chunked)
+			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
+			assert.True(t, beforeCreateChunk.Before(updatedRecord.GetUpdatedAt().AsTime()))
+			assert.NotEqual(t, record.Signature, updatedRecord.Signature)
+		}
+	}
+
+	for i := 0; i < chunkCount; i++ {
+		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
+	}
+
+	// Deletion test
+	if _, err := client.DeleteBlob(ctx, &pb.DeleteBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	}); err != nil {
+		t.Errorf("DeleteBlob failed: %v", err)
+	}
+	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+}
+
+func TestOpenSaves_LongOpaqueStrings(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+
+	const (
+		// https://cloud.google.com/datastore/docs/concepts/limits
+		maximumEntitySize   = 1_048_572
+		maximumPropertySize = 1_048_487
+	)
+
+	buf := new(strings.Builder)
+	buf.Grow(maximumEntitySize + 1)
+	for i := 0; i < maximumEntitySize+1; i++ {
+		buf.WriteByte(' ')
+	}
+	s := buf.String()
+	passCases := []struct {
+		len  int
+		code codes.Code
+	}{
+		{maximumPropertySize - 1000, codes.OK}, // should be small enough
+		{maximumPropertySize + 1, codes.InvalidArgument},
+		{maximumEntitySize + 1, codes.InvalidArgument},
+	}
+	for _, tc := range passCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%v bytes %v", tc.len, tc.code.String()), func(t *testing.T) {
+			t.Parallel()
+			dummyRec := &pb.Record{Key: uuid.NewString()}
+			dummyRec = setupTestRecord(ctx, t, client, store.Key, dummyRec)
+
+			// Creation test.
+			res, err := tryCreateRecord(ctx, t, client, &pb.CreateRecordRequest{
+				StoreKey: store.GetKey(),
+				Record: &pb.Record{
+					Key:          uuid.NewString(),
+					OpaqueString: s[:tc.len],
+				},
+			})
+			assert.Equal(t, tc.code, status.Code(err))
+			if err == nil {
+				if assert.NotNil(t, res) {
+					assert.Equal(t, s[:tc.len], res.GetOpaqueString())
+				}
+			}
+
+			// Update test.
+			res, err = client.UpdateRecord(ctx, &pb.UpdateRecordRequest{
+				StoreKey: store.Key,
+				Record: &pb.Record{
+					Key:          dummyRec.Key,
+					OpaqueString: s[:tc.len],
+				},
+			})
+			assert.Equal(t, tc.code, status.Code(err))
+			if err == nil {
+				if assert.NotNil(t, res) {
+					assert.Equal(t, s[:tc.len], res.GetOpaqueString())
+				}
+			}
+		})
+	}
 }
