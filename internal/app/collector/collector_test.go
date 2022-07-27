@@ -147,13 +147,13 @@ func TestCollector_DeletesBlobs(t *testing.T) {
 	collector := newTestCollector(ctx, t)
 	store := setupTestStore(ctx, t, collector)
 	record := setupTestRecord(ctx, t, collector, store.Key)
-	const numBlobRefs = 5
-	blobRefs := make([]*blobref.BlobRef, 0, numBlobRefs)
+	const blobRefCount = 5
+	blobRefs := make([]*blobref.BlobRef, 0, blobRefCount)
 
 	// 0 and 2 are old, to be deleted
 	// 1 and 3 have the applicable statuses but new
 	// 4 is still initializing
-	for i := 0; i < numBlobRefs; i++ {
+	for i := 0; i < blobRefCount; i++ {
 		blobRef := blobref.NewBlobRef(0, store.Key, record.Key)
 		blobRef.Timestamps.CreatedAt = collector.cfg.Before
 		blobRef.Timestamps.UpdatedAt = collector.cfg.Before
@@ -197,10 +197,10 @@ func TestCollector_DeletesUnlinkedBlobRefs(t *testing.T) {
 	collector := newTestCollector(ctx, t)
 	store := setupTestStore(ctx, t, collector)
 	record := setupTestRecord(ctx, t, collector, store.Key)
-	const numBlobRefs = 3
-	blobRefs := make([]*blobref.BlobRef, 0, numBlobRefs)
+	const blobRefCount = 3
+	blobRefs := make([]*blobref.BlobRef, 0, blobRefCount)
 	ds := newDatastoreClient(ctx, t)
-	for i := 0; i < numBlobRefs; i++ {
+	for i := 0; i < blobRefCount; i++ {
 		blobRef := blobref.NewBlobRef(0, store.Key, record.Key)
 		blobRef.Fail() // Fail() updates Timestamps so needs to come here.
 		blobRef.Timestamps.CreatedAt = collector.cfg.Before.Add(-1 * time.Second)
@@ -226,15 +226,15 @@ func TestCollector_DeletesUnlinkedBlobRefs(t *testing.T) {
 }
 
 func TestCollector_DeletesChunkedBlobs(t *testing.T) {
+	const chunkRefCount = 5
+
 	ctx := context.Background()
 	collector := newTestCollector(ctx, t)
 	store := setupTestStore(ctx, t, collector)
 	record := setupTestRecord(ctx, t, collector, store.Key)
-	blob := blobref.NewChunkedBlobRef(store.Key, record.Key)
+	blob := blobref.NewChunkedBlobRef(store.Key, record.Key, chunkRefCount)
 	ds := newDatastoreClient(ctx, t)
 	setupTestBlobRef(ctx, t, ds, blob)
-
-	const chunkRefCount = 5
 	chunks := make([]*chunkref.ChunkRef, 0, chunkRefCount)
 
 	// 0 and 2 are old, to be deleted
