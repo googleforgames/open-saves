@@ -390,7 +390,10 @@ type Record struct {
 	ChunkCount int64 `protobuf:"varint,10,opt,name=chunk_count,json=chunkCount,proto3" json:"chunk_count,omitempty"`
 	// Opaque string where you can store any utf-8 string (e.g. JSON) that is too
 	// big and does not fit in the properties. This will not be indexed or
-	// queryable. The current size limit is 32KiB.
+	// queryable.
+	// The maximum length is 1,048,487 bytes on Datastore but the actual limit
+	// might be smaller because the total Record size is capped at 1,048,572
+	// bytes.
 	OpaqueString string `protobuf:"bytes,11,opt,name=opaque_string,json=opaqueString,proto3" json:"opaque_string,omitempty"`
 	// Signature is a server-generated unique UUID that is updated each time
 	// the server updates the record. The server returns the current signature
