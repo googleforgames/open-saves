@@ -16,8 +16,12 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -253,6 +257,11 @@ func setupTestRecordWithHint(ctx context.Context, t *testing.T, client pb.OpenSa
 		assert.NotEqual(t, uuid.Nil, record.Signature)
 	}
 	return res
+}
+
+func funcValueToName(f interface{}) string {
+	s := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+	return s[strings.LastIndex(s, ".")+1:]
 }
 
 func TestOpenSaves_CreateGetDeleteStore(t *testing.T) {
@@ -1127,91 +1136,102 @@ func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
 
-func assertAtomicIntResponse(t *testing.T, err error, res *pb.AtomicIntResponse, updated bool, value int64) {
+func verifyProperty(ctx context.Context, t *testing.T, c pb.OpenSavesClient, storeKey, recordKey string,
+	name string, expected *pb.Property, sig []byte, updated bool) {
 	t.Helper()
-	if assert.NoError(t, err) {
-		assert.Equal(t, updated, res.Updated)
-		assert.Equal(t, value, res.Value)
-	}
-}
 
-func assertCASResponse(t *testing.T, err error, res *pb.CompareAndSwapResponse, updated bool, value *pb.Property) {
-	t.Helper()
-	if assert.NoError(t, err) {
-		assert.Equal(t, updated, res.GetUpdated())
-		assert.Equal(t, value.GetType(), res.GetValue().GetType())
-		assert.Equal(t, value.GetValue(), res.GetValue().GetValue())
+	rr, err := c.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
+	if assert.NotNil(t, rr) && assert.NoError(t, err) {
+		actual := rr.GetProperties()[name]
+		if assert.NotNil(t, actual) {
+			assert.Equal(t, expected.GetType(), actual.GetType())
+			assert.Equal(t, expected.GetValue(), actual.GetValue())
+		}
+		if updated {
+			assert.NotEqual(t, sig, rr.GetSignature())
+		} else {
+			assert.Equal(t, sig, rr.GetSignature())
+		}
 	}
 }
 
 func TestOpenSaves_CompareAndSwap(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
 	storeKey := uuid.NewString()
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
-
 	const testPropertyName = "prop1"
-	recordKey := uuid.NewString()
-	rr := &pb.Record{
-		Key: recordKey,
-		Properties: map[string]*pb.Property{
-			testPropertyName: record.NewIntegerPropertyProto(42),
-			"string":         record.NewStringPropertyProto("Lorem ipsum"),
-		},
+
+	newIntProp := record.NewIntegerPropertyProto
+	newStringProp := record.NewStringPropertyProto
+	testCases := []struct {
+		start       *pb.Property
+		oldValue    *pb.Property
+		value       *pb.Property
+		wantUpdated bool
+	}{
+		{newIntProp(42), newIntProp(41), newIntProp(42), false},
+		{newIntProp(42), newIntProp(42), newIntProp(43), true},
+		{newIntProp(42), newIntProp(42), newStringProp("hello, world"), true},
+		{newStringProp("hello, world"), newIntProp(42), newStringProp("hello, world"), false},
+		{newStringProp("hello, world"), newStringProp("hello, world"), newIntProp(42), true},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("start %v old %v value %v",
+			tc.start.GetValue(), tc.oldValue.GetValue(), tc.value.GetValue()), func(t *testing.T) {
+			t.Parallel()
+
+			recordKey := uuid.NewString()
+			rr := setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+				Key: recordKey,
+				Properties: map[string]*pb.Property{
+					testPropertyName: tc.start,
+				},
+			})
+			res, err := client.CompareAndSwap(ctx, &pb.CompareAndSwapRequest{
+				StoreKey:     storeKey,
+				RecordKey:    recordKey,
+				PropertyName: testPropertyName,
+				OldValue:     tc.oldValue,
+				Value:        tc.value,
+			})
+			if assert.NotNil(t, res) && assert.NoError(t, err) {
+				assert.Equal(t, tc.start.GetType(), res.GetValue().GetType())
+				assert.Equal(t, tc.start.GetValue(), res.GetValue().GetValue())
+				assert.Equal(t, tc.wantUpdated, res.GetUpdated())
+			}
+			if tc.wantUpdated {
+				verifyProperty(ctx, t, client, storeKey, recordKey, testPropertyName,
+					tc.value, rr.GetSignature(), true)
+			} else {
+				verifyProperty(ctx, t, client, storeKey, recordKey, testPropertyName,
+					tc.start, rr.GetSignature(), false)
+			}
+		})
 	}
 
-	rr = setupTestRecord(ctx, t, client, storeKey, rr)
-
-	newRequest := func(oldValue, value *pb.Property) *pb.CompareAndSwapRequest {
-		return &pb.CompareAndSwapRequest{
-			StoreKey:     storeKey,
-			RecordKey:    recordKey,
-			PropertyName: testPropertyName,
-			OldValue:     oldValue,
-			Value:        value,
-		}
-	}
-
-	res, err := client.CompareAndSwap(ctx, newRequest(
-		record.NewIntegerPropertyProto(41), record.NewIntegerPropertyProto(42)))
-	assertCASResponse(t, err, res, false, record.NewIntegerPropertyProto(42))
-	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
-		assert.Equal(t, rr.Signature, actual.Signature)
-	}
-
-	res, err = client.CompareAndSwap(ctx, newRequest(
-		record.NewIntegerPropertyProto(42), record.NewIntegerPropertyProto(43)))
-	assertCASResponse(t, err, res, true, record.NewIntegerPropertyProto(42))
-	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
-		assert.NotEqual(t, rr.Signature, actual.Signature)
-	}
-
-	res, err = client.CompareAndSwap(ctx, newRequest(
-		record.NewIntegerPropertyProto(43), record.NewStringPropertyProto("hello, world")))
-	assertCASResponse(t, err, res, true, record.NewIntegerPropertyProto(43))
-
-	// Type mismatch should not return error for CASProperty.
-	res, err = client.CompareAndSwap(ctx, newRequest(
-		record.NewIntegerPropertyProto(42), record.NewIntegerPropertyProto(42)))
-	assertCASResponse(t, err, res, false, record.NewStringPropertyProto("hello, world"))
-
-	ar, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
-	if assert.NoError(t, err) {
-		assert.Equal(t, record.NewStringPropertyProto("hello, world"), ar.GetProperties()[testPropertyName])
-	}
-
-	res, err = client.CompareAndSwap(ctx, &pb.CompareAndSwapRequest{
+	// Error case.
+	rr := setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+		Key:        uuid.NewString(),
+		Properties: map[string]*pb.Property{},
+	})
+	res, err := client.CompareAndSwap(ctx, &pb.CompareAndSwapRequest{
 		StoreKey:     storeKey,
-		RecordKey:    recordKey,
+		RecordKey:    rr.Key,
 		PropertyName: "non existent",
 	})
 	assert.Nil(t, res)
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
 
-func TestOpenSaves_AtomicIntMethods(t *testing.T) {
+func TestOpenSaves_CompareAndSwapInt(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
@@ -1219,103 +1239,175 @@ func TestOpenSaves_AtomicIntMethods(t *testing.T) {
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	const testPropertyName = "prop1"
+	type C = pb.OpenSavesClient
+	testCases := []struct {
+		f           func(C, context.Context, *pb.AtomicIntRequest, ...grpc.CallOption) (*pb.AtomicIntResponse, error)
+		start       int64
+		value       int64
+		wantUpdated bool
+	}{
+		{C.CompareAndSwapGreaterInt, 43, 42, false},
+		{C.CompareAndSwapGreaterInt, 43, 43, false},
+		{C.CompareAndSwapGreaterInt, 43, 44, true},
+		{C.CompareAndSwapGreaterInt, 0, -1, false},
+		{C.CompareAndSwapGreaterInt, -2, -1, true},
+		{C.CompareAndSwapLessInt, 44, 45, false},
+		{C.CompareAndSwapLessInt, 44, 44, false},
+		{C.CompareAndSwapLessInt, 44, 43, true},
+		{C.CompareAndSwapLessInt, 43, -2, true},
+		{C.CompareAndSwapLessInt, -2, -1, false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%s start %v value %v", funcValueToName(tc.f), tc.start, tc.value), func(t *testing.T) {
+			t.Parallel()
+			const testPropertyName = "prop1"
+			rr := &pb.Record{
+				Key: uuid.NewString(),
+				Properties: map[string]*pb.Property{
+					testPropertyName: record.NewIntegerPropertyProto(tc.start),
+				},
+			}
+			rr = setupTestRecord(ctx, t, client, storeKey, rr)
+			res, err := tc.f(client, ctx, &pb.AtomicIntRequest{
+				StoreKey:     storeKey,
+				RecordKey:    rr.Key,
+				PropertyName: testPropertyName,
+				Value:        tc.value,
+			})
+
+			if assert.NoError(t, err) && assert.NotNil(t, res) {
+				assert.Equal(t, tc.start, res.GetValue())
+				assert.Equal(t, tc.wantUpdated, res.GetUpdated())
+			}
+
+			if tc.wantUpdated {
+				verifyProperty(ctx, t, client, storeKey, rr.Key, testPropertyName,
+					record.NewIntegerPropertyProto(tc.value), rr.GetSignature(), true)
+			} else {
+				verifyProperty(ctx, t, client, storeKey, rr.Key, testPropertyName,
+					record.NewIntegerPropertyProto(tc.start), rr.GetSignature(), false)
+			}
+		})
+	}
+}
+
+func TestOpenSaves_CompareAndSwapIntErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
 	recordKey := uuid.NewString()
-	rr := &pb.Record{
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
 		Key: recordKey,
 		Properties: map[string]*pb.Property{
-			testPropertyName: record.NewIntegerPropertyProto(43),
-			"string":         record.NewStringPropertyProto("Lorem ipsum"),
+			"string": record.NewStringPropertyProto("Lorem ipsum"),
 		},
-	}
-	rr = setupTestRecord(ctx, t, client, storeKey, rr)
-
-	newRequest := func(value int64) *pb.AtomicIntRequest {
-		return &pb.AtomicIntRequest{
-			StoreKey:     storeKey,
-			RecordKey:    recordKey,
-			PropertyName: testPropertyName,
-			Value:        value,
-		}
-	}
-
-	res, err := client.CompareAndSwapGreaterInt(ctx, newRequest(42))
-	assertAtomicIntResponse(t, err, res, false, 43)
-	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
-		assert.Equal(t, rr.Signature, actual.Signature)
-	}
-
-	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(43))
-	assertAtomicIntResponse(t, err, res, false, 43)
-
-	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(44))
-	assertAtomicIntResponse(t, err, res, true, 43)
-	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey}); assert.NoError(t, err) {
-		assert.NotEqual(t, rr.Signature, actual.Signature)
-	}
-
-	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(-1))
-	assertAtomicIntResponse(t, err, res, false, 44)
-
-	res, err = client.CompareAndSwapLessInt(ctx, newRequest(45))
-	assertAtomicIntResponse(t, err, res, false, 44)
-
-	res, err = client.CompareAndSwapLessInt(ctx, newRequest(44))
-	assertAtomicIntResponse(t, err, res, false, 44)
-
-	res, err = client.CompareAndSwapLessInt(ctx, newRequest(43))
-	assertAtomicIntResponse(t, err, res, true, 44)
-
-	res, err = client.CompareAndSwapLessInt(ctx, newRequest(-2))
-	assertAtomicIntResponse(t, err, res, true, 43)
-
-	res, err = client.CompareAndSwapGreaterInt(ctx, newRequest(-1))
-	assertAtomicIntResponse(t, err, res, true, -2)
-
-	res, err = client.AtomicAddInt(ctx, newRequest(1))
-	assertAtomicIntResponse(t, err, res, true, -1)
-
-	res, err = client.AtomicAddInt(ctx, newRequest(1))
-	assertAtomicIntResponse(t, err, res, true, 0)
-
-	res, err = client.AtomicAddInt(ctx, newRequest(-2))
-	assertAtomicIntResponse(t, err, res, true, 1)
-
-	res, err = client.AtomicSubInt(ctx, newRequest(1))
-	assertAtomicIntResponse(t, err, res, true, -1)
-
-	res, err = client.AtomicSubInt(ctx, newRequest(-44))
-	assertAtomicIntResponse(t, err, res, true, -2)
-
-	re, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
-	if assert.NoError(t, err) {
-		if v, ok := re.Properties[testPropertyName].Value.(*pb.Property_IntegerValue); ok {
-			assert.Equal(t, int64(42), v.IntegerValue)
-		} else {
-			assert.Fail(t, "property was not an integer")
-		}
-	}
+	})
 
 	// Check for type mismatch
-	res, err = client.AtomicAddInt(ctx, &pb.AtomicIntRequest{
-		StoreKey:     storeKey,
-		RecordKey:    recordKey,
-		PropertyName: "string",
-	})
-	assert.Nil(t, res)
-	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	type C = pb.OpenSavesClient
+	methods := []func(C, context.Context, *pb.AtomicIntRequest, ...grpc.CallOption) (*pb.AtomicIntResponse, error){
+		C.CompareAndSwapGreaterInt,
+		C.CompareAndSwapLessInt,
+		C.AtomicAddInt,
+		C.AtomicSubInt,
+	}
+	testCases := []struct {
+		name string
+		prop string
+		want codes.Code
+	}{
+		{"Invalid Argument", "string", codes.InvalidArgument},
+		{"Nonexistent", "nonexistent", codes.NotFound},
+	}
 
-	// Check for nonexistent property
-	res, err = client.AtomicAddInt(ctx, &pb.AtomicIntRequest{
-		StoreKey:     storeKey,
-		RecordKey:    recordKey,
-		PropertyName: "nonexistent",
-	})
-	assert.Nil(t, res)
-	assert.Equal(t, codes.NotFound, status.Code(err))
+	for _, method := range methods {
+		method := method
+		t.Run(funcValueToName(method), func(t *testing.T) {
+			for _, tc := range testCases {
+				tc := tc
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+
+					res, err := method(client, ctx, &pb.AtomicIntRequest{
+						StoreKey:     storeKey,
+						RecordKey:    recordKey,
+						PropertyName: tc.prop,
+					})
+					assert.Nil(t, res)
+					assert.Equal(t, tc.want, status.Code(err))
+				})
+			}
+		})
+	}
+}
+
+func TestOpenSaves_AtomicAddSubInt(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	type C = pb.OpenSavesClient
+	testCases := []struct {
+		f     func(C, context.Context, *pb.AtomicIntRequest, ...grpc.CallOption) (*pb.AtomicIntResponse, error)
+		start int64
+		value int64
+		want  int64
+	}{
+		{C.AtomicAddInt, -1, 1, 0},
+		{C.AtomicAddInt, 0, 1, 1},
+		{C.AtomicAddInt, 1, -2, -1},
+
+		{C.AtomicSubInt, 2, 1, 1},
+		{C.AtomicSubInt, -1, 1, -2},
+		{C.AtomicSubInt, -1, -3, 2},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%v start %v value %v", funcValueToName(tc.f), tc.start, tc.value), func(t *testing.T) {
+			t.Parallel()
+			const testPropertyName = "prop1"
+			rr := &pb.Record{
+				Key: uuid.NewString(),
+				Properties: map[string]*pb.Property{
+					testPropertyName: record.NewIntegerPropertyProto(tc.start),
+				},
+			}
+			rr = setupTestRecord(ctx, t, client, storeKey, rr)
+			res, err := tc.f(client, ctx, &pb.AtomicIntRequest{
+				StoreKey:     storeKey,
+				RecordKey:    rr.Key,
+				PropertyName: testPropertyName,
+				Value:        tc.value,
+			})
+
+			if assert.NoError(t, err) && assert.NotNil(t, res) {
+				assert.Equal(t, tc.start, res.GetValue())
+				assert.True(t, res.GetUpdated())
+			}
+
+			verifyProperty(ctx, t, client, storeKey, rr.Key, testPropertyName,
+				record.NewIntegerPropertyProto(tc.want), rr.GetSignature(), true)
+		})
+	}
 }
 
 func TestOpenSaves_AtomicIncDecInt(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
@@ -1323,71 +1415,109 @@ func TestOpenSaves_AtomicIncDecInt(t *testing.T) {
 	store := &pb.Store{Key: storeKey}
 	setupTestStore(ctx, t, client, store)
 
-	const testPropertyName = "prop1"
+	type C = pb.OpenSavesClient
+	testCases := []struct {
+		f     func(C, context.Context, *pb.AtomicIncRequest, ...grpc.CallOption) (*pb.AtomicIntResponse, error)
+		start int64
+		lower int64
+		upper int64
+		want  int64
+	}{
+		{C.AtomicInc, -1, 0, 2, 0},
+		{C.AtomicInc, 0, 0, 2, 1},
+		{C.AtomicInc, 1, 0, 2, 2},
+		{C.AtomicInc, 2, 0, 2, 0},
+		{C.AtomicInc, 3, 0, 2, 0},
+
+		{C.AtomicDec, 0, -3, -1, -1},
+		{C.AtomicDec, -1, -3, -1, -2},
+		{C.AtomicDec, -2, -3, -1, -3},
+		{C.AtomicDec, -3, -3, -1, -1},
+		{C.AtomicDec, -4, -3, -1, -1},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%s start %v lower %v upper %v want %v",
+			funcValueToName(tc.f), tc.start, tc.lower, tc.upper, tc.want), func(t *testing.T) {
+			t.Parallel()
+
+			const testPropertyName = "prop1"
+			rr := setupTestRecord(ctx, t, client, storeKey, &pb.Record{
+				Key: uuid.NewString(),
+				Properties: map[string]*pb.Property{
+					testPropertyName: record.NewIntegerPropertyProto(tc.start),
+					"string":         record.NewStringPropertyProto("Lorem ipsum"),
+				},
+			})
+
+			res, err := tc.f(client, ctx, &pb.AtomicIncRequest{
+				StoreKey:     storeKey,
+				RecordKey:    rr.Key,
+				PropertyName: testPropertyName,
+				LowerBound:   tc.lower,
+				UpperBound:   tc.upper,
+			})
+
+			if assert.NotNil(t, res) && assert.NoError(t, err) {
+				assert.True(t, res.GetUpdated())
+				assert.Equal(t, tc.start, res.GetValue())
+			}
+
+			verifyProperty(ctx, t, client, storeKey, rr.Key, testPropertyName,
+				record.NewIntegerPropertyProto(tc.want), rr.GetSignature(), true)
+		})
+	}
+}
+
+func TestOpenSaves_AtomicIncDecErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
 	recordKey := uuid.NewString()
-	record := &pb.Record{
+	setupTestRecord(ctx, t, client, storeKey, &pb.Record{
 		Key: recordKey,
 		Properties: map[string]*pb.Property{
-			testPropertyName: record.NewIntegerPropertyProto(-1),
-			"string":         record.NewStringPropertyProto("Lorem ipsum"),
+			"string": record.NewStringPropertyProto("Lorem ipsum"),
 		},
-	}
-	setupTestRecord(ctx, t, client, storeKey, record)
-
-	newRequest := func(lower, upper int64) *pb.AtomicIncRequest {
-		return &pb.AtomicIncRequest{
-			StoreKey:     storeKey,
-			RecordKey:    recordKey,
-			PropertyName: testPropertyName,
-			LowerBound:   lower,
-			UpperBound:   upper,
-		}
-	}
-
-	res, err := client.AtomicInc(ctx, newRequest(0, 2))
-	assertAtomicIntResponse(t, err, res, true, -1)
-	res, err = client.AtomicInc(ctx, newRequest(0, 2))
-	assertAtomicIntResponse(t, err, res, true, 0)
-	res, err = client.AtomicInc(ctx, newRequest(0, 2))
-	assertAtomicIntResponse(t, err, res, true, 1)
-	res, err = client.AtomicInc(ctx, newRequest(0, 2))
-	assertAtomicIntResponse(t, err, res, true, 2)
-
-	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
-	assertAtomicIntResponse(t, err, res, true, 0)
-	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
-	assertAtomicIntResponse(t, err, res, true, -1)
-	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
-	assertAtomicIntResponse(t, err, res, true, -2)
-	res, err = client.AtomicDec(ctx, newRequest(-3, -1))
-	assertAtomicIntResponse(t, err, res, true, -3)
-
-	re, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: storeKey, Key: recordKey})
-	if assert.NoError(t, err) {
-		if v, ok := re.Properties[testPropertyName].Value.(*pb.Property_IntegerValue); ok {
-			assert.Equal(t, int64(-1), v.IntegerValue)
-		} else {
-			assert.Fail(t, "property was not an integer")
-		}
-	}
+	})
 
 	// Check for type mismatch
-	res, err = client.AtomicInc(ctx, &pb.AtomicIncRequest{
-		StoreKey:     storeKey,
-		RecordKey:    recordKey,
-		PropertyName: "string",
-	})
-	assert.Nil(t, res)
-	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	testCases := []struct {
+		name string
+		prop string
+		want codes.Code
+	}{
+		{"Invalid Argument", "string", codes.InvalidArgument},
+		{"Nonexistent", "nonexistent", codes.NotFound},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	// Check for nonexistent property
-	res, err = client.AtomicInc(ctx, &pb.AtomicIncRequest{
-		StoreKey:     storeKey,
-		RecordKey:    recordKey,
-		PropertyName: "nonexistent",
-	})
-	assert.Nil(t, res)
-	assert.Equal(t, codes.NotFound, status.Code(err))
+			res, err := client.AtomicInc(ctx, &pb.AtomicIncRequest{
+				StoreKey:     storeKey,
+				RecordKey:    recordKey,
+				PropertyName: tc.prop,
+			})
+			assert.Nil(t, res)
+			assert.Equal(t, tc.want, status.Code(err))
+
+			res, err = client.AtomicDec(ctx, &pb.AtomicIncRequest{
+				StoreKey:     storeKey,
+				RecordKey:    recordKey,
+				PropertyName: tc.prop,
+			})
+			assert.Nil(t, res)
+			assert.Equal(t, tc.want, status.Code(err))
+		})
+	}
 }
 
 func uploadChunk(ctx context.Context, t *testing.T, client pb.OpenSavesClient,
