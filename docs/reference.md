@@ -615,7 +615,6 @@ Multiple conditions are AND&#39;ed together.
 | ----- | ---- | ----- | ----------- |
 | records | [Record](#opensaves-Record) | repeated | List of records that match the criteria. |
 | store_keys | [string](#string) | repeated | List of store keys that each of the records belongs to. The order of keys is the same as the records field, e.g. store_keys[0] is the store for records[0], and so on. |
-| hint | [Hint](#opensaves-Hint) |  | Performance hints. Query caching is not supported at the moment |
 
 
 
