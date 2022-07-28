@@ -16,7 +16,7 @@
 # This base builder image will also used by Cloud Build.
 # This is based on Debian and sets the GOPATH to /go.
 # https://hub.docker.com/_/golang
-FROM golang:1.17 AS builder
+FROM golang:1.18 AS builder
 
 ENV PROTOC_VERSION=21.3
 ENV GO111MODULE=on
@@ -33,7 +33,7 @@ RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v${PR
     rm -rf protoc
 
 # The second step builds all binaries.
-FROM base AS amd64
+FROM builder AS amd64
 
 WORKDIR /src
 

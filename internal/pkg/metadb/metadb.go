@@ -511,6 +511,10 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 			if err != nil {
 				return err
 			}
+			if blob.ChunkCount != 0 && blob.ChunkCount != count {
+				return status.Errorf(codes.FailedPrecondition, "expected chunk count doesn't match: expected (%v), actual (%v)", blob.ChunkCount, count)
+			}
+			blob.ChunkCount = count
 			record.ChunkCount = count
 			blob.Size = size
 		} else {

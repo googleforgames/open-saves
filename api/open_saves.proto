@@ -221,7 +221,10 @@ message Record {
 
   // Opaque string where you can store any utf-8 string (e.g. JSON) that is too
   // big and does not fit in the properties. This will not be indexed or
-  // queryable. The current size limit is 32KiB.
+  // queryable.
+  // The maximum length is 1,048,487 bytes on Datastore but the actual limit
+  // might be smaller because the total Record size is capped at 1,048,572
+  // bytes.
   string opaque_string = 11;
 
   // Signature is a server-generated unique UUID that is updated each time
@@ -317,7 +320,6 @@ message DeleteStoreRequest {
   string key = 1;
 }
 
-
 message CreateRecordRequest {
   // The key of the store to create the record into.
   string store_key = 1;
@@ -343,7 +345,6 @@ message GetRecordRequest {
 // QueryRecordsRequest contains conditions to search particular records.
 // Multiple conditions are AND'ed together.
 message QueryRecordsRequest {
-
   // store_key is the primary key of the store.
   // Optional. The method queries all stores when omitted.
   string store_key = 1;
@@ -433,10 +434,6 @@ message QueryRecordsResponse {
   // The order of keys is the same as the records field,
   // e.g. store_keys[0] is the store for records[0], and so on.
   repeated string store_keys = 2;
-
-  // Performance hints.
-  // Query caching is not supported at the moment
-  Hint hint = 3;
 }
 
 message UpdateRecordRequest {
@@ -502,6 +499,12 @@ message BlobMetadata {
 
   // has_crc32c indicates if crc32c is present.
   bool has_crc32c = 7;
+
+  // chunked is set true if the attached blob is chunked, otherwise false (read only).
+  bool chunked = 8;
+
+  // Number of chunks (read only).
+  int64 chunk_count = 9;
 }
 
 message CreateChunkedBlobRequest {
@@ -513,6 +516,11 @@ message CreateChunkedBlobRequest {
 
   // Size of each chunk
   int64 chunk_size = 3;
+  
+  // Expected number of chunks.
+  // When set to non-zero, the server checks if it has received the exact number of
+  // chunks when CommitChunkedUpload is called.
+  int64 chunk_count = 4;
 }
 
 message CreateChunkedBlobResponse {
@@ -537,7 +545,7 @@ message ChunkMetadata {
   // session_id is the ID of a chunk upload session. Not used for downloads.
   string session_id = 1;
 
-  // number is the number
+  // number is the number of the chunk.
   int64 number = 2;
 
   // size is a byte size of the chunk.

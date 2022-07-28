@@ -38,6 +38,10 @@ type BlobRef struct {
 	RecordKey string
 	// Chunked is whether the BlobRef is chunked or not.
 	Chunked bool
+	// ChunkCount is the number of chunks that should be associated to the BlobRef.
+	// It is set by either the client when starting a chunk upload or
+	// the server when committing a chunked upload.
+	ChunkCount int64
 
 	// Checksums have checksums for each blob object associated with the BlobRef entity.
 	// Record.{MD5,CRC32C} must be used for inline blobs, and
@@ -95,12 +99,13 @@ func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 	}
 }
 
-// NewChunkedBlobRef creates a new BlobRef object with Size and Chunked
-// set 0 and true, respectively.
+// NewChunkedBlobRef creates a new BlobRef object with Size, Chunked, and
+// ChunkCount set to 0, true, and chunkCount respectively.
 // Other behaviors are the same as NewBlobRef
-func NewChunkedBlobRef(storeKey, recordKey string) *BlobRef {
+func NewChunkedBlobRef(storeKey, recordKey string, chunkCount int64) *BlobRef {
 	b := NewBlobRef(0, storeKey, recordKey)
 	b.Chunked = true
+	b.ChunkCount = chunkCount
 	return b
 }
 
@@ -112,11 +117,13 @@ func (b *BlobRef) ObjectPath() string {
 // ToProto returns a BlobMetadata representation of the object.
 func (b *BlobRef) ToProto() *pb.BlobMetadata {
 	return &pb.BlobMetadata{
-		StoreKey:  b.StoreKey,
-		RecordKey: b.RecordKey,
-		Size:      b.Size,
-		Md5:       b.MD5,
-		Crc32C:    b.GetCRC32C(),
-		HasCrc32C: b.HasCRC32C,
+		StoreKey:   b.StoreKey,
+		RecordKey:  b.RecordKey,
+		Size:       b.Size,
+		Md5:        b.MD5,
+		Chunked:    b.Chunked,
+		ChunkCount: b.ChunkCount,
+		Crc32C:     b.GetCRC32C(),
+		HasCrc32C:  b.HasCRC32C,
 	}
 }

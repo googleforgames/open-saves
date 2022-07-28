@@ -149,6 +149,8 @@ when creating (uploading) a new blob object.
 | md5 | [bytes](#bytes) |  | md5 is the MD5 hash of the blob content. If supplied for uploads, the server validates the content using the hash value. For downloads, the server returns the stored hash value of the blob content. The length of the hash value is 0 (not present) or 16 (present) bytes. |
 | crc32c | [uint32](#uint32) |  | crc32c is the CRC32C checksum of the blob content. Specifically, it uses the Castagnoli polynomial. https://pkg.go.dev/hash/crc32#pkg-constants If supplied for uploads, the server validates the content using the checksum. For downloads, the server returns the checksum of the blob content. Open Saves provides both MD5 and CRC32C because CRC32C is often used by Cloud object storage services. |
 | has_crc32c | [bool](#bool) |  | has_crc32c indicates if crc32c is present. |
+| chunked | [bool](#bool) |  | chunked is set true if the attached blob is chunked, otherwise false (read only). |
+| chunk_count | [int64](#int64) |  | Number of chunks (read only). |
 
 
 
@@ -164,7 +166,7 @@ when creating (uploading) a new blob object.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | session_id | [string](#string) |  | session_id is the ID of a chunk upload session. Not used for downloads. |
-| number | [int64](#int64) |  | number is the number |
+| number | [int64](#int64) |  | number is the number of the chunk. |
 | size | [int64](#int64) |  | size is a byte size of the chunk. |
 | hint | [Hint](#opensaves-Hint) |  | Performance hints (write only). |
 | md5 | [bytes](#bytes) |  | md5 is the MD5 hash of the chunk content. If supplied for uploads, the server validates the content using the hash value. For downloads, the server returns the stored hash value of the chunk content. The length of the hash value is 0 (not present) or 16 (present) bytes. |
@@ -258,6 +260,7 @@ should contain content.
 | store_key | [string](#string) |  | store_key is the key of the store that the record belongs to. |
 | record_key | [string](#string) |  | record_key is the key of the record the new blob object belongs to. |
 | chunk_size | [int64](#int64) |  | Size of each chunk |
+| chunk_count | [int64](#int64) |  | Expected number of chunks. When set to non-zero, the server checks if it has received the exact number of chunks when CommitChunkedUpload is called. |
 
 
 
@@ -613,7 +616,6 @@ Multiple conditions are AND&#39;ed together.
 | ----- | ---- | ----- | ----------- |
 | records | [Record](#opensaves-Record) | repeated | List of records that match the criteria. |
 | store_keys | [string](#string) | repeated | List of store keys that each of the records belongs to. The order of keys is the same as the records field, e.g. store_keys[0] is the store for records[0], and so on. |
-| hint | [Hint](#opensaves-Hint) |  | Performance hints. Query caching is not supported at the moment |
 
 
 
@@ -637,7 +639,7 @@ Record represents each entity in the Open Saves database.
 | updated_at | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | updated_at is the point in time in UTC when the Record is updated on the Open Saves server. It is managed by the server and updated every time the Record is updated. |
 | chunked | [bool](#bool) |  | chunked is set true if the attached blob is chunked, otherwise false. |
 | chunk_count | [int64](#int64) |  | The number of chunks in the associated chunked blob. |
-| opaque_string | [string](#string) |  | Opaque string where you can store any utf-8 string (e.g. JSON) that is too big and does not fit in the properties. This will not be indexed or queryable. The current size limit is 32KiB. |
+| opaque_string | [string](#string) |  | Opaque string where you can store any utf-8 string (e.g. JSON) that is too big and does not fit in the properties. This will not be indexed or queryable. The maximum length is 1,048,487 bytes on Datastore but the actual limit might be smaller because the total Record size is capped at 1,048,572 bytes. |
 | signature | [bytes](#bytes) |  | Signature is a server-generated unique UUID that is updated each time the server updates the record. The server returns the current signature for read requests. The client may optionally populate this field and send update requests, and the server will check the value against the latest value and abort the request if they don&#39;t match. |
 
 

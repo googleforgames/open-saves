@@ -521,7 +521,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Nil(t, promoRecord.Blob)
 			assert.Equal(t, blobKey, promoRecord.ExternalBlob)
 			assert.Equal(t, blob.Size, promoRecord.BlobSize)
-			assert.Zero(t, promoRecord.Chunked)
+			assert.False(t, promoRecord.Chunked)
 			assert.Zero(t, promoRecord.ChunkCount)
 			assert.True(t, beforePromo.Before(promoRecord.Timestamps.UpdatedAt))
 			assert.NotEqual(t, record.Timestamps.Signature, promoRecord.Timestamps.Signature)
@@ -529,6 +529,8 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		if assert.NotNil(t, promoBlob) {
 			assert.Equal(t, blobKey, promoBlob.Key)
 			assert.Equal(t, blobref.StatusReady, promoBlob.Status)
+			assert.False(t, promoBlob.Chunked)
+			assert.Zero(t, promoBlob.ChunkCount)
 			assert.True(t, beforePromo.Before(promoBlob.Timestamps.UpdatedAt))
 			assert.NotEqual(t, origSig, promoBlob.Timestamps.Signature)
 		}
@@ -555,7 +557,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Equal(t, uuid.Nil, delPendRecord.ExternalBlob)
 			assert.Empty(t, delPendRecord.Blob)
 			assert.Zero(t, delPendRecord.BlobSize)
-			assert.Zero(t, delPendRecord.Chunked)
+			assert.False(t, delPendRecord.Chunked)
 			assert.Zero(t, delPendRecord.ChunkCount)
 		}
 		if assert.NotNil(t, delPendBlob) {
@@ -940,7 +942,7 @@ func TestMetaDB_DeleteRecordWithNonExistentBlobRef(t *testing.T) {
 func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	const (
 		testChunkCount = 3
-		testChunKSize  = int32(42)
+		testChunkSize  = int32(42)
 	)
 
 	ctx := context.Background()
@@ -959,7 +961,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 
 	// Mark the chunks ready
 	for _, chunk := range chunks {
-		chunk.Size = testChunKSize
+		chunk.Size = testChunkSize
 		now := time.Now()
 		if err := metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
 			t.Fatalf("MarkChunkRefReady failed for chunk (%v): %v", chunk.Key, err)
@@ -978,21 +980,24 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 		t.Fatalf("PromoteBlobRefToCurrent failed: %v", err)
 	}
 	if assert.NotNil(t, record) {
-		assert.EqualValues(t, testChunKSize*testChunkCount, record.BlobSize)
+		assert.EqualValues(t, testChunkSize*testChunkCount, record.BlobSize)
 		assert.EqualValues(t, testChunkCount, record.ChunkCount)
 		assert.True(t, record.Chunked)
 	}
 	if assert.NotNil(t, blobRetrieved) {
-		assert.EqualValues(t, testChunKSize*testChunkCount, blobRetrieved.Size)
+		assert.EqualValues(t, testChunkSize*testChunkCount, blobRetrieved.Size)
+		assert.True(t, blobRetrieved.Chunked)
+		assert.Equal(t, int64(testChunkCount), blobRetrieved.ChunkCount)
 	}
 
 	// Verify blob and chunk metadata
 	if blobRetrieved, err := metaDB.GetCurrentBlobRef(ctx, store.Key, record.Key); err != nil {
 		t.Errorf("GetCurrentBlobRef failed: %v", err)
 	} else {
-		assert.EqualValues(t, testChunKSize*testChunkCount, blobRetrieved.Size)
+		assert.EqualValues(t, testChunkSize*testChunkCount, blobRetrieved.Size)
 		assert.Equal(t, blob.Key, blobRetrieved.Key)
 		assert.True(t, blobRetrieved.Chunked)
+		assert.Equal(t, int64(testChunkCount), blobRetrieved.ChunkCount)
 	}
 	for i := 0; i < testChunkCount; i++ {
 		got, err := metaDB.FindChunkRefByNumber(ctx, store.Key, record.Key, int32(i))
@@ -1049,7 +1054,7 @@ func TestMetaDB_MarkUncommittedBlobForDeletion(t *testing.T) {
 	assert.NoError(t, metaDB.MarkUncommittedBlobForDeletion(ctx, blob.Key))
 
 	// Should fail if blob is live
-	blob = blobref.NewChunkedBlobRef(store.Key, record.Key)
+	blob = blobref.NewChunkedBlobRef(store.Key, record.Key, 0)
 	setupTestBlobRef(ctx, t, metaDB, blob)
 	_, _, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if assert.NoError(t, err) {
