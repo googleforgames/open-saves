@@ -15,16 +15,24 @@
 package blob
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	_ "gocloud.dev/blob/memblob"
+	"gocloud.dev/gcerrors"
 )
 
+// These unit tests use the in-memory driver instead of actual Cloud Storage.
+// It provides the same interface and serves as a mock.
+const testBucket = "mem://"
+
 func getBucket(t *testing.T) *BlobGCP {
-	gcs, err := NewBlobGCP("gs://triton-integration")
+	t.Helper()
+
+	gcs, err := NewBlobGCP(testBucket)
 	if err != nil {
 		t.Fatalf("Initializing bucket error: %v", err)
 	}
@@ -32,114 +40,92 @@ func getBucket(t *testing.T) *BlobGCP {
 	return gcs
 }
 
+// Test that the gs:// url works.
 func TestGCS_OpenBucket(t *testing.T) {
-	gcs, err := NewBlobGCP("gs://triton-integration")
-	if err != nil {
-		t.Fatalf("failed to initialize gcs backend: %v", err)
-	}
-	if gcs.bucket == nil {
-		t.Fatalf("initialized gcs bucket but got nil")
-	}
+	t.Parallel()
+
+	// Any bucket name works as it doesn't actually send requests.
+	gcs, err := NewBlobGCP("gs://bucket")
+	assert.NotNil(t, gcs)
+	assert.NoError(t, err)
+	assert.NoError(t, gcs.Close())
 }
 
-func TestGCS_PutFile(t *testing.T) {
+func TestGCS_PutGetDelete(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	gcs := getBucket(t)
-	filePath := "put.txt"
-	if err := gcs.Put(ctx, filePath, []byte("hello world")); err != nil {
-		t.Fatalf("Put file(%q) in GCS got error: %v", filePath, err)
-	}
-}
+	const (
+		filePath   = "get.txt"
+		testString = "hello world"
+	)
 
-func TestGCS_GetFile(t *testing.T) {
-	ctx := context.Background()
-	gcs := getBucket(t)
-	filePath := "get.txt"
-
-	if err := gcs.Put(ctx, filePath, []byte("hello world")); err != nil {
-		t.Fatalf("Put file(%q) in GCS got error: %v", filePath, err)
-	}
-
+	// Should return gcerrors.NotFound
 	got, err := gcs.Get(ctx, filePath)
-	if err != nil {
-		t.Fatalf("Get file(%q) from GCS got error: %v", filePath, err)
-	}
-	want := []byte("hello world")
-	if !bytes.Equal(got, want) {
-		t.Fatalf("Get file(%q) from GCS failed\ngot:  %s\nwant: %s", filePath, got, want)
-	}
-}
+	assert.Nil(t, got, "Get should return nil when object is not found.")
+	assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err),
+		"Get should return gcerrors.NotFound when object is not found.")
 
-func TestGCS_Delete(t *testing.T) {
-	ctx := context.Background()
-	gcs := getBucket(t)
-	filePath := "delete.txt"
-	if err := gcs.Put(ctx, filePath, []byte("hello world")); err != nil {
-		t.Fatalf("Put file(%q) in GCS got error: %v", filePath, err)
-	}
+	err = gcs.Put(ctx, filePath, []byte(testString))
+	assert.NoError(t, err, "Put should not return error.")
 
-	if err := gcs.Delete(ctx, filePath); err != nil {
-		t.Fatalf("Delete file(%q) in GCS got error: %v", filePath, err)
-	}
+	got, err = gcs.Get(ctx, filePath)
+	assert.NoError(t, err, "Get should not return error.")
+	assert.Equal(t, []byte(testString), got, "Get should return the content of the object.")
+
+	err = gcs.Delete(ctx, filePath)
+	assert.NoError(t, err, "Delete should not return error.")
 
 	// Check to see access to this file fails now that it has been deleted.
-	if _, err := gcs.Get(ctx, filePath); err == nil {
-		t.Fatalf("Get should fail after file has been deleted, got nil")
-	}
+	got, err = gcs.Get(ctx, filePath)
+	assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err),
+		"Get should return gcerrors.NotFound after object has been deleted.")
+
+	err = gcs.Delete(ctx, filePath)
+	assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err),
+		"Delete should return gcerrors.NotFound when object is not found.")
 }
 
 func TestGCS_SimpleStreamTests(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	gcs := getBucket(t)
-	filePath := "simple-stream-tests.txt"
+	const filePath = "simple-stream-tests.txt"
 	testBlob := []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit")
 
 	writer, err := gcs.NewWriter(ctx, filePath)
-	if err != nil {
-		t.Fatalf("NewWriter(%q) in GCS got error: %v", filePath, err)
-	}
-	assert.NotNil(t, writer)
+	require.NotNilf(t, writer, "NewWriter(%q) should not return nil.", filePath)
+	require.NoErrorf(t, err, "NewWriter(%q) should not return error.", filePath)
+
 	n, err := writer.Write(testBlob[:10])
 	assert.NoError(t, err)
 	assert.Equal(t, 10, n)
 	n, err = writer.Write(testBlob[10:])
 	assert.NoError(t, err)
 	assert.Equal(t, len(testBlob)-10, n)
-	if err := writer.Close(); err != nil {
-		t.Fatalf("Failed to close writer: %v", err)
-	}
+	err = writer.Close()
+	require.NoError(t, err, "writer.Close should not return error.")
 	t.Cleanup(func() { assert.NoError(t, gcs.Delete(ctx, filePath)) })
 
 	reader, err := gcs.NewReader(ctx, filePath)
-	if err != nil {
-		t.Fatalf("NewReader(%q) in GCS got error: %v", filePath, err)
-	}
-	assert.NotNil(t, reader)
-	readBuf := make([]byte, 1)
-	n, err = reader.Read(readBuf)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, n)
-	assert.Equal(t, testBlob[:1], readBuf)
-	readBuf = make([]byte, 100)
-	n, err = reader.Read(readBuf)
-	assert.NoError(t, err)
-	assert.Equal(t, len(testBlob)-1, n)
-	assert.Equal(t, testBlob[1:], readBuf[:n])
-	n, err = reader.Read(readBuf)
-	assert.Zero(t, n)
-	assert.Equal(t, io.EOF, err)
+	require.NotNilf(t, writer, "NewReader(%q) should not return nil.", filePath)
+	require.NoErrorf(t, err, "NewReader(%q) should not return error.", filePath)
+
+	err = iotest.TestReader(reader, testBlob)
+	assert.NoError(t, err, "TestReader should not return error.")
 	assert.NoError(t, reader.Close())
 
-	rangeReader, err := gcs.NewRangeReader(ctx, filePath, 3, 5)
-	if err != nil {
-		t.Fatalf("NewRangeReader(%q, %q, %q) in GCS got error: %v", filePath, 3, 5, err)
-	}
-	n, err = rangeReader.Read(readBuf)
-	assert.NoError(t, err)
-	assert.Equal(t, 5, n)
-	assert.Equal(t, testBlob[3:3+5], readBuf[:5])
-	n, err = rangeReader.Read(readBuf)
-	assert.Zero(t, n)
-	assert.Equal(t, io.EOF, err)
+	const (
+		offset = 3
+		length = 5
+	)
+	rangeReader, err := gcs.NewRangeReader(ctx, filePath, offset, length)
+	require.NotNilf(t, rangeReader, "NewRangeReader(%q, %q, %q) should not return nil.", filePath, offset, length)
+	require.NoErrorf(t, err, "NewRangeReader(%q, %q, %q) should not error.", filePath, offset, length)
+
+	iotest.TestReader(rangeReader, testBlob[offset:offset+length])
+	assert.NoError(t, err, "TestReader should not return error.")
 	assert.NoError(t, rangeReader.Close())
 }
