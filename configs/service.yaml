@@ -12,3 +12,5 @@ redis_idle_timeout: 0
 redis_max_retries: 3
 redis_min_retry_backoff: "8ms"
 redis_max_retry_backoff: "512ms"
+
+blob_max_inline_size: 65536

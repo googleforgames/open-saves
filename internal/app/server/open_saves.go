@@ -42,16 +42,16 @@ import (
 // TODO(hongalex): make this a configurable field for users.
 const (
 	maxRecordSizeToCache int = 10 * 1024 * 1024       // 10 MB
-	maxInlineBlobSize    int = 64 * 1024              // 64 KiB
 	streamBufferSize     int = 1 * 1024 * 1024        // 1 MiB
 	chunkSizeLimit       int = 1 * 1024 * 1024 * 1024 // 1 GiB
 )
 
 type openSavesServer struct {
-	cloud      string
-	blobStore  blob.BlobStore
-	metaDB     *metadb.MetaDB
-	cacheStore *cache.Cache
+	cloud             string
+	blobStore         blob.BlobStore
+	metaDB            *metadb.MetaDB
+	cacheStore        *cache.Cache
+	maxInlineBlobSize int
 
 	pb.UnimplementedOpenSavesServer
 }
@@ -78,10 +78,11 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 		}
 		cache := cache.New(redis.NewRedisWithConfig(&cfg.RedisConfig), &cfg.CacheConfig)
 		server := &openSavesServer{
-			cloud:      cfg.ServerConfig.Cloud,
-			blobStore:  gcs,
-			metaDB:     metadb,
-			cacheStore: cache,
+			cloud:             cfg.ServerConfig.Cloud,
+			blobStore:         gcs,
+			metaDB:            metadb,
+			cacheStore:        cache,
+			maxInlineBlobSize: cfg.BlobConfig.MaxInlineSize,
 		}
 		return server, nil
 	default:
@@ -396,8 +397,7 @@ func (s *openSavesServer) CreateBlob(stream pb.OpenSaves_CreateBlobServer) error
 	log.Debugf("Got metadata from stream: store(%s), record(%s), blob size(%d)\n",
 		meta.GetStoreKey(), meta.GetRecordKey(), meta.GetSize())
 
-	// TODO(yuryu): Make the threshold configurable
-	if meta.GetSize() <= int64(maxInlineBlobSize) {
+	if meta.GetSize() <= int64(s.maxInlineBlobSize) {
 		return s.insertInlineBlob(ctx, stream, meta)
 	}
 	return s.insertExternalBlob(ctx, stream, meta)

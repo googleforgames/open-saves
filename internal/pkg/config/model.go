@@ -32,12 +32,15 @@ const (
 	RedisMaxRetries      = "redis_max_retries"
 	RedisMinRetryBackoff = "redis_min_retry_backoff"
 	RedisMaxRetryBackoff = "redis_max_retry_backoff"
+
+	BlobMaxInlineSize = "blob_max_inline_size"
 )
 
 type ServiceConfig struct {
 	ServerConfig
 	CacheConfig
 	RedisConfig
+	BlobConfig
 }
 
 // ServerConfig defines common fields needed to start Open Saves.
@@ -65,4 +68,8 @@ type RedisConfig struct {
 	MinIdleConns int
 	PoolSize     int
 	IdleTimeout  time.Duration
+}
+
+type BlobConfig struct {
+	MaxInlineSize int
 }
