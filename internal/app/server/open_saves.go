@@ -47,11 +47,11 @@ const (
 )
 
 type openSavesServer struct {
-	cloud             string
-	blobStore         blob.BlobStore
-	metaDB            *metadb.MetaDB
-	cacheStore        *cache.Cache
-	maxInlineBlobSize int
+	cloud      string
+	blobStore  blob.BlobStore
+	metaDB     *metadb.MetaDB
+	cacheStore *cache.Cache
+	config.ServiceConfig
 
 	pb.UnimplementedOpenSavesServer
 }
@@ -78,11 +78,11 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 		}
 		cache := cache.New(redis.NewRedisWithConfig(&cfg.RedisConfig), &cfg.CacheConfig)
 		server := &openSavesServer{
-			cloud:             cfg.ServerConfig.Cloud,
-			blobStore:         gcs,
-			metaDB:            metadb,
-			cacheStore:        cache,
-			maxInlineBlobSize: cfg.BlobConfig.MaxInlineSize,
+			cloud:         cfg.ServerConfig.Cloud,
+			blobStore:     gcs,
+			metaDB:        metadb,
+			cacheStore:    cache,
+			ServiceConfig: *cfg,
 		}
 		return server, nil
 	default:
@@ -397,7 +397,7 @@ func (s *openSavesServer) CreateBlob(stream pb.OpenSaves_CreateBlobServer) error
 	log.Debugf("Got metadata from stream: store(%s), record(%s), blob size(%d)\n",
 		meta.GetStoreKey(), meta.GetRecordKey(), meta.GetSize())
 
-	if meta.GetSize() <= int64(s.maxInlineBlobSize) {
+	if meta.GetSize() <= int64(s.BlobConfig.MaxInlineSize) {
 		return s.insertInlineBlob(ctx, stream, meta)
 	}
 	return s.insertExternalBlob(ctx, stream, meta)

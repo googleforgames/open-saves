@@ -70,6 +70,7 @@ type RedisConfig struct {
 	IdleTimeout  time.Duration
 }
 
+// BlobConfig has Open Saves blob related configurations.
 type BlobConfig struct {
 	MaxInlineSize int
 }
