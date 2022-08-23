@@ -16,7 +16,6 @@ package blob
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"gocloud.dev/blob"
@@ -41,6 +40,7 @@ func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
 		return nil, err
 	}
 
+	// bucket is guaranteed not to be nil if OpenBucket succeeds.
 	gcs := &BlobGCP{
 		bucket: bucket,
 	}
@@ -50,9 +50,6 @@ func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
 
 // Put inserts a blob at the given path.
 func (b *BlobGCP) Put(ctx context.Context, path string, data []byte) error {
-	if b.bucket == nil {
-		return fmt.Errorf("could not find bucket for storage provider")
-	}
 	return b.bucket.WriteAll(ctx, path, data, nil)
 }
 
@@ -60,17 +57,11 @@ func (b *BlobGCP) Put(ctx context.Context, path string, data []byte) error {
 // instance for the object. The object is not committed and visible until
 // you close the writer.
 func (b *BlobGCP) NewWriter(ctx context.Context, path string) (io.WriteCloser, error) {
-	if b.bucket == nil {
-		return nil, fmt.Errorf("could not find bucket for storage provider")
-	}
 	return b.bucket.NewWriter(ctx, path, nil)
 }
 
 // Get retrives the data given a blob path.
 func (b *BlobGCP) Get(ctx context.Context, path string) ([]byte, error) {
-	if b.bucket == nil {
-		return []byte{}, fmt.Errorf("could not find bucket for storage provider")
-	}
 	return b.bucket.ReadAll(ctx, path)
 }
 
@@ -84,24 +75,15 @@ func (b *BlobGCP) NewReader(ctx context.Context, path string) (io.ReadCloser, er
 // beginning at the offset-th byte and length bytes long. length = -1 means until EOF.
 // Make sure to close the reader after all operations to the reader.
 func (b *BlobGCP) NewRangeReader(ctx context.Context, path string, offset, length int64) (io.ReadCloser, error) {
-	if b.bucket == nil {
-		return nil, fmt.Errorf("could not find bucket for storage provider")
-	}
 	return b.bucket.NewRangeReader(ctx, path, offset, length, nil)
 }
 
 // Delete deletes the blob at the given path.
 func (b *BlobGCP) Delete(ctx context.Context, path string) error {
-	if b.bucket == nil {
-		return fmt.Errorf("could not find bucket for storage provider")
-	}
 	return b.bucket.Delete(ctx, path)
 }
 
 // Close releases any resources used by the instance.
 func (b *BlobGCP) Close() error {
-	if b.bucket != nil {
-		return b.bucket.Close()
-	}
-	return fmt.Errorf("could not close storage handler without open bucket")
+	return b.bucket.Close()
 }
