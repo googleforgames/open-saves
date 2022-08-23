@@ -48,6 +48,17 @@ func TestTimestamps_NewTimestamps(t *testing.T) {
 	assert.True(t, ts.CreatedAt.Equal(ts.UpdatedAt))
 }
 
+func TestTimestamps_TimeToProto(t *testing.T) {
+	t.Parallel()
+	var zero time.Time
+	assert.Nil(t, TimeToProto(zero))
+	n := time.Unix(423748110, 1).UTC()
+	p := TimeToProto(n)
+	if assert.NotNil(t, p) {
+		assert.Equal(t, n, p.AsTime())
+	}
+}
+
 func TestTimestamps_Update(t *testing.T) {
 	ts := New()
 	ocreated := ts.CreatedAt

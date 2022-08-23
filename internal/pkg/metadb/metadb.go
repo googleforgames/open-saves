@@ -262,6 +262,7 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 // Returns error if there is already a record with the same key.
 func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *record.Record) (*record.Record, error) {
 	record.Timestamps = timestamps.New()
+	record.StoreKey = storeKey
 	rkey := m.createRecordKey(storeKey, record.Key)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		dskey := m.createStoreKey(storeKey)
@@ -711,9 +712,9 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 	return q.Filter(filter, record.ExtractValue(f.Value)), nil
 }
 
-// QueryRecords returns a list of records that match the given filters and their stores.
+// QueryRecords returns a list of records that match the given filters.
 // TODO(https://github.com/googleforgames/open-saves/issues/339): consider refactoring this to fewer arguments.
-func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) ([]*record.Record, []string, error) {
+func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) ([]*record.Record, error) {
 	query := m.newQuery(recordKind)
 	if req.GetStoreKey() != "" {
 		dsKey := m.createStoreKey(req.GetStoreKey())
@@ -725,7 +726,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 	for _, f := range req.GetFilters() {
 		q, err := addPropertyFilter(query, f)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		query = q
 	}
@@ -741,11 +742,11 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 			property = "Timestamps.UpdatedAt"
 		case pb.SortOrder_USER_PROPERTY:
 			if s.UserPropertyName == "" {
-				return nil, nil, status.Error(codes.InvalidArgument, "got empty user sort property")
+				return nil, status.Error(codes.InvalidArgument, "got empty user sort property")
 			}
 			property = fmt.Sprintf("%s.%s", propertiesField, s.UserPropertyName)
 		default:
-			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder property value: %v", s.Property)
+			return nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder property value: %v", s.Property)
 		}
 
 		switch s.Direction {
@@ -754,16 +755,18 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 		case pb.SortOrder_DESC:
 			query = query.Order("-" + strconv.Quote(property))
 		default:
-			return nil, nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction value: %v", s.Direction)
+			return nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction value: %v", s.Direction)
 		}
 	}
 	if limit := req.GetLimit(); limit > 0 {
 		query = query.Limit(int(limit))
 	}
+	if req.GetKeysOnly() {
+		query = query.KeysOnly()
+	}
 	iter := m.client.Run(ctx, query)
 
 	var match []*record.Record
-	var keys []string
 	for {
 		var r record.Record
 		key, err := iter.Next(&r)
@@ -771,13 +774,17 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 			break
 		}
 		if err != nil {
-			return nil, nil, status.Errorf(codes.Internal,
+			return nil, status.Errorf(codes.Internal,
 				"metadb QueryRecords: %v", err)
 		}
+		if req.GetKeysOnly() {
+			if err := r.LoadKey(key); err != nil {
+				return nil, status.Errorf(codes.Internal, "metadb QueryRecords LoadKey: %v", err)
+			}
+		}
 		match = append(match, &r)
-		keys = append(keys, key.Parent.Name)
 	}
-	return match, keys, nil
+	return match, nil
 }
 
 func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, storeKey, recordKey string, blobKey uuid.UUID, number int32) ([]*chunkref.ChunkRef, error) {

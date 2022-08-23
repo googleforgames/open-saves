@@ -22,7 +22,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/vmihailenco/msgpack/v5"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Assert PropertyMap implements PropertyLoadSave.
@@ -116,8 +115,8 @@ func (r *Record) ToProto() *pb.Record {
 		Tags:         r.Tags,
 		Properties:   r.Properties.ToProto(),
 		OpaqueString: r.OpaqueString,
-		CreatedAt:    timestamppb.New(r.Timestamps.CreatedAt),
-		UpdatedAt:    timestamppb.New(r.Timestamps.UpdatedAt),
+		CreatedAt:    timestamps.TimeToProto(r.Timestamps.CreatedAt),
+		UpdatedAt:    timestamps.TimeToProto(r.Timestamps.UpdatedAt),
 		Signature:    r.Timestamps.Signature[:],
 	}
 	return ret

@@ -42,7 +42,6 @@ import (
 // TODO(hongalex): make this a configurable field for users.
 const (
 	maxRecordSizeToCache int = 10 * 1024 * 1024       // 10 MB
-	maxInlineBlobSize    int = 64 * 1024              // 64 KiB
 	streamBufferSize     int = 1 * 1024 * 1024        // 1 MiB
 	chunkSizeLimit       int = 1 * 1024 * 1024 * 1024 // 1 GiB
 )
@@ -52,6 +51,7 @@ type openSavesServer struct {
 	blobStore  blob.BlobStore
 	metaDB     *metadb.MetaDB
 	cacheStore *cache.Cache
+	config.ServiceConfig
 
 	pb.UnimplementedOpenSavesServer
 }
@@ -78,10 +78,11 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 		}
 		cache := cache.New(redis.NewRedisWithConfig(&cfg.RedisConfig), &cfg.CacheConfig)
 		server := &openSavesServer{
-			cloud:      cfg.ServerConfig.Cloud,
-			blobStore:  gcs,
-			metaDB:     metadb,
-			cacheStore: cache,
+			cloud:         cfg.ServerConfig.Cloud,
+			blobStore:     gcs,
+			metaDB:        metadb,
+			cacheStore:    cache,
+			ServiceConfig: *cfg,
 		}
 		return server, nil
 	default:
@@ -213,15 +214,17 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 }
 
 func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) (*pb.QueryRecordsResponse, error) {
-	records, storeKeys, err := s.metaDB.QueryRecords(ctx, req)
+	records, err := s.metaDB.QueryRecords(ctx, req)
 	if err != nil {
 		log.Warnf("QueryRecords failed for store(%s), filters(%+v): %v",
 			req.StoreKey, req.Filters, err)
 		return nil, err
 	}
 	var rr []*pb.Record
+	var storeKeys []string
 	for _, r := range records {
 		rr = append(rr, r.ToProto())
+		storeKeys = append(storeKeys, r.StoreKey)
 	}
 	return &pb.QueryRecordsResponse{
 		Records:   rr,
@@ -396,8 +399,7 @@ func (s *openSavesServer) CreateBlob(stream pb.OpenSaves_CreateBlobServer) error
 	log.Debugf("Got metadata from stream: store(%s), record(%s), blob size(%d)\n",
 		meta.GetStoreKey(), meta.GetRecordKey(), meta.GetSize())
 
-	// TODO(yuryu): Make the threshold configurable
-	if meta.GetSize() <= int64(maxInlineBlobSize) {
+	if meta.GetSize() <= int64(s.BlobConfig.MaxInlineSize) {
 		return s.insertInlineBlob(ctx, stream, meta)
 	}
 	return s.insertExternalBlob(ctx, stream, meta)
