@@ -19,6 +19,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -57,6 +58,15 @@ func New() Timestamps {
 		UpdatedAt: now,
 		Signature: uuid.New(),
 	}
+}
+
+// TimeToProto converts time.Time to timestamppb.Timestamp.
+// If t is zero, it returns nil.
+func TimeToProto(t time.Time) *timestamppb.Timestamp {
+	if t.IsZero() {
+		return nil
+	}
+	return timestamppb.New(t)
 }
 
 // Update updates the UpdatedAt and Signature fields with time.Now() and uuid.New().
