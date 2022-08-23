@@ -836,11 +836,19 @@ func TestOpenSaves_QueryRecords_EqualityFilter(t *testing.T) {
 	resp, err := client.QueryRecords(ctx, queryReq)
 	require.NoError(t, err)
 	// Only one record matches the query.
-	require.Equal(t, 1, len(resp.Records))
-	require.Equal(t, 1, len(resp.StoreKeys))
+	require.Len(t, resp.Records, 1)
+	require.Len(t, resp.StoreKeys, 1)
 
 	assert.Equal(t, storeKey, resp.StoreKeys[0])
 	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, stringVal1)
+
+	// Test KeysOnly
+	queryReq.KeysOnly = true
+	resp, err = client.QueryRecords(ctx, queryReq)
+	require.NoError(t, err)
+	require.Len(t, resp.Records, 1)
+	assertEqualRecord(t, &pb.Record{Key: recordKey1}, resp.Records[0])
+	assert.Equal(t, []string{storeKey}, resp.GetStoreKeys())
 }
 
 // NOTE: this test requires composite indexes to be created. You can find the corresponding index
@@ -1117,7 +1125,6 @@ func TestOpenSaves_QueryRecords_Limit(t *testing.T) {
 	// Make sure the query only returns 1 record.
 	require.Equal(t, 1, len(resp.Records))
 	require.Equal(t, 1, len(resp.StoreKeys))
-
 }
 
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
