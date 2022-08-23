@@ -18,7 +18,6 @@ import (
 	"cloud.google.com/go/datastore"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Store represents a Open Saves store in the metadata database.
@@ -45,8 +44,8 @@ func (s *Store) ToProto() *pb.Store {
 		Name:      s.Name,
 		Tags:      s.Tags,
 		OwnerId:   s.OwnerID,
-		CreatedAt: timestamppb.New(s.Timestamps.CreatedAt),
-		UpdatedAt: timestamppb.New(s.Timestamps.UpdatedAt),
+		CreatedAt: timestamps.TimeToProto(s.Timestamps.CreatedAt),
+		UpdatedAt: timestamps.TimeToProto(s.Timestamps.UpdatedAt),
 	}
 }
 
