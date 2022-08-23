@@ -122,9 +122,14 @@ func Load(path string) (*ServiceConfig, error) {
 		IdleTimeout:     time.Duration(viper.GetUint(RedisIdleTimeout)) * time.Second,
 	}
 
+	blobConfig := BlobConfig{
+		MaxInlineSize: viper.GetInt(BlobMaxInlineSize),
+	}
+
 	return &ServiceConfig{
 		ServerConfig: serverConfig,
 		CacheConfig:  cacheConfig,
 		RedisConfig:  redisConfig,
+		BlobConfig:   blobConfig,
 	}, nil
 }

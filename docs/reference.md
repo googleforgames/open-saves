@@ -593,12 +593,13 @@ Multiple conditions are AND&#39;ed together.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| store_key | [string](#string) |  | store_key is the primary key of the store. Optional and the method queries all stores when omitted. |
+| store_key | [string](#string) |  | store_key is the primary key of the store. Optional. The method queries all stores when omitted. |
 | filters | [QueryFilter](#opensaves-QueryFilter) | repeated | List of filters |
 | tags | [string](#string) | repeated | List of tags |
 | owner_id | [string](#string) |  | owner_id is the owner of records, represented as an external user ID. |
 | sort_orders | [SortOrder](#opensaves-SortOrder) | repeated | List of sort orders to return records. These SortOrders are applied in sequence. |
 | limit | [int32](#int32) |  | the limit of the number of records to return. |
+| keys_only | [bool](#bool) |  | If keys_only is set to true, the server will only return records.key and store_keys in the QueryRecordsResponse message. |
 
 
 
