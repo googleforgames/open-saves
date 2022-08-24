@@ -32,8 +32,7 @@ type BlobGCP struct {
 var _ BlobStore = new(BlobGCP)
 
 // NewBlobGCP returns a new BlobGCP instance.
-func NewBlobGCP(bucketURL string) (*BlobGCP, error) {
-	ctx := context.Background()
+func NewBlobGCP(ctx context.Context, bucketURL string) (*BlobGCP, error) {
 	// blob.OpenBucket creates a *blob.Bucket from url.
 	bucket, err := blob.OpenBucket(ctx, bucketURL)
 	if err != nil {
