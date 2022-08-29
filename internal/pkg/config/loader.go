@@ -98,6 +98,10 @@ func Load(path string) (*ServiceConfig, error) {
 		Project: viper.GetString(OpenSavesProject),
 	}
 
+	healthCheckConfig := HealthCheckConfig{
+		Address: fmt.Sprintf(":%d", viper.GetUint(HealthCheckPort)),
+	}
+
 	// Cloud Run environment populates the PORT env var, so check for it here.
 	if p := os.Getenv("PORT"); p != "" {
 		p, err := strconv.ParseUint(p, 10, 64)
@@ -127,9 +131,10 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	return &ServiceConfig{
-		ServerConfig: serverConfig,
-		CacheConfig:  cacheConfig,
-		RedisConfig:  redisConfig,
-		BlobConfig:   blobConfig,
+		ServerConfig:      serverConfig,
+		HealthCheckConfig: healthCheckConfig,
+		CacheConfig:       cacheConfig,
+		RedisConfig:       redisConfig,
+		BlobConfig:        blobConfig,
 	}, nil
 }

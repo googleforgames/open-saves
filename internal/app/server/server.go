@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,37 +16,101 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
+	"google.golang.org/grpc/health"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/googleforgames/open-saves/api"
 )
 
-// Run starts the Open Saves gRPC service.
+const serviceName = "Health"
+
+// Run starts the Open Saves and health check gRPC servers.
 func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
-	log.Infof("starting server on %s %s", network, cfg.ServerConfig.Address)
+	// Handle servers lifecycle
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	lis, err := net.Listen(network, cfg.ServerConfig.Address)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := lis.Close(); err != nil {
-			log.Errorf("Failed to close %s %s: %v", network, cfg.ServerConfig.Address, err)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	// gRPC Health Server
+	grpcHealthServer := grpc.NewServer()
+	healthServer := health.NewServer()
+	g.Go(func() error {
+		healthpb.RegisterHealthServer(grpcHealthServer, healthServer)
+
+		addr := cfg.HealthCheckConfig.Address
+		listener, err := net.Listen(network, addr)
+		if err != nil {
+			log.Errorf("gRPC Health server: failed to listen %s %s: %v", network, addr, err)
+			return err
 		}
-	}()
 
-	s := grpc.NewServer()
+		log.Infof("gRPC health server serving at %s", addr)
+		return grpcHealthServer.Serve(listener)
+	})
+
+	// gRPC server
 	server, err := newOpenSavesServer(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	pb.RegisterOpenSavesServer(s, server)
-	reflection.Register(s)
+	grpcServer := grpc.NewServer()
 
-	return s.Serve(lis)
+	g.Go(func() error {
+		pb.RegisterOpenSavesServer(grpcServer, server)
+		reflection.Register(grpcServer)
+
+		addr := cfg.ServerConfig.Address
+		listener, err := net.Listen(network, addr)
+		if err != nil {
+			log.Errorf("gRPC server: failed to listen %s %s: %v", network, addr, err)
+			return err
+		}
+
+		log.Infof("starting server on %s %s", network, cfg.ServerConfig.Address)
+		healthServer.SetServingStatus(fmt.Sprintf("grpc.health.v1.%s", serviceName), healthpb.HealthCheckResponse_SERVING)
+		return grpcServer.Serve(listener)
+	})
+
+	select {
+	case <-sigs:
+		break
+	case <-ctx.Done():
+		break
+	}
+	log.Warn("received shutdown signal")
+
+	// Must be called as early as possible to stop accepting connections
+	cancel()
+
+	// Start failing health check
+	healthServer.SetServingStatus(fmt.Sprintf("grpc.health.v1.%s", serviceName), healthpb.HealthCheckResponse_NOT_SERVING)
+
+	if grpcServer != nil {
+		grpcServer.GracefulStop()
+	}
+	if grpcHealthServer != nil {
+		grpcHealthServer.GracefulStop()
+	}
+	err = g.Wait()
+	if err != nil {
+		log.Errorf("server returning an error: %v", err)
+		return err
+	}
+
+	return nil
 }

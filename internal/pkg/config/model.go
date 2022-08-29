@@ -22,6 +22,7 @@ const (
 	OpenSavesBucket  = "open_saves_bucket"
 	OpenSavesProject = "open_saves_project"
 	LogLevel         = "log_level"
+	HealthCheckPort  = "health_check_port"
 
 	CacheDefaultTTL = "cache_default_ttl"
 
@@ -38,6 +39,7 @@ const (
 
 type ServiceConfig struct {
 	ServerConfig
+	HealthCheckConfig
 	CacheConfig
 	RedisConfig
 	BlobConfig
@@ -49,6 +51,10 @@ type ServerConfig struct {
 	Cloud   string
 	Bucket  string
 	Project string
+}
+
+type HealthCheckConfig struct {
+	Address string
 }
 
 // CacheConfig has configurations for caching control (not Redis specific).

@@ -4,6 +4,7 @@ open_saves_bucket: ""
 open_saves_project: ""
 log_level: "info"
 cache_default_ttl: "5m"
+health_check_port: 6001
 
 redis_address: "localhost:6379"
 redis_max_idle: 500
