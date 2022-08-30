@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,33 +16,28 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/reflection"
-
 	pb "github.com/googleforgames/open-saves/api"
 )
 
-const serviceName = "Health"
+var serviceName = "grpc.health.v1.opensaves"
 
 // Run starts the Open Saves and health check gRPC servers.
 func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	// Handle servers lifecycle
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -51,6 +46,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	healthServer := health.NewServer()
 	g.Go(func() error {
 		healthpb.RegisterHealthServer(grpcHealthServer, healthServer)
+		healthServer.SetServingStatus(serviceName, healthpb.HealthCheckResponse_NOT_SERVING)
 
 		addr := cfg.HealthCheckConfig.Address
 		listener, err := net.Listen(network, addr)
@@ -82,7 +78,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}
 
 		log.Infof("starting server on %s %s", network, cfg.ServerConfig.Address)
-		healthServer.SetServingStatus(fmt.Sprintf("grpc.health.v1.%s", serviceName), healthpb.HealthCheckResponse_SERVING)
+		healthServer.SetServingStatus(serviceName, healthpb.HealthCheckResponse_SERVING)
 		return grpcServer.Serve(listener)
 	})
 
@@ -92,25 +88,25 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	case <-ctx.Done():
 		break
 	}
-	log.Warn("received shutdown signal")
+	log.Debug("received shutdown signal")
+	healthServer.SetServingStatus(serviceName, healthpb.HealthCheckResponse_NOT_SERVING)
 
-	// Must be called as early as possible to stop accepting connections
-	cancel()
-
-	// Start failing health check
-	healthServer.SetServingStatus(fmt.Sprintf("grpc.health.v1.%s", serviceName), healthpb.HealthCheckResponse_NOT_SERVING)
-
+	if grpcHealthServer != nil {
+		log.Debug("grpc health server stop")
+		grpcHealthServer.Stop()
+	}
 	if grpcServer != nil {
+		log.Debug("grpc server graceful stop")
 		grpcServer.GracefulStop()
 	}
-	if grpcHealthServer != nil {
-		grpcHealthServer.GracefulStop()
-	}
+
+	log.Debug("waiting for all servers to complete")
 	err = g.Wait()
 	if err != nil {
 		log.Errorf("server returning an error: %v", err)
 		return err
 	}
 
+	log.Debug("existing without errors")
 	return nil
 }

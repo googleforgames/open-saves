@@ -22,7 +22,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"os"
 )
 
 func main() {
@@ -41,6 +40,6 @@ func main() {
 
 	ctx := context.Background()
 	if err := server.Run(ctx, "tcp", cfg); err != nil {
-		os.Exit(1)
+		log.Fatalf("got error starting server: %v", err)
 	}
 }
