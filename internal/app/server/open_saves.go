@@ -67,7 +67,7 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 	switch cfg.ServerConfig.Cloud {
 	case "gcp":
 		log.Infoln("Instantiating Open Saves server on GCP")
-		gcs, err := blob.NewBlobGCP(cfg.ServerConfig.Bucket)
+		gcs, err := blob.NewBlobGCP(ctx, cfg.ServerConfig.Bucket)
 		if err != nil {
 			return nil, err
 		}
