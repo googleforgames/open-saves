@@ -191,7 +191,7 @@ func cleanupBlobs(ctx context.Context, t *testing.T, storeKey, recordkey string)
 		t.Errorf("datastore.NewClient failed during cleanup: %v", err)
 		return
 	}
-	blobClient, err := blob.NewBlobGCP(testBucket)
+	blobClient, err := blob.NewBlobGCP(ctx, testBucket)
 	if err != nil {
 		t.Errorf("NewBlobGCP returned error: %v", err)
 		blobClient = nil

@@ -56,7 +56,7 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 	switch cfg.Cloud {
 	case "gcp":
 		log.Infoln("Starting Open Saves garbage collector on GCP")
-		gcs, err := blob.NewBlobGCP(cfg.Bucket)
+		gcs, err := blob.NewBlobGCP(ctx, cfg.Bucket)
 		if err != nil {
 			return nil, err
 		}
