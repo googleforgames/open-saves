@@ -29,10 +29,10 @@ import (
 // It provides the same interface and serves as a mock.
 const testBucket = "mem://"
 
-func getBucket(t *testing.T) *BlobGCP {
+func getBucket(ctx context.Context, t *testing.T) *BlobGCP {
 	t.Helper()
 
-	gcs, err := NewBlobGCP(testBucket)
+	gcs, err := NewBlobGCP(ctx, testBucket)
 	if err != nil {
 		t.Fatalf("Initializing bucket error: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestGCS_OpenBucket(t *testing.T) {
 	t.Parallel()
 
 	// Any bucket name works as it doesn't actually send requests.
-	gcs, err := NewBlobGCP("gs://bucket")
+	gcs, err := NewBlobGCP(context.Background(), "gs://bucket")
 	assert.NotNil(t, gcs)
 	assert.NoError(t, err)
 	assert.NoError(t, gcs.Close())
@@ -55,7 +55,7 @@ func TestGCS_PutGetDelete(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	gcs := getBucket(t)
+	gcs := getBucket(ctx, t)
 	const (
 		filePath   = "get.txt"
 		testString = "hello world"
@@ -91,7 +91,7 @@ func TestGCS_SimpleStreamTests(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	gcs := getBucket(t)
+	gcs := getBucket(ctx, t)
 	const filePath = "simple-stream-tests.txt"
 	testBlob := []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit")
 
