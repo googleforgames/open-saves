@@ -63,19 +63,31 @@ const (
 	blobKind       = "blob"
 )
 
-func TestOpenSaves_HealthCheck(t *testing.T) {
+var (
+	serviceConfig *config.ServiceConfig
+)
+
+func getServiceConfig() (*config.ServiceConfig, error) {
+	if serviceConfig != nil {
+		return serviceConfig, nil
+	}
 	configPath := cmd.GetEnvVarString("OPEN_SAVES_CONFIG", "../../../configs/")
 	viper.Set(config.OpenSavesBucket, testBucket)
 	viper.Set(config.OpenSavesProject, testProject)
 	viper.Set(config.OpenSavesPort, testPort)
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		t.Fatalf("got err loading config: %v", err)
-	}
+	sc, err := config.Load(configPath)
+	serviceConfig = sc
+	return sc, err
+}
 
+func TestOpenSaves_HealthCheck(t *testing.T) {
+	serviceConfig, err := getServiceConfig()
+	if err != nil {
+		t.Fatalf("getServiceConfig err: %v", err)
+	}
 	ctx := context.Background()
 	go func() {
-		if err := Run(ctx, "tcp", cfg); err != nil {
+		if err := Run(ctx, "tcp", serviceConfig); err != nil {
 			log.Errorf("got err calling server.Run: %v", err)
 		}
 	}()
@@ -103,20 +115,15 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 }
 
 func TestOpenSaves_RunServer(t *testing.T) {
-	configPath := cmd.GetEnvVarString("OPEN_SAVES_CONFIG", "../../../configs/")
-	viper.Set(config.OpenSavesBucket, testBucket)
-	viper.Set(config.OpenSavesProject, testProject)
-	viper.Set(config.OpenSavesPort, testPort)
-	cfg, err := config.Load(configPath)
+	serviceConfig, err := getServiceConfig()
 	if err != nil {
-		t.Fatalf("got err loading config: %v", err)
+		t.Fatalf("getServiceConfig err: %v", err)
 	}
-
 	ctx := context.Background()
 	t.Run("cancel_context", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
-		if err := Run(ctx, "tcp", cfg); err != nil {
+		if err := Run(ctx, "tcp", serviceConfig); err != nil {
 			t.Errorf("got err calling server.Run: %v", err)
 		}
 	})
@@ -125,7 +132,7 @@ func TestOpenSaves_RunServer(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		}()
-		if err := Run(ctx, "tcp", cfg); err != nil {
+		if err := Run(ctx, "tcp", serviceConfig); err != nil {
 			t.Errorf("got err calling server.Run: %v", err)
 		}
 	})
