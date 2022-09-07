@@ -17,6 +17,9 @@ package server
 import (
 	"context"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 
@@ -25,6 +28,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -46,6 +50,9 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}
 	}()
 
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
 	s := grpc.NewServer()
 	healthcheck := health.NewServer()
 	healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_SERVING)
@@ -56,6 +63,18 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	}
 	pb.RegisterOpenSavesServer(s, server)
 	reflection.Register(s)
+
+	go func() {
+		select {
+		case s := <-sigs:
+			log.Infof("received signal: %v\n", s)
+		case <-ctx.Done():
+			log.Infoln("context cancelled")
+		}
+		healthcheck.SetServingStatus(serviceName, healthpb.HealthCheckResponse_NOT_SERVING)
+		s.GracefulStop()
+		log.Infof("called graceful stop on grpc server")
+	}()
 
 	return s.Serve(lis)
 }

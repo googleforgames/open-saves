@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -99,6 +100,35 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 	if want := healthgrpc.HealthCheckResponse_SERVING; got.Status != want {
 		t.Fatalf("hc.Check got: %v, want: %v", got.Status, want)
 	}
+}
+
+func TestOpenSaves_RunServer(t *testing.T) {
+	configPath := cmd.GetEnvVarString("OPEN_SAVES_CONFIG", "../../../configs/")
+	viper.Set(config.OpenSavesBucket, testBucket)
+	viper.Set(config.OpenSavesProject, testProject)
+	viper.Set(config.OpenSavesPort, testPort)
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("got err loading config: %v", err)
+	}
+
+	ctx := context.Background()
+	t.Run("cancel_context", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		if err := Run(ctx, "tcp", cfg); err != nil {
+			t.Fatalf("got err calling server.Run: %v", err)
+		}
+	})
+	t.Run("sigint", func(t *testing.T) {
+		go func() {
+			time.Sleep(2 * time.Second)
+			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		}()
+		if err := Run(ctx, "tcp", cfg); err != nil {
+			t.Fatalf("got err calling server.Run: %v", err)
+		}
+	})
 }
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
