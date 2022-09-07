@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -71,7 +70,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		case <-ctx.Done():
 			log.Infoln("context cancelled")
 		}
-		healthcheck.SetServingStatus(serviceName, healthpb.HealthCheckResponse_NOT_SERVING)
+		healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
 		s.GracefulStop()
 		log.Infof("called graceful stop on grpc server")
 	}()
