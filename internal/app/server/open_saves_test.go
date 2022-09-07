@@ -85,7 +85,7 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getServiceConfig err: %v", err)
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		if err := Run(ctx, "tcp", serviceConfig); err != nil {
 			log.Errorf("got err calling server.Run: %v", err)
@@ -112,6 +112,7 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 	if want := healthgrpc.HealthCheckResponse_SERVING; got.Status != want {
 		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
 	}
+	cancel()
 }
 
 func TestOpenSaves_RunServer(t *testing.T) {
