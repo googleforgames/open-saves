@@ -26,7 +26,10 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/googleforgames/open-saves/internal/pkg/cmd"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
@@ -40,6 +43,8 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -48,6 +53,7 @@ import (
 const (
 	testProject    = "triton-for-games-dev"
 	testBucket     = "gs://triton-integration"
+	testPort       = "8000"
 	testBufferSize = 1024 * 1024
 	// The threshold of comparing times.
 	// Since the server will actually access the backend datastore,
@@ -55,6 +61,45 @@ const (
 	timestampDelta = 10 * time.Second
 	blobKind       = "blob"
 )
+
+func TestOpenSaves_HealthCheck(t *testing.T) {
+	configPath := cmd.GetEnvVarString("OPEN_SAVES_CONFIG", "../../../configs/")
+	viper.Set(config.OpenSavesBucket, testBucket)
+	viper.Set(config.OpenSavesProject, testProject)
+	viper.Set(config.OpenSavesPort, testPort)
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("got err loading config: %v", err)
+	}
+
+	ctx := context.Background()
+	go func() {
+		if err := Run(ctx, "tcp", cfg); err != nil {
+			log.Errorf("got err calling server.Run: %v", err)
+		}
+	}()
+
+	options := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	conn, err := grpc.Dial(fmt.Sprintf(":%s", testPort), options...)
+	if err != nil {
+		t.Fatalf("did not connect %v", err)
+	}
+	defer conn.Close()
+
+	hc := healthgrpc.NewHealthClient(conn)
+	got, err := hc.Check(ctx, &healthgrpc.HealthCheckRequest{
+		Service: serviceName,
+	})
+	if err != nil {
+		t.Fatalf("healthClient.Check err: %v", err)
+	}
+	if want := healthgrpc.HealthCheckResponse_SERVING; got.Status != want {
+		t.Fatalf("hc.Check got: %v, want: %v", got.Status, want)
+	}
+}
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
 	t.Helper()

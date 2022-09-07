@@ -28,6 +28,10 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+const (
+	serviceName = "grpc.health.v1.opensaves"
+)
+
 // Run starts the Open Saves gRPC service.
 func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	log.Infof("starting server on %s %s", network, cfg.ServerConfig.Address)
@@ -44,6 +48,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 
 	s := grpc.NewServer()
 	healthcheck := health.NewServer()
+	healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_SERVING)
 	healthgrpc.RegisterHealthServer(s, healthcheck)
 	server, err := newOpenSavesServer(ctx, cfg)
 	if err != nil {

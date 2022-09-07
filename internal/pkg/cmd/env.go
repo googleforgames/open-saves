@@ -36,7 +36,7 @@ func GetEnvVarUInt(name string, defValue uint64) uint64 {
 	return defValue
 }
 
-// GetEnvVarString returns a string value of an environmental variable speficied by name.
+// GetEnvVarString returns a string value of an environmental variable specified by name.
 // Returns defValue if the variable is empty (e.g. not defined).
 func GetEnvVarString(name string, defValue string) string {
 	if value := os.Getenv(name); value != "" {
