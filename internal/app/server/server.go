@@ -16,14 +16,16 @@ package server
 
 import (
 	"context"
-	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"net"
 
-	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 
 	pb "github.com/googleforgames/open-saves/api"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 )
 
 // Run starts the Open Saves gRPC service.
@@ -36,11 +38,13 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	}
 	defer func() {
 		if err := lis.Close(); err != nil {
-			log.Errorf("Failed to close %s %s: %v", network, cfg.ServerConfig.Address, err)
+			log.Errorf("Failed to close %s %s: %v\n", network, cfg.ServerConfig.Address, err)
 		}
 	}()
 
 	s := grpc.NewServer()
+	healthcheck := health.NewServer()
+	healthgrpc.RegisterHealthServer(s, healthcheck)
 	server, err := newOpenSavesServer(ctx, cfg)
 	if err != nil {
 		return err
