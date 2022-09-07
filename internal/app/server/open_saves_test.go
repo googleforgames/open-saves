@@ -117,7 +117,7 @@ func TestOpenSaves_RunServer(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
 		if err := Run(ctx, "tcp", cfg); err != nil {
-			t.Fatalf("got err calling server.Run: %v", err)
+			t.Errorf("got err calling server.Run: %v", err)
 		}
 	})
 	t.Run("sigint", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestOpenSaves_RunServer(t *testing.T) {
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		}()
 		if err := Run(ctx, "tcp", cfg); err != nil {
-			t.Fatalf("got err calling server.Run: %v", err)
+			t.Errorf("got err calling server.Run: %v", err)
 		}
 	})
 }
