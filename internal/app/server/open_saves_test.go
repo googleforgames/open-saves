@@ -94,10 +94,10 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 		Service: serviceName,
 	})
 	if err != nil {
-		t.Fatalf("healthClient.Check err: %v", err)
+		t.Errorf("healthClient.Check err: %v", err)
 	}
 	if want := healthgrpc.HealthCheckResponse_SERVING; got.Status != want {
-		t.Fatalf("hc.Check got: %v, want: %v", got.Status, want)
+		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
 	}
 }
 
