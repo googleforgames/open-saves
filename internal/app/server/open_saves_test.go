@@ -112,7 +112,18 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 	if want := healthgrpc.HealthCheckResponse_SERVING; got.Status != want {
 		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
 	}
+	// Cancel here to stop the server. This frees up the port for later tests.
 	cancel()
+	ctx2 := context.Background()
+	got, err = hc.Check(ctx2, &healthgrpc.HealthCheckRequest{
+		Service: serviceName,
+	})
+	if err != nil {
+		t.Errorf("healthClient.Check err: %v", err)
+	}
+	if want := healthgrpc.HealthCheckResponse_NOT_SERVING; got.Status != want {
+		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
+	}
 }
 
 func TestOpenSaves_RunServer(t *testing.T) {

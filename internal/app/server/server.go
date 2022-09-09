@@ -72,7 +72,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}
 		healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
 		s.GracefulStop()
-		log.Infoln("stopping open saves server gracefully")
+		log.Infoln("stopped open saves server gracefully")
 	}()
 
 	return s.Serve(lis)
