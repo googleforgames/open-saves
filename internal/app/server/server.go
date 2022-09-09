@@ -70,6 +70,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		case <-ctx.Done():
 			log.Infoln("context cancelled")
 		}
+		log.Infoln("stopping open saves server gracefully")
 		healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
 		s.GracefulStop()
 		log.Infoln("stopped open saves server gracefully")
