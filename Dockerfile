@@ -62,6 +62,10 @@ COPY --from=amd64 /src/open-saves/build/collector /collector
 
 CMD ["/collector"]
 
+RUN GRPC_HEALTH_PROBE_VERSION=v0.4.12 && \
+    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
+
 # Build the server image.
 # This needs to be the last stage to be the default target.
 #
