@@ -17,6 +17,9 @@ package server
 import (
 	"context"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 
@@ -46,6 +49,9 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}
 	}()
 
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
 	s := grpc.NewServer()
 	healthcheck := health.NewServer()
 	healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_SERVING)
@@ -56,6 +62,19 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	}
 	pb.RegisterOpenSavesServer(s, server)
 	reflection.Register(s)
+
+	go func() {
+		select {
+		case s := <-sigs:
+			log.Infof("received signal: %v\n", s)
+		case <-ctx.Done():
+			log.Infoln("context cancelled")
+		}
+		log.Infoln("stopping open saves server gracefully")
+		healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
+		s.GracefulStop()
+		log.Infoln("stopped open saves server gracefully")
+	}()
 
 	return s.Serve(lis)
 }
