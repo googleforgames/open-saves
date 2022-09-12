@@ -60,11 +60,11 @@ RUN apk add --no-cache ca-certificates
 # Copy the binary to the production image from the builder stage.
 COPY --from=amd64 /src/open-saves/build/collector /collector
 
-CMD ["/collector"]
-
 RUN GRPC_HEALTH_PROBE_VERSION=v0.4.12 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
+
+CMD ["/collector"]
 
 # Build the server image.
 # This needs to be the last stage to be the default target.
@@ -79,6 +79,10 @@ RUN apk add --no-cache ca-certificates
 # Copy the binary to the production image from the builder stage.
 COPY --from=amd64 /src/open-saves/build/server /server
 COPY --from=amd64 /src/open-saves/configs /configs
+
+RUN GRPC_HEALTH_PROBE_VERSION=v0.4.12 && \
+    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
 
 # Run the web service on container startup.
 CMD ["/server"]
