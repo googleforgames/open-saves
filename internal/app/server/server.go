@@ -43,11 +43,6 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := lis.Close(); err != nil {
-			log.Errorf("Failed to close %s %s: %v\n", network, cfg.ServerConfig.Address, err)
-		}
-	}()
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
