@@ -92,10 +92,11 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	serverConfig := ServerConfig{
-		Address: fmt.Sprintf(":%d", viper.GetUint(OpenSavesPort)),
-		Cloud:   viper.GetString(OpenSavesCloud),
-		Bucket:  viper.GetString(OpenSavesBucket),
-		Project: viper.GetString(OpenSavesProject),
+		Address:             fmt.Sprintf(":%d", viper.GetUint(OpenSavesPort)),
+		Cloud:               viper.GetString(OpenSavesCloud),
+		Bucket:              viper.GetString(OpenSavesBucket),
+		Project:             viper.GetString(OpenSavesProject),
+		ShutdownGracePeriod: viper.GetDuration(ShutdownGracePeriod),
 	}
 
 	// Cloud Run environment populates the PORT env var, so check for it here.
