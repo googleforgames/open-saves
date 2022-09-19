@@ -127,7 +127,7 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
 	}
 	// Sleep long enough to free up the connection
-	time.Sleep(serviceConfig.ShutdownGracePeriod * time.Second)
+	time.Sleep(serviceConfig.ShutdownGracePeriod)
 }
 
 func TestOpenSaves_RunServer(t *testing.T) {
@@ -153,7 +153,7 @@ func TestOpenSaves_RunServer(t *testing.T) {
 		}
 	})
 	// Sleep long enough to free up the connection
-	time.Sleep(serviceConfig.ShutdownGracePeriod * time.Second)
+	time.Sleep(serviceConfig.ShutdownGracePeriod)
 }
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
