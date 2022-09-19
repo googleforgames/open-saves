@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 
@@ -65,8 +66,13 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		case <-ctx.Done():
 			log.Infoln("context cancelled")
 		}
-		log.Infoln("stopping open saves server gracefully")
+		log.Infoln("set health check to not serving")
 		healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
+
+		log.Infoln("starting server shutdown grace period")
+		time.Sleep(cfg.ShutdownGracePeriod)
+
+		log.Infoln("stopping open saves server gracefully")
 		s.GracefulStop()
 		log.Infoln("stopped open saves server gracefully")
 	}()

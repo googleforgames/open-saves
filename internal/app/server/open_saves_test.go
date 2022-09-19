@@ -52,10 +52,11 @@ import (
 )
 
 const (
-	testProject    = "triton-for-games-dev"
-	testBucket     = "gs://triton-integration"
-	testPort       = "8000"
-	testBufferSize = 1024 * 1024
+	testProject             = "triton-for-games-dev"
+	testBucket              = "gs://triton-integration"
+	testPort                = "8000"
+	testBufferSize          = 1024 * 1024
+	testShutdownGracePeriod = "1s"
 	// The threshold of comparing times.
 	// Since the server will actually access the backend datastore,
 	// we need enough time to prevent flaky tests.
@@ -75,6 +76,7 @@ func getServiceConfig() (*config.ServiceConfig, error) {
 	viper.Set(config.OpenSavesBucket, testBucket)
 	viper.Set(config.OpenSavesProject, testProject)
 	viper.Set(config.OpenSavesPort, testPort)
+	viper.Set(config.ShutdownGracePeriod, testShutdownGracePeriod)
 	sc, err := config.Load(configPath)
 	serviceConfig = sc
 	return sc, err
@@ -124,6 +126,8 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 	if want := healthgrpc.HealthCheckResponse_NOT_SERVING; got.Status != want {
 		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
 	}
+	// Sleep long enough to free up the connection
+	time.Sleep(serviceConfig.ShutdownGracePeriod)
 }
 
 func TestOpenSaves_RunServer(t *testing.T) {
@@ -148,6 +152,8 @@ func TestOpenSaves_RunServer(t *testing.T) {
 			t.Errorf("got err calling server.Run: %v", err)
 		}
 	})
+	// Sleep long enough to free up the connection
+	time.Sleep(serviceConfig.ShutdownGracePeriod)
 }
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {

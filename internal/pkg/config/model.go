@@ -17,11 +17,12 @@ package config
 import "time"
 
 const (
-	OpenSavesPort    = "open_saves_port"
-	OpenSavesCloud   = "open_saves_cloud"
-	OpenSavesBucket  = "open_saves_bucket"
-	OpenSavesProject = "open_saves_project"
-	LogLevel         = "log_level"
+	OpenSavesPort       = "open_saves_port"
+	OpenSavesCloud      = "open_saves_cloud"
+	OpenSavesBucket     = "open_saves_bucket"
+	OpenSavesProject    = "open_saves_project"
+	LogLevel            = "log_level"
+	ShutdownGracePeriod = "shutdown_grace_period"
 
 	CacheDefaultTTL = "cache_default_ttl"
 
@@ -45,10 +46,11 @@ type ServiceConfig struct {
 
 // ServerConfig defines common fields needed to start Open Saves.
 type ServerConfig struct {
-	Address string
-	Cloud   string
-	Bucket  string
-	Project string
+	Address             string
+	Cloud               string
+	Bucket              string
+	Project             string
+	ShutdownGracePeriod time.Duration
 }
 
 // CacheConfig has configurations for caching control (not Redis specific).
