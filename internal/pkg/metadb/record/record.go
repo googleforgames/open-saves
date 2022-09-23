@@ -83,7 +83,16 @@ func (r *Record) Save() ([]datastore.Property, error) {
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.
 func (r *Record) Load(ps []datastore.Property) error {
-	externalBlob, ps, err := timestamps.LoadUUID(ps, externalBlobPropertyName)
+        // ps_modified has been added to enable backward compatibility by creating 
+        // a new datastore array that replaces legacy "NumberOfChunks" with "ChunkCount". 
+        var ps_modified []datastore.Property
+        for _, p := range ps {
+                if p.Name == "NumberOfChunks" {
+                        p.Name = "ChunkCount"
+                }
+                ps_modified = append(ps_modified, p)
+        }
+	externalBlob, ps_modified, err := timestamps.LoadUUID(ps_modified, externalBlobPropertyName)
 	if err != nil {
 		return err
 	}
@@ -92,7 +101,7 @@ func (r *Record) Load(ps []datastore.Property) error {
 	// Initialize Properties because the default value is a nil map and there
 	// is no way to change it inside PropertyMap.Load().
 	r.Properties = make(PropertyMap)
-	return datastore.LoadStruct(r, ps)
+	return datastore.LoadStruct(r, ps_modified)
 }
 
 // LoadKey implements the KeyLoader interface and sets the value to the Key and StoreKey fields.
