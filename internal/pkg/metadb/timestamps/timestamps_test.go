@@ -19,72 +19,105 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func now() time.Time {
-	return time.Now().UTC().Truncate(Precision)
-}
-
 func TestTimestamps_NewTimestamps(t *testing.T) {
-	beforeNew := now()
+	t.Parallel()
+
+	beforeNew := time.Now()
 	ts := New()
-	afterNew := now()
-	assert.NotNil(t, ts)
+	afterNew := time.Now()
 
 	// Check the uuid
-	assert.NotEmpty(t, ts.Signature)
+	if ts.Signature == uuid.Nil {
+		t.Errorf("New(): uuid should not be Nil, got = %v", ts.Signature)
+	}
 
-	assert.True(t, ts.CreatedAt.Equal(ts.CreatedAt.Truncate(Precision)))
-	assert.True(t, ts.UpdatedAt.Equal(ts.UpdatedAt.Truncate(Precision)))
-	assert.Same(t, time.UTC, ts.CreatedAt.Location())
-	assert.Same(t, time.UTC, ts.UpdatedAt.Location())
-
-	assert.True(t, beforeNew.Before(ts.CreatedAt) || beforeNew.Equal(ts.CreatedAt))
-	assert.True(t, beforeNew.Before(ts.UpdatedAt) || beforeNew.Equal(ts.UpdatedAt))
-	assert.True(t, afterNew.Equal(ts.CreatedAt) || afterNew.After(ts.CreatedAt))
-	assert.True(t, afterNew.Equal(ts.UpdatedAt) || afterNew.After(ts.UpdatedAt))
-	assert.True(t, ts.CreatedAt.Equal(ts.UpdatedAt))
+	for _, got := range []time.Time{ts.CreatedAt, ts.UpdatedAt} {
+		if got.Location() != time.UTC {
+			t.Errorf("New(): timezone should be UTC, got = %v", got.Location())
+		}
+		if !got.Equal(got.Truncate(Precision)) {
+			t.Errorf("New(): not truncated to %v, got = %v", Precision, got)
+		}
+		if got.Before(beforeNew) || got.After(afterNew) {
+			t.Errorf("New(): should be between %v and %v, got = %v", beforeNew, afterNew, got)
+		}
+	}
+	if diff := cmp.Diff(ts.CreatedAt, ts.UpdatedAt); diff != "" {
+		t.Errorf("New(): CreatedAt and UpdatedAt should be equal: (-CreatedAt, +UpdatedAt):\n%s", diff)
+	}
 }
 
 func TestTimestamps_TimeToProto(t *testing.T) {
 	t.Parallel()
-	var zero time.Time
-	assert.Nil(t, TimeToProto(zero))
-	n := time.Unix(423748110, 1).UTC()
-	p := TimeToProto(n)
-	if assert.NotNil(t, p) {
-		assert.Equal(t, n, p.AsTime())
+
+	testCases := []struct {
+		name string
+		time time.Time
+		want *timestamppb.Timestamp
+	}{
+		{
+			"Zero",
+			time.Time{},
+			nil},
+		{
+			"Non Zero",
+			time.Unix(423748110, 1).UTC(),
+			&timestamppb.Timestamp{
+				Seconds: 423748110,
+				Nanos:   1,
+			}},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := TimeToProto(tc.time)
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("TimeToProto() = (-want, +got):\n%s", diff)
+			}
+		})
 	}
 }
 
 func TestTimestamps_Update(t *testing.T) {
-	ts := New()
-	ocreated := ts.CreatedAt
-	oupdated := ts.UpdatedAt
-	osignature := ts.Signature
-	assert.NotNil(t, ts)
-	beforeUpdate := now()
+	testTime := time.Unix(123456, int64(42*Precision))
+	testUUID := uuid.MustParse("db94be80-e036-4ca8-a9c0-2259b8a67acc")
+
+	ts := Timestamps{
+		CreatedAt: testTime,
+		UpdatedAt: testTime,
+		Signature: testUUID,
+	}
+	beforeUpdate := time.Now()
 	ts.Update()
-	afterUpdate := now()
+	afterUpdate := time.Now()
 
-	assert.Same(t, time.UTC, ts.UpdatedAt.Location())
-
-	assert.True(t, ts.UpdatedAt.Equal(ts.UpdatedAt.Truncate(Precision)))
-
-	assert.True(t, ocreated.Equal(ts.CreatedAt))
-	assert.True(t, oupdated.Before(ts.UpdatedAt) || oupdated.Equal(ts.UpdatedAt))
-	assert.True(t, beforeUpdate.Before(ts.UpdatedAt) || beforeUpdate.Equal(ts.UpdatedAt))
-	assert.True(t, afterUpdate.Equal(ts.UpdatedAt) || afterUpdate.After(ts.UpdatedAt))
-	assert.NotEqual(t, osignature, ts.Signature)
+	if diff := cmp.Diff(testTime, ts.CreatedAt); diff != "" {
+		t.Errorf("Update() should not change CreatedAt, (-want, +got):\n%s", diff)
+	}
+	if got := ts.UpdatedAt.Location(); got != time.UTC {
+		t.Errorf("Update(): UpdatedAt should be in UTC, got = %v", got)
+	}
+	if ts.UpdatedAt.Before(beforeUpdate) || ts.UpdatedAt.After(afterUpdate) {
+		t.Errorf("Update(): UpdatedAt should be between %v and %v, got = %v", beforeUpdate, afterUpdate, ts.UpdatedAt)
+	}
+	if cmp.Equal(testUUID, ts.Signature) {
+		t.Errorf("Update() should update Signature, got = %v", ts.Signature)
+	}
 }
 
 func TestTimestamps_Save(t *testing.T) {
-	ts := New()
-	actual, err := ts.Save()
-	assert.NoError(t, err)
-	expected := []datastore.Property{
+	ts := Timestamps{
+		CreatedAt: time.Unix(123456, int64(42*Precision)),
+		UpdatedAt: time.Unix(1234567, int64(24*Precision)),
+		Signature: uuid.MustParse("db94be80-e036-4ca8-a9c0-2259b8a67acc"),
+	}
+	want := []datastore.Property{
 		{
 			Name:  "CreatedAt",
 			Value: ts.CreatedAt,
@@ -99,13 +132,20 @@ func TestTimestamps_Save(t *testing.T) {
 			NoIndex: true,
 		},
 	}
-	assert.Equal(t, expected, actual)
+	got, err := ts.Save()
+	if err != nil {
+		t.Errorf("Save() failed: %v", err)
+	}
+	if diff := cmp.Diff(want, got, cmpopts.SortSlices(func(x, y datastore.Property) bool { return x.Name < y.Name })); diff != "" {
+		t.Errorf("Save() = (-want, +got):\n%s", diff)
+	}
 }
 
 func TestTimestamps_Load(t *testing.T) {
-	createdAt := now()
-	updatedAt := createdAt.Add(time.Hour)
-	uuid := uuid.New()
+	createdAt := time.Unix(123456, int64(42*Precision))
+	updatedAt := time.Unix(1234567, int64(24*Precision))
+	testUUID := uuid.MustParse("db94be80-e036-4ca8-a9c0-2259b8a67acc")
+
 	properties := []datastore.Property{
 		{
 			Name:  "CreatedAt",
@@ -117,16 +157,20 @@ func TestTimestamps_Load(t *testing.T) {
 		},
 		{
 			Name:    "Signature",
-			Value:   uuid.String(),
+			Value:   testUUID.String(),
 			NoIndex: true,
 		},
 	}
-	var actual Timestamps
-	assert.NoError(t, actual.Load(properties))
-	expected := Timestamps{
+	var got Timestamps
+	if err := got.Load(properties); err != nil {
+		t.Errorf("Load() failed: %v", err)
+	}
+	want := Timestamps{
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
-		Signature: uuid,
+		Signature: testUUID,
 	}
-	assert.Equal(t, expected, actual)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Load() = (-want, +got):\n%s", diff)
+	}
 }

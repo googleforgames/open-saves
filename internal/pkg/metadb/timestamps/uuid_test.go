@@ -18,87 +18,124 @@ import (
 	"testing"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 const (
-	testName       = "test uuid name"
-	testNoIndex    = true
 	testUUIDString = "bd838bb3-27aa-4b8a-9b6d-14dc87e1a22b"
 )
 
 func TestUUID_UUIDToDatastoreProperty(t *testing.T) {
-	assert.Equal(t,
-		datastore.Property{
-			Name:    testName,
-			Value:   "",
-			NoIndex: testNoIndex,
-		},
-		UUIDToDatastoreProperty(testName, uuid.Nil, testNoIndex),
-		"UUIDToDatastoreProperty should return an empty string for a nil UUID.",
-	)
-
-	testUUID := uuid.MustParse(testUUIDString)
-	actual := UUIDToDatastoreProperty(testName, testUUID, testNoIndex)
-	assert.Equal(t, testUUIDString, actual.Value,
-		"UUIDToDatastoreProperty should return the input UUID in string.")
-}
-
-func TestUUID_LoadUUIDEmptyString(t *testing.T) {
-	// Returns codes.Internal for empty array
-	u, ps, err := LoadUUID(make([]datastore.Property, 0), testName)
-	assert.Equal(t, uuid.Nil, u, "LoadUUID should return uuid.Nil in case of errors.")
-	assert.Empty(t, ps, "LoadUUID should return the input Property array.")
-	assert.Equal(t, codes.Internal, status.Code(err),
-		"LoadUUID should return codes.Internal in case of errors.")
+	t.Parallel()
+	testCases := []struct {
+		name string
+		uuid uuid.UUID
+		want string
+	}{
+		{"Nil", uuid.Nil, ""},
+		{"Not Nil", uuid.MustParse(testUUIDString), testUUIDString},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			want := datastore.Property{
+				Name:    tc.name,
+				Value:   tc.want,
+				NoIndex: true,
+			}
+			got := UUIDToDatastoreProperty(tc.name, tc.uuid, true)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("UUIDToDatastoreProperty() = (-want, +got):\n%s", diff)
+			}
+		})
+	}
 }
 
 func TestUUID_LoadUUID(t *testing.T) {
-	// Returns uuid.Nil for empty string
-	u, ps, err := LoadUUID(
-		[]datastore.Property{
-			{
-				Name:  testName,
-				Value: "",
-			},
-		}, testName,
-	)
-	assert.Equal(t, uuid.Nil, u, "LoadUUID should return uuid.Nil for an empty string.")
-	assert.Empty(t, ps, "LoadUUID should remove the UUID Property from the input array.")
-	assert.NoError(t, err, "LoadUUID should not return error for an empty string.")
+	t.Parallel()
 
-	// Returns the parsed UUID
-	anotherProperty := datastore.Property{Name: "another property", Value: "another value"}
-	u, ps, err = LoadUUID(
-		[]datastore.Property{
-			anotherProperty,
-			{
-				Name:  testName,
-				Value: testUUIDString,
+	testUUID := uuid.MustParse(testUUIDString)
+	testCases := []struct {
+		name      string
+		props     []datastore.Property
+		wantCode  codes.Code
+		wantProps []datastore.Property
+		wantUUID  uuid.UUID
+	}{
+		{"empty array", []datastore.Property{}, codes.Internal, []datastore.Property{}, uuid.Nil},
+		{
+			"empty string",
+			[]datastore.Property{
+				{
+					Name:  "empty string",
+					Value: "",
+				},
 			},
-		}, testName,
-	)
-	assert.Equal(t, uuid.MustParse(testUUIDString), u,
-		"LoadUUID should return a parsed UUID of the input string.")
-	if assert.Len(t, ps, 1, "LoadUUID should return the remaining properties.") {
-		assert.Equal(t, anotherProperty, ps[0], "LoadUUID should return the remaining properties.")
+			codes.OK,
+			[]datastore.Property{},
+			uuid.Nil,
+		},
+		{
+			"malformed string",
+			[]datastore.Property{
+				{
+					Name:  "malformed string",
+					Value: "this is not UUID",
+				},
+			},
+			codes.Unknown, // TODO(yuryu): Unknown is probably not appropriate
+			[]datastore.Property{},
+			uuid.Nil,
+		},
+		{
+			"valid",
+			[]datastore.Property{
+				{
+					Name:    "valid",
+					Value:   testUUIDString,
+					NoIndex: true,
+				},
+			},
+			codes.OK,
+			[]datastore.Property{},
+			testUUID,
+		},
+		{
+			"valid with extra properties",
+			[]datastore.Property{
+				{
+					Name:    "valid with extra properties",
+					Value:   testUUIDString,
+					NoIndex: true,
+				},
+				{
+					Name: "unrelated",
+				},
+			},
+			codes.OK,
+			[]datastore.Property{
+				{
+					Name: "unrelated",
+				},
+			},
+			testUUID,
+		},
 	}
-	assert.NoError(t, err, "LoadUUID should not return error when successful.")
-}
 
-func TestUUID_LoadUUIDMalformedString(t *testing.T) {
-	u, ps, err := LoadUUID(
-		[]datastore.Property{
-			{
-				Name:  testName,
-				Value: "not a UUID",
-			},
-		}, testName,
-	)
-	assert.Equal(t, uuid.Nil, u, "LoadUUID should return uuid.Nil in case of parse errors.")
-	assert.Empty(t, ps, "LoadUUID should still remove the UUID property in case of parse errors.")
-	assert.Error(t, err, "LoadUUID should return a non-nil err in case of parse errors.")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uuid, ps, err := LoadUUID(tc.props, tc.name)
+			if got := status.Code(err); got != tc.wantCode {
+				t.Errorf("LoadUUID(): returned status code %v, want %v", got, tc.wantCode)
+			}
+			if !cmp.Equal(tc.wantUUID, uuid) {
+				t.Errorf("LoadUUID() uuid = want %v, got %v", tc.wantUUID, uuid)
+			}
+			if diff := cmp.Diff(tc.wantProps, ps); diff != "" {
+				t.Errorf("LoadUUID() props = (-want, +got):\n%s", diff)
+			}
+		})
+	}
 }
