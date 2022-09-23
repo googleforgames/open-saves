@@ -29,7 +29,7 @@ import (
 func TestTimestamps_NewTimestamps(t *testing.T) {
 	t.Parallel()
 
-	beforeNew := time.Now()
+	beforeNew := time.Now().Truncate(Precision)
 	ts := New()
 	afterNew := time.Now()
 
@@ -93,7 +93,7 @@ func TestTimestamps_Update(t *testing.T) {
 		UpdatedAt: testTime,
 		Signature: testUUID,
 	}
-	beforeUpdate := time.Now()
+	beforeUpdate := time.Now().Truncate(Precision)
 	ts.Update()
 	afterUpdate := time.Now()
 
