@@ -93,14 +93,16 @@ func (r *Record) Load(ps []datastore.Property) error {
 	// Initialize Properties because the default value is a nil map and there
 	// is no way to change it inside PropertyMap.Load().
 	r.Properties = make(PropertyMap)
-	err = datastore.LoadStruct(r, ps)
+	if err = datastore.LoadStruct(r, ps); err != nil {
+		return err
+	}
 
 	// Provide backward compatibility for older records (see commit #9981c24)
 	if r.NumberOfChunks > 0 && r.ChunkCount == 0 {
 		r.ChunkCount = r.NumberOfChunks
 	}
 
-	return err
+	return nil
 }
 
 // LoadKey implements the KeyLoader interface and sets the value to the Key and StoreKey fields.
