@@ -27,19 +27,20 @@ import (
 // Assert PropertyMap implements PropertyLoadSave.
 var _ datastore.PropertyLoadSaver = new(PropertyMap)
 
-// Record represents a Open Saves record in the metadata database.
+// Record represents an Open Saves record in the metadata database.
 // See the Open Saves API definition for details.
 type Record struct {
-	Key          string `datastore:"-"`
-	Blob         []byte `datastore:",noindex"`
-	BlobSize     int64
-	ExternalBlob uuid.UUID `datastore:"-"`
-	Chunked      bool
-	ChunkCount   int64
-	Properties   PropertyMap
-	OwnerID      string
-	Tags         []string
-	OpaqueString string `datastore:",noindex"`
+	Key            string `datastore:"-"`
+	Blob           []byte `datastore:",noindex"`
+	BlobSize       int64
+	ExternalBlob   uuid.UUID `datastore:"-"`
+	Chunked        bool
+	ChunkCount     int64
+	NumberOfChunks int64 // provide backward compatibility, will be phased out
+	Properties     PropertyMap
+	OwnerID        string
+	Tags           []string
+	OpaqueString   string `datastore:",noindex"`
 
 	// Checksums have checksums for inline blobs.
 	// Note that a BlobRef object doesn't exist for inline blobs.
@@ -92,7 +93,14 @@ func (r *Record) Load(ps []datastore.Property) error {
 	// Initialize Properties because the default value is a nil map and there
 	// is no way to change it inside PropertyMap.Load().
 	r.Properties = make(PropertyMap)
-	return datastore.LoadStruct(r, ps)
+	err = datastore.LoadStruct(r, ps)
+
+	// Provide backward compatibility for older records (see commit #9981c24)
+	if r.NumberOfChunks > 0 && r.ChunkCount == 0 {
+		r.ChunkCount = r.NumberOfChunks
+	}
+
+	return err
 }
 
 // LoadKey implements the KeyLoader interface and sets the value to the Key and StoreKey fields.

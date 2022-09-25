@@ -237,6 +237,208 @@ func TestRecord_Load(t *testing.T) {
 	assert.Equal(t, expected, record)
 }
 
+func TestRecord_Load_RecordWithNumberOfChunks(t *testing.T) {
+	externalBlobUUID := uuid.MustParse("e78cd2ea-1a9d-402a-80c2-f596fc5b9623")
+	externalBlobSize := int64(1024)
+	chunkCount := int64(12)
+	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
+	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	signature := uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6")
+	checksums := checksumstest.RandomChecksums(t)
+	properties := []datastore.Property{
+		{
+			Name:  "BlobSize",
+			Value: externalBlobSize,
+		},
+		{
+			Name:  "ExternalBlob",
+			Value: externalBlobUUID.String(),
+		},
+		{
+			Name:  "Chunked",
+			Value: true,
+		},
+		{
+			Name:  "OwnerID",
+			Value: "owner",
+		},
+		{
+			Name:  "OpaqueString",
+			Value: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		},
+		{
+			Name:  "Tags",
+			Value: []interface{}{"a", "b"},
+		},
+		{
+			Name:  "NumberOfChunks",
+			Value: chunkCount,
+		},
+		{
+			Name: "Properties",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "prop1",
+						Value: int64(42),
+					},
+					{
+						Name:  "prop2",
+						Value: "value",
+					},
+				},
+			},
+		},
+		{
+			Name: "Timestamps",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "CreatedAt",
+						Value: createdAt,
+					},
+					{
+						Name:  "UpdatedAt",
+						Value: updatedAt,
+					},
+					{
+						Name:  "Signature",
+						Value: signature.String(),
+					},
+				},
+			},
+		},
+	}
+	properties = append(properties, checksumstest.ChecksumsToProperties(t, checksums)...)
+	var record Record
+	if err := record.Load(properties); err != nil {
+		t.Fatalf("Load should not return an error: %v", err)
+	}
+	expected := Record{
+		Key:          "",
+		BlobSize:     externalBlobSize,
+		Chunked:      true,
+		ExternalBlob: externalBlobUUID,
+		Properties: PropertyMap{
+			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
+			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
+		},
+		OwnerID:        "owner",
+		OpaqueString:   "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		Tags:           []string{"a", "b"},
+		ChunkCount:     chunkCount,
+		NumberOfChunks: chunkCount,
+		Checksums:      checksums,
+		Timestamps: timestamps.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			Signature: signature,
+		},
+	}
+	assert.Equal(t, expected, record)
+}
+
+func TestRecord_Load_RecordWithChunkCount(t *testing.T) {
+	externalBlobUUID := uuid.MustParse("e78cd2ea-1a9d-402a-80c2-f596fc5b9623")
+	externalBlobSize := int64(1024)
+	chunkCount := int64(12)
+	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
+	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	signature := uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6")
+	checksums := checksumstest.RandomChecksums(t)
+	properties := []datastore.Property{
+		{
+			Name:  "BlobSize",
+			Value: externalBlobSize,
+		},
+		{
+			Name:  "ExternalBlob",
+			Value: externalBlobUUID.String(),
+		},
+		{
+			Name:  "Chunked",
+			Value: true,
+		},
+		{
+			Name:  "OwnerID",
+			Value: "owner",
+		},
+		{
+			Name:  "OpaqueString",
+			Value: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		},
+		{
+			Name:  "Tags",
+			Value: []interface{}{"a", "b"},
+		},
+		{
+			Name:  "ChunkCount",
+			Value: chunkCount,
+		},
+		{
+			Name: "Properties",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "prop1",
+						Value: int64(42),
+					},
+					{
+						Name:  "prop2",
+						Value: "value",
+					},
+				},
+			},
+		},
+		{
+			Name: "Timestamps",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "CreatedAt",
+						Value: createdAt,
+					},
+					{
+						Name:  "UpdatedAt",
+						Value: updatedAt,
+					},
+					{
+						Name:  "Signature",
+						Value: signature.String(),
+					},
+				},
+			},
+		},
+	}
+	properties = append(properties, checksumstest.ChecksumsToProperties(t, checksums)...)
+	var record Record
+	if err := record.Load(properties); err != nil {
+		t.Fatalf("Load should not return an error: %v", err)
+	}
+	expected := Record{
+		Key:          "",
+		BlobSize:     externalBlobSize,
+		Chunked:      true,
+		ExternalBlob: externalBlobUUID,
+		Properties: PropertyMap{
+			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
+			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
+		},
+		OwnerID:        "owner",
+		OpaqueString:   "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+		Tags:           []string{"a", "b"},
+		NumberOfChunks: 0,
+		ChunkCount:     chunkCount,
+		Checksums:      checksums,
+		Timestamps: timestamps.Timestamps{
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+			Signature: signature,
+		},
+	}
+	assert.Equal(t, expected, record)
+}
+
 func TestRecord_ToProtoSimple(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
