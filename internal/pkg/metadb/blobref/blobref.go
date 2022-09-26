@@ -71,6 +71,14 @@ func (b *BlobRef) Save() ([]datastore.Property, error) {
 // Load implements the Datastore PropertyLoadSaver interface and converts Datstore
 // properties to the Properties field.
 func (b *BlobRef) Load(ps []datastore.Property) error {
+	// Handle NumberOfChunks for backward compatibiliy.
+	for i, p := range ps {
+		if p.Name == "NumberOfChunks" {
+			ps[i].Name = "ChunkCount"
+			break
+		}
+	}
+
 	return datastore.LoadStruct(b, ps)
 }
 
@@ -84,10 +92,10 @@ func (b *BlobRef) LoadKey(k *datastore.Key) error {
 }
 
 // NewBlobRef creates a new BlobRef as follows:
-//	- Set a new UUID to Key
-//	- Initialize Size and ObjectName as specified
-//	- Set Status to BlobRefStatusInitializing
-//	- Set current time to Timestamps (both created and updated at)
+//   - Set a new UUID to Key
+//   - Initialize Size and ObjectName as specified
+//   - Set Status to BlobRefStatusInitializing
+//   - Set current time to Timestamps (both created and updated at)
 func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 	return &BlobRef{
 		Key:        uuid.New(),

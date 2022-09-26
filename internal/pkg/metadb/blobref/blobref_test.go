@@ -18,7 +18,10 @@ import (
 	"testing"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
@@ -104,53 +107,85 @@ func TestBlobRef_Save(t *testing.T) {
 }
 
 func TestBlobRef_Load(t *testing.T) {
-	const (
-		size       = int64(123)
-		objectName = "object name"
-		store      = "store"
-		record     = "record"
-		chunkCount = int64(551)
-	)
-	properties := []datastore.Property{
+	t.Parallel()
+
+	testCases := []struct {
+		name string
+		ps   []datastore.Property
+		want *BlobRef
+	}{
 		{
-			Name:  "Size",
-			Value: size,
+			name: "canonical",
+			ps: []datastore.Property{
+				{
+					Name:  "Size",
+					Value: int64(123),
+				},
+				{
+					Name:  "Status",
+					Value: int64(StatusReady),
+				},
+				{
+					Name:  "StoreKey",
+					Value: "store key",
+				},
+				{
+					Name:  "RecordKey",
+					Value: "record key",
+				},
+				{
+					Name:  "Chunked",
+					Value: true,
+				},
+				{
+					Name:  "ChunkCount",
+					Value: int64(551),
+				},
+			},
+			want: &BlobRef{
+				Size:       123,
+				Status:     StatusReady,
+				StoreKey:   "store key",
+				RecordKey:  "record key",
+				Chunked:    true,
+				ChunkCount: 551,
+				Checksums:  checksumstest.RandomChecksums(t),
+			},
 		},
 		{
-			Name:  "Status",
-			Value: int64(StatusReady),
-		},
-		{
-			Name:  "StoreKey",
-			Value: store,
-		},
-		{
-			Name:  "RecordKey",
-			Value: record,
-		},
-		{
-			Name:  "Chunked",
-			Value: true,
-		},
-		{
-			Name:  "ChunkCount",
-			Value: chunkCount,
+			name: "NumberOfChunks",
+			ps: []datastore.Property{
+				{
+					Name:  "Chunked",
+					Value: true,
+				},
+				{
+					Name:  "NumberOfChunks",
+					Value: int64(42),
+				},
+			},
+			want: &BlobRef{
+				Chunked:    true,
+				ChunkCount: 42,
+			},
 		},
 	}
-	expected := &BlobRef{
-		Size:       size,
-		Status:     StatusReady,
-		StoreKey:   store,
-		RecordKey:  record,
-		Chunked:    true,
-		ChunkCount: chunkCount,
-		Checksums:  checksumstest.RandomChecksums(t),
-	}
-	properties = append(properties, checksumstest.ChecksumsToProperties(t, expected.Checksums)...)
-	actual := new(BlobRef)
-	err := actual.Load(properties)
-	if assert.NoError(t, err) {
-		assert.Equal(t, expected, actual)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cs := checksumstest.RandomChecksums(t)
+			ps := append(tc.ps, checksumstest.ChecksumsToProperties(t, cs)...)
+			got := &BlobRef{}
+			if err := got.Load(ps); err != nil {
+				t.Errorf("Load() failed: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreTypes(checksums.Checksums{})); diff != "" {
+				t.Errorf("Load() = (-want, +got):\n%s", diff)
+			}
+			if diff := cmp.Diff(cs, got.Checksums); diff != "" {
+				t.Errorf("Load() Checksums = (-want, +got):\n%s", diff)
+			}
+		})
 	}
 }
 

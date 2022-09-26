@@ -83,6 +83,14 @@ func (r *Record) Save() ([]datastore.Property, error) {
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.
 func (r *Record) Load(ps []datastore.Property) error {
+	// Handle NumberOfChunks for backward compatibiliy.
+	for i, p := range ps {
+		if p.Name == "NumberOfChunks" {
+			ps[i].Name = "ChunkCount"
+			break
+		}
+	}
+
 	externalBlob, ps, err := timestamps.LoadUUID(ps, externalBlobPropertyName)
 	if err != nil {
 		return err
