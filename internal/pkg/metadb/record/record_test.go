@@ -148,6 +148,8 @@ func TestRecord_Save(t *testing.T) {
 }
 
 func TestRecord_Load(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name string
 		ps   []datastore.Property
