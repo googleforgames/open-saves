@@ -152,23 +152,6 @@ func TestBlobRef_Load(t *testing.T) {
 				Checksums:  checksumstest.RandomChecksums(t),
 			},
 		},
-		{
-			name: "NumberOfChunks",
-			ps: []datastore.Property{
-				{
-					Name:  "Chunked",
-					Value: true,
-				},
-				{
-					Name:  "NumberOfChunks",
-					Value: int64(42),
-				},
-			},
-			want: &BlobRef{
-				Chunked:    true,
-				ChunkCount: 42,
-			},
-		},
 	}
 
 	for _, tc := range testCases {
