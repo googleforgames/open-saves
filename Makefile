@@ -23,7 +23,7 @@ MOCKS_GENERATED = ${CACHE_MOCK}
 
 SERVER_BIN = ${BIN_DIR}/server
 COLLECTOR_BIN = ${BIN_DIR}/collector
-OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.gb \
+OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.go \
 	${API_DIR}/open_saves_grpc.pb.go
 REFERENCE_DOC = ${DOC_DIR}/reference.md
 ALL_TARGETS = ${SERVER_BIN} ${COLLECTOR_BIN} ${OPENSAVES_GO_PROTOS} \
