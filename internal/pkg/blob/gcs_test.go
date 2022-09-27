@@ -55,7 +55,7 @@ func TestGCS_GCPBucketSmokeTest(t *testing.T) {
 		t.Errorf("NewBlobGCP() failed: %v", err)
 	}
 	if gcs == nil {
-		t.Errorf("NewBlobGCP() should not return nil, got = %v", gcs)
+		t.Errorf("NewBlobGCP() = %v, want nil", gcs)
 	} else {
 		if err := gcs.Close(); err != nil {
 			t.Errorf("Close() failed: %v", err)
@@ -76,10 +76,10 @@ func TestGCS_PutGetDelete(t *testing.T) {
 	// Should return gcerrors.NotFound
 	got, err := gcs.Get(ctx, filePath)
 	if got != nil {
-		t.Errorf("Get() should return nil when object is not found, got = %v", got)
+		t.Errorf("Get() = %v, want nil", got)
 	}
 	if gcerrors.Code(err) != gcerrors.NotFound {
-		t.Errorf("Get() should return gcerrors.NotFound when object is not found, got = %v", err)
+		t.Errorf("Get() = %v, want gcerrors.NotFound", err)
 	}
 
 	if err := gcs.Put(ctx, filePath, []byte(testString)); err != nil {
@@ -101,18 +101,18 @@ func TestGCS_PutGetDelete(t *testing.T) {
 	// Check to see access to this file fails now that it has been deleted.
 	_, err = gcs.Get(ctx, filePath)
 	if gcerrors.Code(err) != gcerrors.NotFound {
-		t.Errorf("Get should return gcerrors.NotFound after object has been deleted, got = %v", err)
+		t.Errorf("Get() = %v, want = gcerrors.NotFound", err)
 	}
 
 	if err = gcs.Delete(ctx, filePath); gcerrors.Code(err) != gcerrors.NotFound {
-		t.Errorf("Delete should return gcerrors.NotFound when object is not found, got = %v", err)
+		t.Errorf("Delete() = %v, want gcerrors.NotFound", err)
 	}
 }
 
 func testReader(t *testing.T, name string, rd io.ReadCloser, b []byte) {
 	t.Run(name, func(t *testing.T) {
 		if rd == nil {
-			t.Fatalf("Reader should not be nil, got = %v", rd)
+			t.Fatalf("rd = %v, want non-nil", rd)
 		}
 		if err := iotest.TestReader(rd, b); err != nil {
 			t.Errorf("iotest.TestReader() failed: %v", err)
@@ -133,10 +133,10 @@ func TestGCS_SimpleStreamTests(t *testing.T) {
 
 	writer, err := gcs.NewWriter(ctx, filePath)
 	if writer == nil {
-		t.Fatalf("NewWriter(%q) should not return nil, got = %v", filePath, writer)
+		t.Fatalf("NewWriter(%q) = %v, want non-nil", filePath, writer)
 	}
 	if err != nil {
-		t.Fatalf("NewWriter(%q) should not fail, got = %v", filePath, err)
+		t.Fatalf("NewWriter(%q) failed: %v", filePath, err)
 	}
 
 	for _, tc := range []struct {
@@ -151,7 +151,7 @@ func TestGCS_SimpleStreamTests(t *testing.T) {
 				t.Errorf("Write() failed: %v", err)
 			}
 			if tc.want != got {
-				t.Errorf("Write() = want %v, got %v", tc.want, got)
+				t.Errorf("Write() = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -165,7 +165,7 @@ func TestGCS_SimpleStreamTests(t *testing.T) {
 	})
 
 	if reader, err := gcs.NewReader(ctx, filePath); err != nil {
-		t.Errorf("NewReader(%q) should not fail, got = %v", filePath, err)
+		t.Errorf("NewReader(%q) failed: %v", filePath, err)
 	} else {
 		testReader(t, "NewReader", reader, testBlob)
 	}
@@ -175,7 +175,7 @@ func TestGCS_SimpleStreamTests(t *testing.T) {
 		length = 5
 	)
 	if reader, err := gcs.NewRangeReader(ctx, filePath, offset, length); err != nil {
-		t.Errorf("NewRangeReader(%q, %q, %q) should not fail, got = %v", filePath, offset, length, err)
+		t.Errorf("NewRangeReader(%q, %q, %q) failed: %v", filePath, offset, length, err)
 	} else {
 		testReader(t, "NewRangeReader", reader, testBlob[offset:offset+length])
 	}
