@@ -71,16 +71,7 @@ func (b *BlobRef) Save() ([]datastore.Property, error) {
 // Load implements the Datastore PropertyLoadSaver interface and converts Datstore
 // properties to the Properties field.
 func (b *BlobRef) Load(ps []datastore.Property) error {
-        // ps_modified has been added to enable backward compatibility by creating 
-        // a new datastore array that replaces legacy "NumberOfChunks" with "ChunkCount". 
-        var ps_modified []datastore.Property
-        for _, p := range ps {
-                if p.Name == "NumberOfChunks" {
-                        p.Name = "ChunkCount"
-                }
-                ps_modified = append(ps_modified, p)
-        }
-	return datastore.LoadStruct(b, ps_modified)
+	return datastore.LoadStruct(b, ps)
 }
 
 // LoadKey implements the KeyLoader interface and sets the value to the Key field.

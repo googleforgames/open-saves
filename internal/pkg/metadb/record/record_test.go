@@ -19,8 +19,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
@@ -145,96 +148,156 @@ func TestRecord_Save(t *testing.T) {
 }
 
 func TestRecord_Load(t *testing.T) {
-	testBlob := []byte{0x24, 0x42, 0x11}
-	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
-	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
-	signature := uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6")
-	checksums := checksumstest.RandomChecksums(t)
-	properties := []datastore.Property{
+	testCases := []struct {
+		name string
+		ps   []datastore.Property
+		want *Record
+	}{
 		{
-			Name:  "Blob",
-			Value: testBlob,
-		},
-		{
-			Name:  "BlobSize",
-			Value: int64(len(testBlob)),
-		},
-		{
-			Name:  "ExternalBlob",
-			Value: "",
-		},
-		{
-			Name:  "OwnerID",
-			Value: "owner",
-		},
-		{
-			Name:  "OpaqueString",
-			Value: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-		},
-		{
-			Name:  "Tags",
-			Value: []interface{}{"a", "b"},
-		},
-		{
-			Name: "Properties",
-			Value: &datastore.Entity{
-				Properties: []datastore.Property{
-					{
-						Name:  "prop1",
-						Value: int64(42),
+			name: "canonical",
+			ps: []datastore.Property{
+				{
+					Name:  "Blob",
+					Value: []byte{0x24, 0x42, 0x11},
+				},
+				{
+					Name:  "BlobSize",
+					Value: int64(3),
+				},
+				{
+					Name:  "ExternalBlob",
+					Value: "",
+				},
+				{
+					Name:  "OwnerID",
+					Value: "owner",
+				},
+				{
+					Name:  "OpaqueString",
+					Value: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+				},
+				{
+					Name:  "Tags",
+					Value: []interface{}{"a", "b"},
+				},
+				{
+					Name: "Properties",
+					Value: &datastore.Entity{
+						Properties: []datastore.Property{
+							{
+								Name:  "prop1",
+								Value: int64(42),
+							},
+							{
+								Name:  "prop2",
+								Value: "value",
+							},
+						},
 					},
-					{
-						Name:  "prop2",
-						Value: "value",
+				},
+				{
+					Name: "Timestamps",
+					Value: &datastore.Entity{
+						Properties: []datastore.Property{
+							{
+								Name:  "CreatedAt",
+								Value: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+							},
+							{
+								Name:  "UpdatedAt",
+								Value: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+							},
+							{
+								Name:  "Signature",
+								Value: "397F94F5-F851-4969-8BD8-7828ABC473A6",
+							},
+						},
 					},
+				},
+			},
+			want: &Record{
+				Key:          "",
+				Blob:         []byte{0x24, 0x42, 0x11},
+				BlobSize:     int64(3),
+				ExternalBlob: uuid.Nil,
+				Properties: PropertyMap{
+					"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
+					"prop2": {Type: pb.Property_STRING, StringValue: "value"},
+				},
+				OwnerID:      "owner",
+				OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+				Tags:         []string{"a", "b"},
+				Timestamps: timestamps.Timestamps{
+					CreatedAt: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+					Signature: uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6"),
 				},
 			},
 		},
 		{
-			Name: "Timestamps",
-			Value: &datastore.Entity{
-				Properties: []datastore.Property{
-					{
-						Name:  "CreatedAt",
-						Value: createdAt,
-					},
-					{
-						Name:  "UpdatedAt",
-						Value: updatedAt,
-					},
-					{
-						Name:  "Signature",
-						Value: signature.String(),
-					},
+			name: "chunked",
+			ps: []datastore.Property{
+				{
+					Name:  "ChunkCount",
+					Value: int64(123),
 				},
+				{
+					Name:  "Chunked",
+					Value: true,
+				},
+				{
+					Name:  "ExternalBlob",
+					Value: "397F94F5-F851-4969-8BD8-7828ABC473A6",
+				},
+			},
+			want: &Record{
+				ChunkCount:   123,
+				Chunked:      true,
+				ExternalBlob: uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6"),
+				Properties:   PropertyMap{},
+			},
+		},
+		{
+			name: "NumberOfChunks",
+			ps: []datastore.Property{
+				{
+					Name:  "NumberOfChunks",
+					Value: int64(42),
+				},
+				{
+					Name:  "Chunked",
+					Value: true,
+				},
+				{
+					Name:  "ExternalBlob",
+					Value: "397F94F5-F851-4969-8BD8-7828ABC473A6",
+				},
+			},
+			want: &Record{
+				ChunkCount:   42,
+				Chunked:      true,
+				ExternalBlob: uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6"),
+				Properties:   PropertyMap{},
 			},
 		},
 	}
-	properties = append(properties, checksumstest.ChecksumsToProperties(t, checksums)...)
-	var record Record
-	if err := record.Load(properties); err != nil {
-		t.Fatalf("Load should not return an error: %v", err)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cs := checksumstest.RandomChecksums(t)
+			ps := append(tc.ps, checksumstest.ChecksumsToProperties(t, cs)...)
+			got := &Record{}
+			if err := got.Load(ps); err != nil {
+				t.Errorf("Load() failed: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreTypes(checksums.Checksums{})); diff != "" {
+				t.Errorf("Load() = (-want, +got):\n%s", diff)
+			}
+			if diff := cmp.Diff(cs, got.Checksums); diff != "" {
+				t.Errorf("Load() Checksums = (-want, +got):\n%s", diff)
+			}
+		})
 	}
-	expected := Record{
-		Key:          "",
-		Blob:         testBlob,
-		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: uuid.Nil,
-		Properties: PropertyMap{
-			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
-			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
-		},
-		OwnerID:      "owner",
-		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-		Tags:         []string{"a", "b"},
-		Checksums:    checksums,
-		Timestamps: timestamps.Timestamps{
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
-			Signature: signature,
-		},
-	}
-	assert.Equal(t, expected, record)
 }
 
 func TestRecord_ToProtoSimple(t *testing.T) {
