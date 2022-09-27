@@ -16,63 +16,104 @@ package blobref
 
 import (
 	"testing"
+	"time"
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
-	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestBlobRef_New(t *testing.T) {
-	const (
-		store      = "store"
-		record     = "record"
-		chunkCount = int64(42)
-	)
+	t.Parallel()
 
-	b := NewChunkedBlobRef(store, record, chunkCount)
-	if assert.NotNil(t, b) {
-		assert.Equal(t, store, b.StoreKey)
-		assert.Equal(t, record, b.RecordKey)
-		assert.NotEqual(t, uuid.Nil, b.Key)
-		assert.Equal(t, chunkCount, b.ChunkCount)
+	want := &BlobRef{
+		StoreKey:   "store",
+		RecordKey:  "record",
+		ChunkCount: 42,
+		Status:     StatusInitializing,
+		Chunked:    true,
+	}
+	got := NewChunkedBlobRef("store", "record", 42)
+	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(BlobRef{}, "Key", "Timestamps")); diff != "" {
+		t.Errorf("NewChunkedBlobRef() = (-want, +got):\n%s", diff)
+	}
+	if got.Key == uuid.Nil {
+		t.Errorf("NewChunkedBlobRef() should set Key, got = %v", got.Key.String())
 	}
 }
 
 func TestBlobRef_LoadKey(t *testing.T) {
-	key := uuid.MustParse("d13c289c-8845-485f-b582-c87342d5dade")
-	blob := new(BlobRef)
-	assert.NoError(t, blob.LoadKey(datastore.NameKey("blob", key.String(), nil)))
-	assert.Equal(t, key, blob.Key)
+	t.Parallel()
+
+	testCases := []struct {
+		name    string
+		key     string
+		want    BlobRef
+		wantErr bool
+	}{
+		{
+			"valid",
+			"d13c289c-8845-485f-b582-c87342d5dade",
+			BlobRef{Key: uuid.MustParse("d13c289c-8845-485f-b582-c87342d5dade")},
+			false,
+		},
+		{
+			"invalid",
+			"not valid",
+			BlobRef{},
+			true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(t.Name(), func(t *testing.T) {
+			got := BlobRef{}
+			err := got.LoadKey(datastore.NameKey("blob", tc.key, nil))
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("LoadKey() should return error, got = %v", err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("LoadKey() should succeed, got = %v", err)
+				}
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("LoadKey() = (-want, +got):\n%s", diff)
+			}
+		})
+	}
 }
 
 func TestBlobRef_Save(t *testing.T) {
-	const (
-		size       = int64(123)
-		objectName = "object name"
-		store      = "store"
-		record     = "record"
-		chunkCount = int64(42)
-	)
+	t.Parallel()
 
 	blob := BlobRef{
-		Size:       size,
+		Size:       123,
 		Status:     StatusInitializing,
-		StoreKey:   store,
-		RecordKey:  record,
-		ChunkCount: chunkCount,
-		Checksums:  checksumstest.RandomChecksums(t),
-		Timestamps: timestamps.New(),
+		StoreKey:   "store",
+		RecordKey:  "record",
+		ChunkCount: 42,
+		Checksums: checksums.Checksums{
+			MD5:       []byte{0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e},
+			CRC32C:    0x307ABEB0,
+			HasCRC32C: true,
+		},
+		Timestamps: timestamps.Timestamps{
+			CreatedAt: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+			UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+			Signature: uuid.MustParse("397f94f5-f851-4969-8bd8-7828abc473a6"),
+		},
 	}
 
-	expected := []datastore.Property{
+	want := []datastore.Property{
 		{
 			Name:  "Size",
-			Value: size,
+			Value: int64(123),
 		},
 		{
 			Name:  "Status",
@@ -80,11 +121,11 @@ func TestBlobRef_Save(t *testing.T) {
 		},
 		{
 			Name:  "StoreKey",
-			Value: store,
+			Value: "store",
 		},
 		{
 			Name:  "RecordKey",
-			Value: record,
+			Value: "record",
 		},
 		{
 			Name:  "Chunked",
@@ -92,17 +133,50 @@ func TestBlobRef_Save(t *testing.T) {
 		},
 		{
 			Name:  "ChunkCount",
-			Value: chunkCount,
+			Value: int64(42),
+		},
+		{
+			Name:    "MD5",
+			Value:   []byte{0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e},
+			NoIndex: true,
+		},
+		{
+			Name:    "CRC32C",
+			Value:   int64(0x307ABEB0),
+			NoIndex: true,
+		},
+		{
+			Name:    "HasCRC32C",
+			Value:   true,
+			NoIndex: true,
+		},
+		{
+			Name: "Timestamps",
+			Value: &datastore.Entity{
+				Properties: []datastore.Property{
+					{
+						Name:  "CreatedAt",
+						Value: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+					},
+					{
+						Name:  "UpdatedAt",
+						Value: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+					},
+					{
+						Name:    "Signature",
+						Value:   "397f94f5-f851-4969-8bd8-7828abc473a6",
+						NoIndex: true,
+					},
+				},
+			},
 		},
 	}
-	actual, err := blob.Save()
-	assert.NoError(t, err)
-	if assert.NotNil(t, actual) {
-		assert.Equal(t, expected, actual[:len(expected)])
-		if assert.Equal(t, len(expected)+3+1, len(actual)) {
-			checksumstest.AssertPropertyListMatch(t, blob.Checksums, actual[len(expected):len(expected)+3])
-			assert.Equal(t, "Timestamps", actual[len(expected)+3].Name)
-		}
+	got, err := blob.Save()
+	if err != nil {
+		t.Errorf("Save() failed: %v", err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Save() = (-want, +got):\n%s", diff)
 	}
 }
 
@@ -141,6 +215,41 @@ func TestBlobRef_Load(t *testing.T) {
 					Name:  "ChunkCount",
 					Value: int64(551),
 				},
+				{
+					Name:    "MD5",
+					Value:   []byte{0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e},
+					NoIndex: true,
+				},
+				{
+					Name:    "CRC32C",
+					Value:   int64(0x307ABEB0),
+					NoIndex: true,
+				},
+				{
+					Name:    "HasCRC32C",
+					Value:   true,
+					NoIndex: true,
+				},
+				{
+					Name: "Timestamps",
+					Value: &datastore.Entity{
+						Properties: []datastore.Property{
+							{
+								Name:  "CreatedAt",
+								Value: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+							},
+							{
+								Name:  "UpdatedAt",
+								Value: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+							},
+							{
+								Name:    "Signature",
+								Value:   "397f94f5-f851-4969-8bd8-7828abc473a6",
+								NoIndex: true,
+							},
+						},
+					},
+				},
 			},
 			want: &BlobRef{
 				Size:       123,
@@ -149,54 +258,73 @@ func TestBlobRef_Load(t *testing.T) {
 				RecordKey:  "record key",
 				Chunked:    true,
 				ChunkCount: 551,
-				Checksums:  checksumstest.RandomChecksums(t),
+				Checksums: checksums.Checksums{
+					MD5:       []byte{0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e},
+					CRC32C:    0x307ABEB0,
+					HasCRC32C: true,
+				},
+				Timestamps: timestamps.Timestamps{
+					CreatedAt: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+					Signature: uuid.MustParse("397f94f5-f851-4969-8bd8-7828abc473a6"),
+				},
 			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cs := checksumstest.RandomChecksums(t)
-			ps := append(tc.ps, checksumstest.ChecksumsToProperties(t, cs)...)
 			got := &BlobRef{}
-			if err := got.Load(ps); err != nil {
+			if err := got.Load(tc.ps); err != nil {
 				t.Errorf("Load() failed: %v", err)
 			}
-			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreTypes(checksums.Checksums{})); diff != "" {
+			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Load() = (-want, +got):\n%s", diff)
-			}
-			if diff := cmp.Diff(cs, got.Checksums); diff != "" {
-				t.Errorf("Load() Checksums = (-want, +got):\n%s", diff)
 			}
 		})
 	}
 }
 
 func TestBlobRef_GetObjectPath(t *testing.T) {
-	blob := NewBlobRef(0, "", "")
+	t.Parallel()
 
-	assert.Equal(t, blob.Key.String(), blob.ObjectPath())
+	const want = "1ddbad65-d5f4-4d7f-9756-ce6a6339b6b8"
+	blob := BlobRef{
+		Key: uuid.MustParse(want),
+	}
+	if got := blob.ObjectPath(); got != want {
+		t.Errorf("ObjectPath() = %v, want = %v", got, want)
+	}
 }
 
 func TestBlobRef_ToProto(t *testing.T) {
-	const (
-		size       = int64(123)
-		store      = "store"
-		record     = "record"
-		chunkCount = int64(42)
-	)
-	b := NewChunkedBlobRef(store, record, chunkCount)
-	b.Checksums = checksumstest.RandomChecksums(t)
-	b.Size = size
-	b.ChunkCount = chunkCount
+	t.Parallel()
 
-	proto := b.ToProto()
-	if assert.NotNil(t, proto) {
-		assert.Equal(t, b.StoreKey, proto.GetStoreKey())
-		assert.Equal(t, b.RecordKey, proto.GetRecordKey())
-		assert.Equal(t, b.Size, proto.GetSize())
-		assert.True(t, b.Chunked)
-		assert.Equal(t, b.ChunkCount, chunkCount)
-		checksumstest.AssertProtoEqual(t, b.Checksums, proto)
+	blob := BlobRef{
+		Size:       123,
+		Status:     StatusReady,
+		StoreKey:   "store key",
+		RecordKey:  "record key",
+		Chunked:    true,
+		ChunkCount: 551,
+		Checksums: checksums.Checksums{
+			MD5:       []byte{0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e},
+			CRC32C:    0x307ABEB0,
+			HasCRC32C: true,
+		},
+	}
+	want := &pb.BlobMetadata{
+		StoreKey:   "store key",
+		RecordKey:  "record key",
+		Size:       123,
+		Chunked:    true,
+		ChunkCount: 551,
+		Crc32C:     0x307ABEB0,
+		HasCrc32C:  true,
+		Md5:        []byte{0xd4, 0x1d, 0x8c, 0xd9, 0x8f, 0x00, 0xb2, 0x04, 0xe9, 0x80, 0x09, 0x98, 0xec, 0xf8, 0x42, 0x7e},
+	}
+	got := blob.ToProto()
+	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+		t.Errorf("ToProto() = (-want, +got):\n%s", diff)
 	}
 }
