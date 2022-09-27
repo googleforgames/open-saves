@@ -16,11 +16,12 @@ package blob
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"testing"
 	"testing/iotest"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/google/go-cmp/cmp"
 	_ "gocloud.dev/blob/memblob"
 	"gocloud.dev/gcerrors"
 )
@@ -29,33 +30,44 @@ import (
 // It provides the same interface and serves as a mock.
 const testBucket = "mem://"
 
-func getBucket(ctx context.Context, t *testing.T) *BlobGCP {
+func mustGetBucket(ctx context.Context, t *testing.T) *BlobGCP {
 	t.Helper()
 
 	gcs, err := NewBlobGCP(ctx, testBucket)
 	if err != nil {
 		t.Fatalf("Initializing bucket error: %v", err)
 	}
-	t.Cleanup(func() { assert.NoError(t, gcs.Close(), "Close should not fail.") })
+	t.Cleanup(func() {
+		if err := gcs.Close(); err != nil {
+			t.Errorf("Close() failed: %v", err)
+		}
+	})
 	return gcs
 }
 
 // Test that the gs:// url works.
-func TestGCS_OpenBucket(t *testing.T) {
+func TestGCS_GCPBucketSmokeTest(t *testing.T) {
 	t.Parallel()
 
 	// Any bucket name works as it doesn't actually send requests.
 	gcs, err := NewBlobGCP(context.Background(), "gs://bucket")
-	assert.NotNil(t, gcs)
-	assert.NoError(t, err)
-	assert.NoError(t, gcs.Close())
+	if err != nil {
+		t.Errorf("NewBlobGCP() failed: %v", err)
+	}
+	if gcs == nil {
+		t.Errorf("NewBlobGCP() should not return nil, got = %v", gcs)
+	} else {
+		if err := gcs.Close(); err != nil {
+			t.Errorf("Close() failed: %v", err)
+		}
+	}
 }
 
 func TestGCS_PutGetDelete(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	gcs := getBucket(ctx, t)
+	gcs := mustGetBucket(ctx, t)
 	const (
 		filePath   = "get.txt"
 		testString = "hello world"
@@ -63,69 +75,108 @@ func TestGCS_PutGetDelete(t *testing.T) {
 
 	// Should return gcerrors.NotFound
 	got, err := gcs.Get(ctx, filePath)
-	assert.Nil(t, got, "Get should return nil when object is not found.")
-	assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err),
-		"Get should return gcerrors.NotFound when object is not found.")
+	if got != nil {
+		t.Errorf("Get() should return nil when object is not found, got = %v", got)
+	}
+	if gcerrors.Code(err) != gcerrors.NotFound {
+		t.Errorf("Get() should return gcerrors.NotFound when object is not found, got = %v", err)
+	}
 
-	err = gcs.Put(ctx, filePath, []byte(testString))
-	assert.NoError(t, err, "Put should not return error.")
+	if err := gcs.Put(ctx, filePath, []byte(testString)); err != nil {
+		t.Errorf("Put() failed: %v", err)
+	}
 
 	got, err = gcs.Get(ctx, filePath)
-	assert.NoError(t, err, "Get should not return error.")
-	assert.Equal(t, []byte(testString), got, "Get should return the content of the object.")
+	if err != nil {
+		t.Errorf("Get() failed: %v", err)
+	}
+	if diff := cmp.Diff([]byte(testString), got); diff != "" {
+		t.Errorf("Get() = (-want, +got):\n%s", got)
+	}
 
-	err = gcs.Delete(ctx, filePath)
-	assert.NoError(t, err, "Delete should not return error.")
+	if err := gcs.Delete(ctx, filePath); err != nil {
+		t.Errorf("Delete() failed: %v", err)
+	}
 
 	// Check to see access to this file fails now that it has been deleted.
-	got, err = gcs.Get(ctx, filePath)
-	assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err),
-		"Get should return gcerrors.NotFound after object has been deleted.")
+	_, err = gcs.Get(ctx, filePath)
+	if gcerrors.Code(err) != gcerrors.NotFound {
+		t.Errorf("Get should return gcerrors.NotFound after object has been deleted, got = %v", err)
+	}
 
-	err = gcs.Delete(ctx, filePath)
-	assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err),
-		"Delete should return gcerrors.NotFound when object is not found.")
+	if err = gcs.Delete(ctx, filePath); gcerrors.Code(err) != gcerrors.NotFound {
+		t.Errorf("Delete should return gcerrors.NotFound when object is not found, got = %v", err)
+	}
+}
+
+func testReader(t *testing.T, name string, rd io.ReadCloser, b []byte) {
+	t.Run(name, func(t *testing.T) {
+		if rd == nil {
+			t.Fatalf("Reader should not be nil, got = %v", rd)
+		}
+		if err := iotest.TestReader(rd, b); err != nil {
+			t.Errorf("iotest.TestReader() failed: %v", err)
+		}
+		if err := rd.Close(); err != nil {
+			t.Errorf("reader.Close() failed: %v", err)
+		}
+	})
 }
 
 func TestGCS_SimpleStreamTests(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	gcs := getBucket(ctx, t)
+	gcs := mustGetBucket(ctx, t)
 	const filePath = "simple-stream-tests.txt"
 	testBlob := []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit")
 
 	writer, err := gcs.NewWriter(ctx, filePath)
-	require.NotNilf(t, writer, "NewWriter(%q) should not return nil.", filePath)
-	require.NoErrorf(t, err, "NewWriter(%q) should not return error.", filePath)
+	if writer == nil {
+		t.Fatalf("NewWriter(%q) should not return nil, got = %v", filePath, writer)
+	}
+	if err != nil {
+		t.Fatalf("NewWriter(%q) should not fail, got = %v", filePath, err)
+	}
 
-	n, err := writer.Write(testBlob[:10])
-	assert.NoError(t, err)
-	assert.Equal(t, 10, n)
-	n, err = writer.Write(testBlob[10:])
-	assert.NoError(t, err)
-	assert.Equal(t, len(testBlob)-10, n)
-	err = writer.Close()
-	require.NoError(t, err, "writer.Close should not return error.")
-	t.Cleanup(func() { assert.NoError(t, gcs.Delete(ctx, filePath)) })
+	for _, tc := range []struct {
+		start, end, want int
+	}{
+		{0, 10, 10},
+		{10, len(testBlob), len(testBlob) - 10},
+	} {
+		t.Run(fmt.Sprintf("Write [%v:%v]", tc.start, tc.end), func(t *testing.T) {
+			got, err := writer.Write(testBlob[tc.start:tc.end])
+			if err != nil {
+				t.Errorf("Write() failed: %v", err)
+			}
+			if tc.want != got {
+				t.Errorf("Write() = want %v, got %v", tc.want, got)
+			}
+		})
+	}
+	if err := writer.Close(); err != nil {
+		t.Errorf("writer.Close() failed: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := gcs.Delete(ctx, filePath); err != nil {
+			t.Errorf("Delete() failed: %v", err)
+		}
+	})
 
-	reader, err := gcs.NewReader(ctx, filePath)
-	require.NotNilf(t, writer, "NewReader(%q) should not return nil.", filePath)
-	require.NoErrorf(t, err, "NewReader(%q) should not return error.", filePath)
-
-	err = iotest.TestReader(reader, testBlob)
-	assert.NoError(t, err, "TestReader should not return error.")
-	assert.NoError(t, reader.Close())
+	if reader, err := gcs.NewReader(ctx, filePath); err != nil {
+		t.Errorf("NewReader(%q) should not fail, got = %v", filePath, err)
+	} else {
+		testReader(t, "NewReader", reader, testBlob)
+	}
 
 	const (
 		offset = 3
 		length = 5
 	)
-	rangeReader, err := gcs.NewRangeReader(ctx, filePath, offset, length)
-	require.NotNilf(t, rangeReader, "NewRangeReader(%q, %q, %q) should not return nil.", filePath, offset, length)
-	require.NoErrorf(t, err, "NewRangeReader(%q, %q, %q) should not error.", filePath, offset, length)
-
-	iotest.TestReader(rangeReader, testBlob[offset:offset+length])
-	assert.NoError(t, err, "TestReader should not return error.")
-	assert.NoError(t, rangeReader.Close())
+	if reader, err := gcs.NewRangeReader(ctx, filePath, offset, length); err != nil {
+		t.Errorf("NewRangeReader(%q, %q, %q) should not fail, got = %v", filePath, offset, length, err)
+	} else {
+		testReader(t, "NewRangeReader", reader, testBlob[offset:offset+length])
+	}
 }
