@@ -16,60 +16,116 @@ package blobref
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestStatus_LifeCycle(t *testing.T) {
-	status := StatusInitializing
+func TestStatus_Ready(t *testing.T) {
+	testCases := []struct {
+		name    string
+		start   Status
+		want    Status
+		wantErr error
+	}{
+		{
+			name:    "StatusInitializing",
+			start:   StatusInitializing,
+			want:    StatusReady,
+			wantErr: nil,
+		},
+		{
+			name:    "StatusPendingDeletion",
+			start:   StatusPendingDeletion,
+			want:    StatusPendingDeletion,
+			wantErr: ErrReadyNotInitializing,
+		},
+		{
+			name:    "StatusReady",
+			start:   StatusReady,
+			want:    StatusReady,
+			wantErr: ErrReadyNotInitializing,
+		},
+		{
+			name:    "StatusError",
+			start:   StatusError,
+			want:    StatusError,
+			wantErr: ErrReadyNotInitializing,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.start
+			if err := got.Ready(); err != tc.wantErr {
+				t.Errorf("Ready() returned %v, want = %v", got, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("Ready() changed status to %v, want = %v", got, tc.want)
+			}
+		})
+	}
+}
 
-	// Mark for deletion
-	assert.NoError(t, status.MarkForDeletion())
-	assert.Equal(t, StatusPendingDeletion, status)
-
-	// Start over
-	status = StatusInitializing
-
-	// Ready
-	assert.NoError(t, status.Ready())
-	assert.Equal(t, StatusReady, status)
-
-	// Invalid transitions
-	assert.Error(t, status.Ready())
-
-	// Mark for deletion
-	assert.NoError(t, status.MarkForDeletion())
-	assert.Equal(t, StatusPendingDeletion, status)
-
-	// Invalid transitions
-	assert.Error(t, status.MarkForDeletion())
-	assert.Error(t, status.Ready())
+func TestStatus_MarkForDeletion(t *testing.T) {
+	testCases := []struct {
+		name    string
+		start   Status
+		want    Status
+		wantErr error
+	}{
+		{
+			name:    "StatusInitializing",
+			start:   StatusInitializing,
+			want:    StatusPendingDeletion,
+			wantErr: nil,
+		},
+		{
+			name:    "StatusPendingDeletion",
+			start:   StatusPendingDeletion,
+			want:    StatusPendingDeletion,
+			wantErr: ErrMarkForDeletionNotReady,
+		},
+		{
+			name:    "StatusReady",
+			start:   StatusReady,
+			want:    StatusPendingDeletion,
+			wantErr: nil,
+		},
+		{
+			name:    "StatusError",
+			start:   StatusError,
+			want:    StatusError,
+			wantErr: ErrMarkForDeletionNotReady,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.start
+			if err := got.MarkForDeletion(); err != tc.wantErr {
+				t.Errorf("MarkForDeletion() returned %v, want = %v", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("MarkForDeletion() changed status to %v, want = %v", got, tc.want)
+			}
+		})
+	}
 }
 
 func TestStatus_Fail(t *testing.T) {
-	status := StatusUnknown
-
-	// Fail should work for BlobStatusUnknown too.
-	status.Fail()
-	assert.Equal(t, StatusError, status)
-
-	status = StatusInitializing
-	status.Fail()
-	assert.Equal(t, StatusError, status)
-
-	status = StatusInitializing
-	status.Fail()
-	assert.Equal(t, StatusError, status)
-
-	status = StatusPendingDeletion
-	status.Fail()
-	assert.Equal(t, StatusError, status)
-
-	status = StatusReady
-	status.Fail()
-	assert.Equal(t, StatusError, status)
-
-	status = StatusError
-	status.Fail()
-	assert.Equal(t, StatusError, status)
+	testCases := []struct {
+		name string
+		s    Status
+	}{
+		{"StatusUnknown", StatusUnknown}, // Fail should work for BlobStatusUnknown too.
+		{"StatusInitializing", StatusInitializing},
+		{"StatusPendingDeletion", StatusPendingDeletion},
+		{"StatusReady", StatusReady},
+		{"StatusError", StatusError},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.s
+			got.Fail()
+			if got != StatusError {
+				t.Errorf("Fail() should set StatusError, got = %v", got)
+			}
+		})
+	}
 }

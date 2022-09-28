@@ -84,10 +84,10 @@ func (b *BlobRef) LoadKey(k *datastore.Key) error {
 }
 
 // NewBlobRef creates a new BlobRef as follows:
-//	- Set a new UUID to Key
-//	- Initialize Size and ObjectName as specified
-//	- Set Status to BlobRefStatusInitializing
-//	- Set current time to Timestamps (both created and updated at)
+//   - Set a new UUID to Key
+//   - Initialize Size and ObjectName as specified
+//   - Set Status to BlobRefStatusInitializing
+//   - Set current time to Timestamps (both created and updated at)
 func NewBlobRef(size int64, storeKey, recordKey string) *BlobRef {
 	return &BlobRef{
 		Key:        uuid.New(),
