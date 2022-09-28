@@ -535,7 +535,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		t.Errorf("GetBlobRef() failed: %v", err)
 	} else {
 		if diff := cmp.Diff(blob, blob2, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("InsertBlobRef() = (-want, +got):\n%s", diff)
+			t.Errorf("GetBlobRef() = (-want, +got):\n%s", diff)
 		}
 	}
 
