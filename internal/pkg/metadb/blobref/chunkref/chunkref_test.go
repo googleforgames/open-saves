@@ -18,11 +18,11 @@ import (
 	"testing"
 
 	"cloud.google.com/go/datastore"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
 )
@@ -99,8 +99,8 @@ func TestChunkRef_EncodeDecodeBytes(t *testing.T) {
 	if err := decoded.DecodeBytes(encoded); err != nil {
 		t.Fatalf("DecodeBytes failed with error: %v", err)
 	}
-	if assert.NotNil(t, decoded) {
-		metadbtest.AssertEqualChunkRef(t, c, decoded)
+	if diff := cmp.Diff(c, decoded); diff != "" {
+		t.Errorf("DecodeBytes() = (-want, +got):\n%s", diff)
 	}
 }
 
