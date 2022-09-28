@@ -15,14 +15,17 @@
 package blobref
 
 import (
+	"errors"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCursor_NextOnNil(t *testing.T) {
 	var c BlobRefCursor
-	b, err := c.Next()
-	assert.Nil(t, b)
-	assert.ErrorIs(t, ErrIteratorNil, err)
+	got, err := c.Next()
+	if !errors.Is(err, ErrIteratorNil) {
+		t.Errorf("Next() returned %v, want ErrIteratorNil", err)
+	}
+	if got != nil {
+		t.Errorf("Next() returned %v, want nil", got)
+	}
 }

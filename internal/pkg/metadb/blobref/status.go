@@ -18,19 +18,20 @@ import "errors"
 
 // Status represents a current blob status.
 //
-// Life of a Blob
+// # Life of a Blob
 //
 // [New Record created] --> [new Status entity with StatusInitializing]
-//                         /               \
-//                        / fail            \  success
-//                       v                   v
-//                [StatusError]            [StatusReady]
-//                       |       x            |
-//      Upload new blob  |        \ fail      | Record deleted or new blob uploaded
-//            or         |         \          v
-//     delete the record |          -------[StatusPendingDeletion]
-//                       v                  /
-//  [Delete the blob entity] <-------------/   Garbage collection
+//
+//	                       /               \
+//	                      / fail            \  success
+//	                     v                   v
+//	              [StatusError]            [StatusReady]
+//	                     |       x            |
+//	    Upload new blob  |        \ fail      | Record deleted or new blob uploaded
+//	          or         |         \          v
+//	   delete the record |          -------[StatusPendingDeletion]
+//	                     v                  /
+//	[Delete the blob entity] <-------------/   Garbage collection
 type Status int16
 
 const (
@@ -66,7 +67,7 @@ func (s *Status) Ready() error {
 }
 
 // MarkForDeletion marks the Status as StatusPendingDeletion.
-// Returns an error if the current Status is not StatusReady.
+// Returns an error if the current Status is not StatusInitializing or StatusReady.
 func (s *Status) MarkForDeletion() error {
 	if *s != StatusInitializing && *s != StatusReady {
 		return ErrMarkForDeletionNotReady
