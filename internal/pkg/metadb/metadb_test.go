@@ -16,6 +16,7 @@ package metadb_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -28,7 +29,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/metadbtest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -61,7 +61,7 @@ const testTimestampThreshold = 30 * time.Second
 func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
 	client, err := datastore.NewClient(ctx, testProject)
 	if err != nil {
-		t.Fatalf("datastore.NewClient failed: %v", err)
+		t.Fatalf("datastore.NewClient() failed: %v", err)
 	}
 	t.Cleanup(func() {
 		client.Close()
@@ -119,53 +119,60 @@ func chunkRefKey(blobKey, key uuid.UUID) *datastore.Key {
 // Passing a nil to record will skip the record insertion.
 func setupTestStoreRecord(ctx context.Context, t *testing.T, metaDB *m.MetaDB, store *store.Store, r *record.Record) (*store.Store, *record.Record) {
 	t.Helper()
-	newStore, err := metaDB.CreateStore(ctx, store)
+	gotStore, err := metaDB.CreateStore(ctx, store)
 	if err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
 	t.Cleanup(func() {
-		metaDB.DeleteStore(ctx, newStore.Key)
+		metaDB.DeleteStore(ctx, gotStore.Key)
 	})
-	metadbtest.AssertEqualStore(t, store, newStore, "CreateStore should return the created store.")
-	var newRecord *record.Record
-	if r != nil {
-		newRecord = setupTestRecord(ctx, t, metaDB, newStore.Key, r)
+	if diff := cmp.Diff(store, gotStore); diff != "" {
+		t.Errorf("CreateStore() = (-want, +got):\n%s", diff)
 	}
-	return newStore, newRecord
+
+	var gotRecord *record.Record
+	if r != nil {
+		gotRecord = setupTestRecord(ctx, t, metaDB, gotStore.Key, r)
+	}
+	return gotStore, gotRecord
 }
 
 func setupTestRecord(ctx context.Context, t *testing.T, metaDB *m.MetaDB, storeKey string, r *record.Record) *record.Record {
 	t.Helper()
 
-	newRecord, err := metaDB.InsertRecord(ctx, storeKey, r)
+	got, err := metaDB.InsertRecord(ctx, storeKey, r)
 	require.NoError(t, err, "InsertRecord")
 	t.Cleanup(func() {
-		metaDB.DeleteRecord(ctx, storeKey, newRecord.Key)
+		metaDB.DeleteRecord(ctx, storeKey, got.Key)
 	})
-	metadbtest.AssertEqualRecord(t, r, newRecord, "GetRecord should return the exact same record.")
-	return newRecord
+	if diff := cmp.Diff(r, got); diff != "" {
+		t.Errorf("InsertRecord() = (-want, +got):\n%s", diff)
+	}
+	return got
 }
 
 func setupTestBlobRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob *blobref.BlobRef) *blobref.BlobRef {
 	t.Helper()
-	newBlob, err := metaDB.InsertBlobRef(ctx, blob)
+	got, err := metaDB.InsertBlobRef(ctx, blob)
 	if err != nil {
-		t.Fatalf("InsertBlobRef failed: %v", err)
+		t.Fatalf("InsertBlobRef() failed: %v", err)
 	}
-	metadbtest.AssertEqualBlobRef(t, blob, newBlob)
+	if diff := cmp.Diff(blob, got); diff != "" {
+		t.Errorf("InsertBlobRef() = (-want, +got):\n%s", diff)
+	}
 
 	t.Cleanup(func() {
 		// Call the Datastore method directly to avoid Status checking
 		key := blobRefKey(blob.Key)
 		newDatastoreClient(ctx, t).Delete(ctx, key)
 	})
-	return newBlob
+	return got
 }
 
 func setupTestChunkRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, chunk *chunkref.ChunkRef) {
 	t.Helper()
 	if err := metaDB.InsertChunkRef(ctx, chunk); err != nil {
-		t.Fatalf("InsertChunkRef failed for chunk key (%v): %v", chunk.Key, err)
+		t.Fatalf("InsertChunkRef() failed for chunk key (%v): %v", chunk.Key, err)
 	}
 
 	t.Cleanup(func() {
@@ -236,19 +243,25 @@ func TestMetaDB_SimpleCreateGetDeleteStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not create a new store: %v", err)
 	}
-	metadbtest.AssertEqualStore(t, store, createdStore, "CreateStore should return the created store.")
+	if diff := cmp.Diff(store, createdStore); diff != "" {
+		t.Errorf("CreateStore() = (-want, +got):\n%s", diff)
+	}
 
 	store2, err := metaDB.GetStore(ctx, storeKey)
 	if err != nil {
 		t.Fatalf("Could not get store (%s): %v", storeKey, err)
 	}
-	metadbtest.AssertEqualStore(t, store, store2, "GetStore should return the exact same store.")
+	if diff := cmp.Diff(store, store2); diff != "" {
+		t.Errorf("GetStore() = (-want, +got):\n%s", diff)
+	}
 
 	store3, err := metaDB.FindStoreByName(ctx, storeName)
 	if err != nil {
 		t.Fatalf("Could not fetch store by name (%s): %v", storeName, err)
 	}
-	metadbtest.AssertEqualStore(t, store, store3, "FindStoreByName should return the exact same store.")
+	if diff := cmp.Diff(store, store3); diff != "" {
+		t.Errorf("FindStoreByName() = (-want, +got):\n%s", diff)
+	}
 
 	err = metaDB.DeleteStore(ctx, storeKey)
 	if err != nil {
@@ -293,6 +306,7 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 		},
 	}
 	expected := cloneRecord(record)
+	expected.StoreKey = storeKey
 
 	createdRecord, err := metaDB.InsertRecord(ctx, storeKey, record)
 	expected.Timestamps = timestamps.New()
@@ -301,8 +315,9 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create a new record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	metadbtest.AssertEqualRecordWithinDuration(t, expected, createdRecord,
-		testTimestampThreshold, "InsertRecord should return the created record.")
+	if diff := cmp.Diff(expected, createdRecord, cmpopts.EquateApproxTime(testTimestampThreshold)); diff != "" {
+		t.Errorf("InsertRecord() = (-want, +got):\n%s", diff)
+	}
 
 	// Use the updated timestamps for the subsequent checks
 	expected.Timestamps = createdRecord.Timestamps
@@ -310,7 +325,9 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	metadbtest.AssertEqualRecord(t, expected, record2, "GetRecord should return the exact same record.")
+	if diff := cmp.Diff(expected, record2, cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("GetRecord() = (-want, +got):\n%s", diff)
+	}
 
 	record3, err := metaDB.InsertRecord(ctx, storeKey, record)
 	assert.NotNil(t, err, "Insert should fail if a record with the same already exists.")
@@ -383,6 +400,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 	}
 	work.Timestamps = timestamps.New()
 	expected := cloneRecord(work)
+	expected.StoreKey = storeKey
 
 	updated, err := metaDB.UpdateRecord(ctx, storeKey, recordKey,
 		func(*record.Record) (*record.Record, error) { return nil, nil })
@@ -409,14 +427,21 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 	// Make sure the signatures are different before passing to AssertEqualRecordWithinDuration
 	assert.NotEqual(t, expected.Timestamps.Signature, updated.Timestamps.Signature)
 	expected.Timestamps.Signature = updated.Timestamps.Signature
-	metadbtest.AssertEqualRecordWithinDuration(t, expected,
-		updated, testTimestampThreshold, "Updated record is not the same as original.")
+	if diff := cmp.Diff(expected, updated,
+		cmpopts.EquateApproxTime(testTimestampThreshold),
+		cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("UpdateRecord() = (-want, +got):\n%s", diff)
+	}
 
 	stored, err := metaDB.GetRecord(ctx, storeKey, recordKey)
 	if err != nil {
 		t.Fatalf("Failed to get a record (%s) in store (%s): %v", recordKey, storeKey, err)
 	}
-	metadbtest.AssertEqualRecord(t, updated, stored, "GetRecord should fetch the updated record.")
+	if diff := cmp.Diff(expected, stored,
+		cmpopts.EquateApproxTime(testTimestampThreshold),
+		cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("GetRecord() = (-want, +got):\n%s", diff)
+	}
 }
 
 func TestMetaDB_UpdateRecordErrNoUpdate(t *testing.T) {
@@ -452,11 +477,11 @@ func TestMetaDB_DeleteShouldNotFailWithNonExistentKey(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 	storeKey := newStoreKey()
 	if err := metaDB.DeleteStore(ctx, storeKey); err != nil {
-		t.Fatalf("DeleteStore failed with a non-existent key: %v", err)
+		t.Fatalf("DeleteStore() failed with a non-existent key: %v", err)
 	}
 	recordKey := newRecordKey()
 	if err := metaDB.DeleteRecord(ctx, storeKey, recordKey); err != nil {
-		t.Fatalf("DeleteRecord failed with a non-existent key: %v", err)
+		t.Fatalf("DeleteRecord() failed with a non-existent key: %v", err)
 	}
 }
 
@@ -507,15 +532,17 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 
 	blob2, err := metaDB.GetBlobRef(ctx, blobKey)
 	if err != nil {
-		t.Errorf("GetBlobRef failed: %v", err)
+		t.Errorf("GetBlobRef() failed: %v", err)
 	} else {
-		metadbtest.AssertEqualBlobRef(t, blob, blob2)
+		if diff := cmp.Diff(blob, blob2, cmpopts.EquateEmpty()); diff != "" {
+			t.Errorf("GetBlobRef() = (-want, +got):\n%s", diff)
+		}
 	}
 
 	beforePromo := time.Now()
 	promoRecord, promoBlob, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
-		t.Errorf("PromoteBlobAsCurrent failed: %v", err)
+		t.Errorf("PromoteBlobAsCurrent() failed: %v", err)
 	} else {
 		if assert.NotNil(t, promoRecord) {
 			assert.Nil(t, promoRecord.Blob)
@@ -538,9 +565,13 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 
 	currentBlob, err := metaDB.GetCurrentBlobRef(ctx, storeKey, recordKey)
 	if err != nil {
-		t.Errorf("GetCurrentBlobRef failed: %v", err)
+		t.Errorf("GetCurrentBlobRef() failed: %v", err)
 	} else {
-		metadbtest.AssertEqualBlobRefWithinDuration(t, promoBlob, currentBlob, timestamps.Precision)
+		if diff := cmp.Diff(promoBlob, currentBlob,
+			cmpopts.EquateEmpty(),
+			cmpopts.EquateApproxTime(timestamps.Precision)); diff != "" {
+			t.Errorf("GetCurrentBlobRef() = (-want, +got):\n%s", diff)
+		}
 	}
 
 	if err := metaDB.DeleteBlobRef(ctx, blobKey); err == nil {
@@ -551,7 +582,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 
 	delPendRecord, delPendBlob, err := metaDB.RemoveBlobFromRecord(ctx, storeKey, recordKey)
 	if err != nil {
-		t.Errorf("RemoveBlobFromRecord failed: %v", err)
+		t.Errorf("RemoveBlobFromRecord() failed: %v", err)
 	} else {
 		if assert.NotNil(t, delPendRecord) {
 			assert.Equal(t, uuid.Nil, delPendRecord.ExternalBlob)
@@ -596,7 +627,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 
 	_, blob, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
-		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
+		t.Errorf("PromoteBlobRefToCurrent() failed: %v", err)
 	}
 
 	newBlob := &blobref.BlobRef{
@@ -662,19 +693,19 @@ func TestMetaDB_UpdateBlobRef(t *testing.T) {
 
 	updatedBlob, err := metaDB.UpdateBlobRef(ctx, blob)
 	if err != nil {
-		t.Errorf("UpdateBlobRef failed: %v", err)
+		t.Errorf("UpdateBlobRef() failed: %v", err)
 	} else {
-		if assert.NotNil(t, updatedBlob) {
-			metadbtest.AssertEqualBlobRef(t, blob, updatedBlob)
+		if diff := cmp.Diff(blob, updatedBlob); diff != "" {
+			t.Errorf("UpdateBlobRef() = (-want, +got):\n%s", diff)
 		}
 	}
 
 	receivedBlob, err := metaDB.GetBlobRef(ctx, blob.Key)
 	if err != nil {
-		t.Errorf("GetBlobRef failed: %v", err)
+		t.Errorf("GetBlobRef() failed: %v", err)
 	} else {
-		if assert.NotNil(t, receivedBlob) {
-			metadbtest.AssertEqualBlobRef(t, blob, receivedBlob)
+		if diff := cmp.Diff(blob, receivedBlob, cmpopts.EquateEmpty()); diff != "" {
+			t.Errorf("GetBlobRef() = (-want, +got):\n%s", diff)
 		}
 	}
 }
@@ -729,7 +760,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 
 	_, blob, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
-		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
+		t.Errorf("PromoteBlobRefToCurrent() failed: %v", err)
 	}
 
 	_, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
@@ -845,19 +876,20 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		// Should return both of the PendingDeletion entries
-		b, err := iter.Next()
+		got, err := iter.Next()
 		assert.NoError(t, err)
-		if assert.NotNil(t, b) {
-			metadbtest.AssertEqualBlobRef(t, blobs[2], b)
+		if diff := cmp.Diff(blobs[2], got, cmpopts.EquateEmpty()); diff != "" {
+			t.Errorf("Next() = (-want, +got):\n%s", diff)
 		}
-		b, err = iter.Next()
+
+		got, err = iter.Next()
 		assert.NoError(t, err)
-		if assert.NotNil(t, b) {
-			metadbtest.AssertEqualBlobRef(t, blobs[3], b)
+		if diff := cmp.Diff(blobs[3], got, cmpopts.EquateEmpty()); diff != "" {
+			t.Errorf("Next() = (-want, +got):\n%s", diff)
 		}
-		b, err = iter.Next()
+		got, err = iter.Next()
 		assert.Equal(t, iterator.Done, err)
-		assert.Nil(t, b)
+		assert.Nil(t, got)
 	}
 }
 
@@ -884,11 +916,11 @@ func TestMetaDB_DeleteRecordWithExternalBlob(t *testing.T) {
 
 	_, blob, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
-		t.Errorf("PromoteBlobRefToCurrent failed: %v", err)
+		t.Errorf("PromoteBlobRefToCurrent() failed: %v", err)
 	}
 
 	if err := metaDB.DeleteRecord(ctx, storeKey, recordKey); err != nil {
-		t.Errorf("DeleteRecord failed: %v", err)
+		t.Errorf("DeleteRecord() failed: %v", err)
 	}
 
 	actual, err := metaDB.GetBlobRef(ctx, blob.Key)
@@ -964,7 +996,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 		chunk.Size = testChunkSize
 		now := time.Now()
 		if err := metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
-			t.Fatalf("MarkChunkRefReady failed for chunk (%v): %v", chunk.Key, err)
+			t.Fatalf("MarkChunkRefReady() failed for chunk (%v): %v", chunk.Key, err)
 		}
 		dsKey := chunkRefKey(chunk.BlobRef, chunk.Key)
 		got := new(chunkref.ChunkRef)
@@ -977,7 +1009,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	}
 	record, blobRetrieved, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
-		t.Fatalf("PromoteBlobRefToCurrent failed: %v", err)
+		t.Fatalf("PromoteBlobRefToCurrent() failed: %v", err)
 	}
 	if assert.NotNil(t, record) {
 		assert.EqualValues(t, testChunkSize*testChunkCount, record.BlobSize)
@@ -992,7 +1024,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 
 	// Verify blob and chunk metadata
 	if blobRetrieved, err := metaDB.GetCurrentBlobRef(ctx, store.Key, record.Key); err != nil {
-		t.Errorf("GetCurrentBlobRef failed: %v", err)
+		t.Errorf("GetCurrentBlobRef() failed: %v", err)
 	} else {
 		assert.EqualValues(t, testChunkSize*testChunkCount, blobRetrieved.Size)
 		assert.Equal(t, blob.Key, blobRetrieved.Key)
@@ -1001,8 +1033,11 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	}
 	for i := 0; i < testChunkCount; i++ {
 		got, err := metaDB.FindChunkRefByNumber(ctx, store.Key, record.Key, int32(i))
-		if assert.NoError(t, err, "FindChunkRefByNumber should not return error") {
-			metadbtest.AssertEqualChunkRef(t, chunks[i], got)
+		if err != nil {
+			t.Errorf("FindChunkRefByNumber(%d) failed: %v", i, err)
+		}
+		if diff := cmp.Diff(chunks[i], got, cmpopts.EquateEmpty()); diff != "" {
+			t.Errorf("FindChunkRefByNumber(%d) = (-want, +got):\n%s", i, diff)
 		}
 	}
 
@@ -1030,7 +1065,7 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	}
 
 	if err := metaDB.DeleteBlobRef(ctx, blob.Key); err != nil {
-		t.Fatalf("DeleteBlobRef failed: %v", err)
+		t.Fatalf("DeleteBlobRef() failed: %v", err)
 	}
 
 	for _, chunk := range chunks {
@@ -1081,9 +1116,11 @@ func TestMetaDB_UpdateChunkRef(t *testing.T) {
 
 	ds := newDatastoreClient(ctx, t)
 	got := new(chunkref.ChunkRef)
-	err := ds.Get(ctx, chunkRefKey(chunk.BlobRef, chunk.Key), got)
-	if assert.NoError(t, err) {
-		metadbtest.AssertEqualChunkRef(t, chunk, got)
+	if err := ds.Get(ctx, chunkRefKey(chunk.BlobRef, chunk.Key), got); err != nil {
+		t.Errorf("datastore.Get() failed: %v", err)
+	}
+	if diff := cmp.Diff(chunk, got, cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("datastore.Get() = (-want, +got):\n%s", diff)
 	}
 }
 
@@ -1121,15 +1158,17 @@ func TestMetaDB_MultipleChunksWithSameNumber(t *testing.T) {
 	}
 
 	if _, blob, err := metaDB.PromoteBlobRefToCurrent(ctx, blob); err != nil {
-		t.Errorf("PromoteBlobRefToCurrent failed for BlobRef (%v): %v", blob.Key, err)
+		t.Errorf("PromoteBlobRefToCurrent() failed for BlobRef (%v): %v", blob.Key, err)
 	} else {
 		assert.EqualValues(t, chunks[1].Size, blob.Size)
 	}
 
 	if got, err := metaDB.FindChunkRefByNumber(ctx, blob.StoreKey, blob.RecordKey, 0); err != nil {
-		t.Errorf("FindChunkRefByNumber failed for BlobRef (%v): %v", blob.Key, err)
+		t.Errorf("FindChunkRefByNumber() failed for BlobRef (%v): %v", blob.Key, err)
 	} else {
-		metadbtest.AssertEqualChunkRef(t, chunks[1], got)
+		if diff := cmp.Diff(got, chunks[1], cmpopts.EquateEmpty()); diff != "" {
+			t.Errorf("FindChunkRefByNumber() = (-want, +got):\n%s", diff)
+		}
 	}
 }
 
@@ -1152,15 +1191,22 @@ func TestMetaDB_GetChildChunkRefs(t *testing.T) {
 	}
 
 	cur := metaDB.GetChildChunkRefs(ctx, blob.Key)
+	got := []*chunkref.ChunkRef{}
 	for i := 0; i < len(chunks); i++ {
-		actual, err := cur.Next()
-		if assert.NoError(t, err) {
-			metadbtest.AssertEqualChunkRef(t, chunks[actual.Number], actual)
+		chunk, err := cur.Next()
+		if err != nil {
+			t.Errorf("Next() failed: %v", err)
 		}
+		got = append(got, chunk)
 	}
-	actual, err := cur.Next()
-	assert.ErrorIs(t, err, iterator.Done)
-	assert.Nil(t, actual)
+	if diff := cmp.Diff(got, chunks,
+		cmpopts.SortSlices(func(a, b *chunkref.ChunkRef) bool { return a.Number < b.Number }),
+		cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("GetChildChunkRefs() iterator = (-want, +got):\n%s", diff)
+	}
+	if _, err := cur.Next(); !errors.Is(err, iterator.Done) {
+		t.Errorf("Next() = %v, want = iterator.Done", err)
+	}
 }
 
 func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
@@ -1192,30 +1238,52 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 		setupTestChunkRef(ctx, t, metaDB, chunk)
 	}
 
-	// Should return iterator.Done and nil when not found
-	iter := metaDB.ListChunkRefsByStatus(ctx, blobref.StatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
-	if assert.NotNil(t, iter) {
-		b, err := iter.Next()
-		assert.Equal(t, iterator.Done, err)
-		assert.Nil(t, b)
+	testCase := []struct {
+		name      string
+		status    blobref.Status
+		olderThan time.Time
+		want      []*chunkref.ChunkRef
+	}{
+		{
+			"not found",
+			blobref.StatusError,
+			time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC),
+			[]*chunkref.ChunkRef{},
+		},
+		{
+			"PendingDeletion",
+			blobref.StatusPendingDeletion,
+			time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC),
+			[]*chunkref.ChunkRef{chunks[2], chunks[3]},
+		},
 	}
-
-	iter = metaDB.ListChunkRefsByStatus(ctx, blobref.StatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
-	if assert.NotNil(t, iter) {
-		// Should return both of the PendingDeletion entries
-		b, err := iter.Next()
-		assert.NoError(t, err)
-		if assert.NotNil(t, b) {
-			metadbtest.AssertEqualChunkRef(t, chunks[2], b)
-		}
-		b, err = iter.Next()
-		assert.NoError(t, err)
-		if assert.NotNil(t, b) {
-			metadbtest.AssertEqualChunkRef(t, chunks[3], b)
-		}
-		b, err = iter.Next()
-		assert.Equal(t, iterator.Done, err)
-		assert.Nil(t, b)
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			iter := metaDB.ListChunkRefsByStatus(ctx, tc.status, tc.olderThan)
+			if iter == nil {
+				t.Fatalf("ListChunkRefsByStatus() = %v, want non-nil", iter)
+			}
+			got := []*chunkref.ChunkRef{}
+			for i := 0; i < len(tc.want); i++ {
+				c, err := iter.Next()
+				if err != nil {
+					t.Errorf("Next() failed: %v", err)
+				}
+				got = append(got, c)
+			}
+			c, err := iter.Next()
+			if !errors.Is(err, iterator.Done) {
+				t.Errorf("Next() = %v, want = iterator.Done", err)
+			}
+			if c != nil {
+				t.Errorf("Next() = %v, want = nil", iter)
+			}
+			if diff := cmp.Diff(tc.want, got,
+				cmpopts.SortSlices(func(a, b *chunkref.ChunkRef) bool { return a.Number < b.Number }),
+			); diff != "" {
+				t.Errorf("ListChunkRefsByStatus() iterator = (-want, +got):\n%s", diff)
+			}
+		})
 	}
 }
 
