@@ -128,10 +128,10 @@ func TestUUID_LoadUUID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			uuid, ps, err := LoadUUID(tc.props, tc.name)
 			if got := status.Code(err); got != tc.wantCode {
-				t.Errorf("LoadUUID(): returned status code %v, want %v", got, tc.wantCode)
+				t.Errorf("LoadUUID() status code got = %v, want %v", got, tc.wantCode)
 			}
 			if !cmp.Equal(tc.wantUUID, uuid) {
-				t.Errorf("LoadUUID() uuid = want %v, got %v", tc.wantUUID, uuid)
+				t.Errorf("LoadUUID() uuid = got %v, want%v", uuid, tc.wantUUID)
 			}
 			if diff := cmp.Diff(tc.wantProps, ps); diff != "" {
 				t.Errorf("LoadUUID() props = (-want, +got):\n%s", diff)

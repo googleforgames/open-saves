@@ -40,13 +40,13 @@ func TestTimestamps_NewTimestamps(t *testing.T) {
 
 	for _, got := range []time.Time{ts.CreatedAt, ts.UpdatedAt} {
 		if got.Location() != time.UTC {
-			t.Errorf("New(): timezone should be UTC, got = %v", got.Location())
+			t.Errorf("New() Location = got %v, want UTC", got.Location())
 		}
 		if !got.Equal(got.Truncate(Precision)) {
-			t.Errorf("New(): not truncated to %v, got = %v", Precision, got)
+			t.Errorf("New() = %v, should be truncated to %v", got, Precision)
 		}
 		if got.Before(beforeNew) || got.After(afterNew) {
-			t.Errorf("New(): should be between %v and %v, got = %v", beforeNew, afterNew, got)
+			t.Errorf("New() = %v,  want between %v and %v", got, beforeNew, afterNew)
 		}
 	}
 	if diff := cmp.Diff(ts.CreatedAt, ts.UpdatedAt); diff != "" {
@@ -101,13 +101,13 @@ func TestTimestamps_Update(t *testing.T) {
 		t.Errorf("Update() should not change CreatedAt, (-want, +got):\n%s", diff)
 	}
 	if got := ts.UpdatedAt.Location(); got != time.UTC {
-		t.Errorf("Update(): UpdatedAt should be in UTC, got = %v", got)
+		t.Errorf("Update() Location = got %v, want UTC", got)
 	}
 	if ts.UpdatedAt.Before(beforeUpdate) || ts.UpdatedAt.After(afterUpdate) {
-		t.Errorf("Update(): UpdatedAt should be between %v and %v, got = %v", beforeUpdate, afterUpdate, ts.UpdatedAt)
+		t.Errorf("Update() Updated At = %v, want between %v and %v", ts.UpdatedAt, beforeUpdate, afterUpdate)
 	}
 	if cmp.Equal(testUUID, ts.Signature) {
-		t.Errorf("Update() should update Signature, got = %v", ts.Signature)
+		t.Errorf("Update() Signature got = %v, want updated value", ts.Signature)
 	}
 }
 
