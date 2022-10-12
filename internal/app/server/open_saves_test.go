@@ -326,16 +326,16 @@ func tryCreateRecord(ctx context.Context, t *testing.T, client pb.OpenSavesClien
 	t.Helper()
 	res, err := client.CreateRecord(ctx, req)
 	if err == nil {
-		// storeKey := req.GetStoreKey()
-		// key := res.GetKey()
-		// t.Cleanup(func() {
-		// 	cleanupBlobs(ctx, t, storeKey, key)
-		// 	_, err = client.DeleteRecord(ctx, &pb.DeleteRecordRequest{
-		// 		StoreKey: storeKey,
-		// 		Key:      key,
-		// 	})
-		// 	assert.NoError(t, err, "DeleteRecord failed during cleanup")
-		// })
+		storeKey := req.GetStoreKey()
+		key := res.GetKey()
+		t.Cleanup(func() {
+			cleanupBlobs(ctx, t, storeKey, key)
+			_, err = client.DeleteRecord(ctx, &pb.DeleteRecordRequest{
+				StoreKey: storeKey,
+				Key:      key,
+			})
+			assert.NoError(t, err, "DeleteRecord failed during cleanup")
+		})
 	}
 	return res, err
 }
@@ -411,8 +411,8 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 	record := &pb.Record{
 		Key:          recordKey,
 		BlobSize:     testBlobSize,
-		Tags:         []string{"asdf"},
-		OwnerId:      "asdfasdfadfasdfasdf",
+		Tags:         []string{"tag1", "tag2"},
+		OwnerId:      "owner",
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		Properties: map[string]*pb.Property{
 			"prop1": {
