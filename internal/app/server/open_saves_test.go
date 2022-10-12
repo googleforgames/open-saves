@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -1834,6 +1835,54 @@ func TestOpenSaves_UploadChunkedBlob(t *testing.T) {
 		t.Errorf("DeleteBlob failed: %v", err)
 	}
 	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+}
+
+func TestOpenSaves_UploadChunkedBlob_Many(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+
+	wg := sync.WaitGroup{}
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			record := &pb.Record{Key: uuid.NewString()}
+			record = setupTestRecord(ctx, t, client, store.Key, record)
+
+			const chunkSize = 10
+			testChunk := make([]byte, chunkSize)
+			for j := 0; j < chunkSize; j++ {
+				testChunk[j] = byte(j % 256)
+			}
+
+			var sessionId string
+			res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
+				StoreKey:  store.Key,
+				RecordKey: record.Key,
+				ChunkSize: chunkSize,
+			})
+			if err != nil {
+				fmt.Printf("client.CreateChunkedBlob: %v", err)
+			}
+			sessionId = res.SessionId
+			t.Cleanup(func() {
+				client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
+			})
+
+			uploadChunk(ctx, t, client, sessionId, 1, testChunk)
+
+			_, err = client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
+				SessionId: sessionId,
+			})
+			if err != nil {
+				fmt.Printf("client.CommitChunkedUpload: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestOpenSaves_UploadChunkedBlobWithChunkCount(t *testing.T) {
