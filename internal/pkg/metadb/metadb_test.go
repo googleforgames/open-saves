@@ -1350,9 +1350,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		{
 			"Limit",
 			&pb.QueryRecordsRequest{
-				StoreKey:   stores[0].Key,
-				SortOrders: []*pb.SortOrder{{Property: pb.SortOrder_CREATED_AT}},
-				Limit:      1,
+				StoreKey: stores[0].Key,
+				Limit:    1,
 			},
 			[]*record.Record{records[0]}, codes.OK,
 		},
