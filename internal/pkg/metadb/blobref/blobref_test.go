@@ -155,12 +155,14 @@ func TestBlobRef_Save(t *testing.T) {
 			Value: &datastore.Entity{
 				Properties: []datastore.Property{
 					{
-						Name:  "CreatedAt",
-						Value: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+						Name:    "CreatedAt",
+						Value:   time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+						NoIndex: true,
 					},
 					{
-						Name:  "UpdatedAt",
-						Value: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+						Name:    "UpdatedAt",
+						Value:   time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+						NoIndex: true,
 					},
 					{
 						Name:    "Signature",

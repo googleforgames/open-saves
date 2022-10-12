@@ -155,8 +155,8 @@ func TestCollector_DeletesBlobs(t *testing.T) {
 	// 4 is still initializing
 	for i := 0; i < blobRefCount; i++ {
 		blobRef := blobref.NewBlobRef(0, store.Key, record.Key)
-		blobRef.Timestamps.CreatedAt = collector.cfg.Before
-		blobRef.Timestamps.UpdatedAt = collector.cfg.Before
+		blobRef.Timestamps.CreatedAt = time.Now()
+		blobRef.Timestamps.UpdatedAt = time.Now()
 		blobRefs = append(blobRefs, blobRef)
 	}
 	blobRefs[0].MarkForDeletion()
@@ -242,8 +242,8 @@ func TestCollector_DeletesChunkedBlobs(t *testing.T) {
 	// 4 is still initializing
 	for i := 0; i < chunkRefCount; i++ {
 		chunk := chunkref.New(blob.Key, int32(i))
-		chunk.Timestamps.CreatedAt = collector.cfg.Before
-		chunk.Timestamps.UpdatedAt = collector.cfg.Before
+		chunk.Timestamps.CreatedAt = time.Now()
+		chunk.Timestamps.UpdatedAt = time.Now()
 		chunks = append(chunks, chunk)
 	}
 	chunks[0].MarkForDeletion()

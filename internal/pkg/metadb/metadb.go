@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	ds "cloud.google.com/go/datastore"
 	"github.com/google/uuid"
@@ -55,10 +54,10 @@ var (
 // The methods return gRPC error codes. Here are some common error codes
 // returned. For additional details, please look at the method help.
 // Common errors:
-//	- NotFound: entity or object is not found
-//	- Aborted: transaction is aborted
-//	- InvalidArgument: key or value provided is not valid
-//	- Internal: internal unrecoverable error
+//   - NotFound: entity or object is not found
+//   - Aborted: transaction is aborted
+//   - InvalidArgument: key or value provided is not valid
+//   - Internal: internal unrecoverable error
 type MetaDB struct {
 	// Datastore namespace for multi-tenancy
 	Namespace string
@@ -417,7 +416,7 @@ func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 
 // GetBlobRef returns a BlobRef object specified by the key.
 // Returns errors:
-//	- NotFound: the object is not found.
+//   - NotFound: the object is not found.
 func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*blobref.BlobRef, error) {
 	return m.getBlobRef(ctx, nil, key)
 }
@@ -434,8 +433,8 @@ func (m *MetaDB) getCurrentBlobRef(ctx context.Context, tx *ds.Transaction, stor
 
 // GetCurrentBlobRef gets a BlobRef object associated with a record.
 // Returned errors:
-// 	- NotFound: the record is not found.
-// 	- FailedPrecondition: the record doesn't have a blob.
+//   - NotFound: the record is not found.
+//   - FailedPrecondition: the record doesn't have a blob.
 func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*blobref.BlobRef, error) {
 	var blob *blobref.BlobRef
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -480,8 +479,8 @@ func (m *MetaDB) chunkObjectsSizeSum(ctx context.Context, tx *ds.Transaction, bl
 // PromoteBlobRefToCurrent promotes the provided BlobRef object as a current
 // external blob reference.
 // Returned errors:
-//	- NotFound: the specified record or the blobref was not found
-//  - Internal: BlobRef status transition error
+//   - NotFound: the specified record or the blobref was not found
+//   - Internal: BlobRef status transition error
 func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.BlobRef) (*record.Record, *blobref.BlobRef, error) {
 	record := new(record.Record)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -550,9 +549,9 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 // storeKey and recordKey. It also changes the status of the blob object to
 // BlobRefStatusPendingDeletion.
 // Returned errors:
-//	- NotFound: the specified record or the blobref was not found
-//	- FailedPrecondition: the record doesn't have an external blob
-//  - Internal: BlobRef status transition error
+//   - NotFound: the specified record or the blobref was not found
+//   - FailedPrecondition: the record doesn't have an external blob
+//   - Internal: BlobRef status transition error
 func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*record.Record, *blobref.BlobRef, error) {
 	rkey := m.createRecordKey(storeKey, recordKey)
 	blob := new(blobref.BlobRef)
@@ -629,8 +628,8 @@ func (m *MetaDB) deleteChildChunkRefs(ctx context.Context, tx *ds.Transaction, b
 
 // DeleteBlobRef deletes the BlobRef object from the database.
 // Returned errors:
-//	- NotFound: the blobref object is not found
-//	- FailedPrecondition: the blobref status is Ready and can't be deleted
+//   - NotFound: the blobref object is not found
+//   - FailedPrecondition: the blobref status is Ready and can't be deleted
 func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		blob, err := m.getBlobRef(ctx, tx, key)
@@ -652,8 +651,8 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 
 // DeleteChunkRef deletes the ChunkRef object from the database.
 // Returned errors:
-//	- NotFound: the chunkref object is not found.
-//	- FailedPrecondition: the chunkref status is Ready and can't be deleted.
+//   - NotFound: the chunkref object is not found.
+//   - FailedPrecondition: the chunkref status is Ready and can't be deleted.
 func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) error {
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		var chunk chunkref.ChunkRef
@@ -669,19 +668,17 @@ func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) err
 }
 
 // ListBlobRefsByStatus returns a cursor that iterates over BlobRefs
-// where Status = status and UpdatedAt < olderThan.
-func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status, olderThan time.Time) (*blobref.BlobRefCursor, error) {
-	query := m.newQuery(blobKind).Filter("Status = ", int(status)).
-		Filter("Timestamps.UpdatedAt <", olderThan)
+// where Status = status.
+func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status) (*blobref.BlobRefCursor, error) {
+	query := m.newQuery(blobKind).Filter("Status = ", int(status))
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
 }
 
 // ListChunkRefsByStatus returns a cursor that iterates over ChunkRefs
-// where Status = status and UpdatedAt < olderThan.
-func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Status, olderThan time.Time) *chunkref.ChunkRefCursor {
-	query := m.newQuery(chunkKind).Filter("Status = ", int(status)).
-		Filter("Timestamps.UpdatedAt <", olderThan)
+// where Status = status.
+func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Status) *chunkref.ChunkRefCursor {
+	query := m.newQuery(chunkKind).Filter("Status = ", int(status))
 	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
 

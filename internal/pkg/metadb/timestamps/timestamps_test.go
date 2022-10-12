@@ -119,12 +119,14 @@ func TestTimestamps_Save(t *testing.T) {
 	}
 	want := []datastore.Property{
 		{
-			Name:  "CreatedAt",
-			Value: ts.CreatedAt,
+			Name:    "CreatedAt",
+			Value:   ts.CreatedAt,
+			NoIndex: true,
 		},
 		{
-			Name:  "UpdatedAt",
-			Value: ts.UpdatedAt,
+			Name:    "UpdatedAt",
+			Value:   ts.UpdatedAt,
+			NoIndex: true,
 		},
 		{
 			Name:    "Signature",
