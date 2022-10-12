@@ -871,23 +871,15 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	}
 
 	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.StatusPendingDeletion)
-	assert.NoError(t, err)
-	if assert.NotNil(t, iter) {
-		// Should return both of the PendingDeletion entries
-		got, err := iter.Next()
-		assert.NoError(t, err)
-		if diff := cmp.Diff(blobs[2], got, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Next() = (-want, +got):\n%s", diff)
-		}
-
-		got, err = iter.Next()
-		assert.NoError(t, err)
-		if diff := cmp.Diff(blobs[3], got, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Next() = (-want, +got):\n%s", diff)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	got, err := iter.Next()
+	for err == nil {
+		if got.Status != blobref.StatusPendingDeletion {
+			t.Fatalf("got status %v, want %v", got.Status, blobref.StatusPendingDeletion)
 		}
 		got, err = iter.Next()
-		assert.Equal(t, iterator.Done, err)
-		assert.Nil(t, got)
 	}
 }
 
@@ -1239,17 +1231,14 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 	testCase := []struct {
 		name   string
 		status blobref.Status
-		want   []*chunkref.ChunkRef
 	}{
 		{
 			"not found",
 			blobref.StatusUnknown,
-			[]*chunkref.ChunkRef{},
 		},
 		{
 			"PendingDeletion",
 			blobref.StatusPendingDeletion,
-			[]*chunkref.ChunkRef{chunks[2], chunks[3]},
 		},
 	}
 	for _, tc := range testCase {
@@ -1258,25 +1247,18 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 			if iter == nil {
 				t.Fatalf("ListChunkRefsByStatus() = %v, want non-nil", iter)
 			}
-			got := []*chunkref.ChunkRef{}
-			for i := 0; i < len(tc.want); i++ {
-				c, err := iter.Next()
-				if err != nil {
-					t.Errorf("Next() failed: %v", err)
-				}
-				got = append(got, c)
-			}
 			c, err := iter.Next()
+			for err == nil {
+				if c.Status != tc.status {
+					t.Fatalf("got status %v, want %v", c.Status, tc.status)
+				}
+				c, err = iter.Next()
+			}
 			if !errors.Is(err, iterator.Done) {
 				t.Errorf("Next() = %v, want = iterator.Done", err)
 			}
 			if c != nil {
 				t.Errorf("Next() = %v, want = nil", iter)
-			}
-			if diff := cmp.Diff(tc.want, got,
-				cmpopts.SortSlices(func(a, b *chunkref.ChunkRef) bool { return a.Number < b.Number }),
-			); diff != "" {
-				t.Errorf("ListChunkRefsByStatus() iterator = (-want, +got):\n%s", diff)
 			}
 		})
 	}
