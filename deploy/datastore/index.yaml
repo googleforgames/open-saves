@@ -1,36 +1,11 @@
 indexes:
- 
-- kind: blob
-  properties:
-  - name: Status
-    direction: asc
-  - name: Timestamps.UpdatedAt
-    direction: asc
- 
-- kind: chunk
-  properties:
-  - name: Status
-    direction: asc
-  - name: Timestamps.UpdatedAt
-    direction: asc
+  - kind: record
+    ancestor: yes
+    properties:
+      - name: Properties.prop1
+        direction: asc
 
-- kind: record
-  ancestor: yes
-  properties:
-  - name: Properties.prop1
-    direction: asc 
-
-- kind: record
-  ancestor: yes
-  properties:
-  - name: Properties.prop1
-
-- kind: record
-  ancestor: yes
-  properties:
-  - name: Timestamps.CreatedAt
-
-- kind: record
-  ancestor: yes
-  properties:
-  - name: Timestamps.UpdatedAt
+  - kind: record
+    ancestor: yes
+    properties:
+      - name: Properties.prop1

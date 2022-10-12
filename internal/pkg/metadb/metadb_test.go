@@ -864,7 +864,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	}
 
 	// Should return iterator.Done and nil when not found
-	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.StatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
+	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.StatusError)
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		b, err := iter.Next()
@@ -872,7 +872,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		assert.Nil(t, b)
 	}
 
-	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.StatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
+	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.StatusPendingDeletion)
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		// Should return both of the PendingDeletion entries
@@ -1239,27 +1239,24 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 	}
 
 	testCase := []struct {
-		name      string
-		status    blobref.Status
-		olderThan time.Time
-		want      []*chunkref.ChunkRef
+		name   string
+		status blobref.Status
+		want   []*chunkref.ChunkRef
 	}{
 		{
 			"not found",
 			blobref.StatusError,
-			time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC),
 			[]*chunkref.ChunkRef{},
 		},
 		{
 			"PendingDeletion",
 			blobref.StatusPendingDeletion,
-			time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC),
 			[]*chunkref.ChunkRef{chunks[2], chunks[3]},
 		},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			iter := metaDB.ListChunkRefsByStatus(ctx, tc.status, tc.olderThan)
+			iter := metaDB.ListChunkRefsByStatus(ctx, tc.status)
 			if iter == nil {
 				t.Fatalf("ListChunkRefsByStatus() = %v, want non-nil", iter)
 			}

@@ -171,8 +171,8 @@ func (c *Collector) deleteBlob(ctx context.Context, blob *blobref.BlobRef) {
 }
 
 func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.Status, olderThan time.Time) error {
-	log.Infof("Garbage collecting BlobRef objects with status = %v, and older than %v", status, olderThan)
-	cursor, err := c.metaDB.ListBlobRefsByStatus(ctx, status, olderThan)
+	log.Infof("Garbage collecting BlobRef objects with status = %v", status)
+	cursor, err := c.metaDB.ListBlobRefsByStatus(ctx, status)
 	if err != nil {
 		log.Fatalf("ListBlobRefsByStatus returned error: %v", err)
 		return err
@@ -192,8 +192,8 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 }
 
 func (c *Collector) deleteMatchingChunkRefs(ctx context.Context, status blobref.Status, olderThan time.Time) error {
-	log.Infof("Garbage collecting ChunkRef objects with status = %v, older than %v", status, olderThan)
-	cursor := c.metaDB.ListChunkRefsByStatus(ctx, status, olderThan)
+	log.Infof("Garbage collecting ChunkRef objects with status = %v", status)
+	cursor := c.metaDB.ListChunkRefsByStatus(ctx, status)
 	for {
 		chunk, err := cursor.Next()
 		if err == iterator.Done {

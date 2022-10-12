@@ -169,6 +169,7 @@ func TestBlobRef_Save(t *testing.T) {
 					},
 				},
 			},
+			NoIndex: true,
 		},
 	}
 	got, err := blob.Save()
