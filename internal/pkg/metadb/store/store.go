@@ -30,7 +30,7 @@ type Store struct {
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
-	Timestamps timestamps.Timestamps
+	Timestamps timestamps.Timestamps `datastore:",noindex"`
 }
 
 // Assert Store implements both PropertyLoadSave and KeyLoader.

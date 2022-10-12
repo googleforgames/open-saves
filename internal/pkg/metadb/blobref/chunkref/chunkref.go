@@ -44,7 +44,7 @@ type ChunkRef struct {
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
-	Timestamps timestamps.Timestamps
+	Timestamps timestamps.Timestamps `datastore:",noindex"`
 }
 
 // Assert ChunkRef implements both PropertyLoadSave and KeyLoader.

@@ -47,7 +47,7 @@ type Record struct {
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
-	Timestamps timestamps.Timestamps
+	Timestamps timestamps.Timestamps `datastore:",noindex"`
 
 	// StoreKey is used to generate a cache key and needs to be set
 	// before calling the CacheKey function.
@@ -83,13 +83,13 @@ func (r *Record) Save() ([]datastore.Property, error) {
 // Load implements the Datastore PropertyLoadSaver interface and converts Datastore
 // properties to corresponding struct fields.
 func (r *Record) Load(ps []datastore.Property) error {
-        // Added for backward compatibility.
+	// Added for backward compatibility.
 	for i, p := range ps {
-                if p.Name == "NumberOfChunks" {
-                        ps[i].Name = "ChunkCount"
+		if p.Name == "NumberOfChunks" {
+			ps[i].Name = "ChunkCount"
 			break
-                }
-        }
+		}
+	}
 	externalBlob, ps, err := timestamps.LoadUUID(ps, externalBlobPropertyName)
 	if err != nil {
 		return err
