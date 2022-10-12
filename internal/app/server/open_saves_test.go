@@ -406,7 +406,6 @@ func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
 	setupTestStore(ctx, t, client, store)
 
 	recordKey := uuid.NewString()
-	fmt.Printf("got: %v\n", recordKey)
 	const testBlobSize = int64(42)
 	record := &pb.Record{
 		Key:          recordKey,

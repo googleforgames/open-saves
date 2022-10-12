@@ -864,7 +864,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	}
 
 	// Should return iterator.Done and nil when not found
-	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.StatusError)
+	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.StatusUnknown)
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		b, err := iter.Next()
@@ -1245,7 +1245,7 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 	}{
 		{
 			"not found",
-			blobref.StatusError,
+			blobref.StatusUnknown,
 			[]*chunkref.ChunkRef{},
 		},
 		{
@@ -1351,6 +1351,7 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			"Limit",
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[0].Key,
+				Tags:     []string{"tag1"},
 				Limit:    1,
 			},
 			[]*record.Record{records[0]}, codes.OK,

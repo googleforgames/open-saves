@@ -9,3 +9,9 @@ indexes:
     ancestor: yes
     properties:
       - name: Properties.prop1
+
+  - kind: record
+    ancestor: yes
+    properties:
+      - name: Properties.prop1
+        direction: desc

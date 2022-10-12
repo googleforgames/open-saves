@@ -670,7 +670,7 @@ func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) err
 // ListBlobRefsByStatus returns a cursor that iterates over BlobRefs
 // where Status = status.
 func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status) (*blobref.BlobRefCursor, error) {
-	query := m.newQuery(blobKind).FilterField("Status", "=", int(status))
+	query := m.newQuery(blobKind).Filter("Status = ", int(status))
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
 }
@@ -678,7 +678,7 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 // ListChunkRefsByStatus returns a cursor that iterates over ChunkRefs
 // where Status = status.
 func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Status) *chunkref.ChunkRefCursor {
-	query := m.newQuery(chunkKind).FilterField("Status", "=", int(status))
+	query := m.newQuery(chunkKind).Filter("Status = ", int(status))
 	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
 
