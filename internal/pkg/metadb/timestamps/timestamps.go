@@ -37,10 +37,10 @@ const (
 type Timestamps struct {
 	// CreatedAt is the timestamp of the record creation time
 	// Automatically set by MetaDB
-	CreatedAt time.Time
+	CreatedAt time.Time `datastore:",noindex"`
 	// UpdatedAt is the timestamp of the last modification time
 	// Automatically set and managed by MetaDB
-	UpdatedAt time.Time
+	UpdatedAt time.Time `datastore:",noindex"`
 	// Signature is a UUID that is randomly created each time the record is updated
 	// Automatically set and managed by MetaDB
 	Signature uuid.UUID `datastore:"-"`

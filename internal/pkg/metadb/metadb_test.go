@@ -845,7 +845,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		blobref.StatusPendingDeletion,
 		blobref.StatusPendingDeletion}
 	blobs := []*blobref.BlobRef{}
-	for i, s := range statuses {
+	for _, s := range statuses {
 		blob := &blobref.BlobRef{
 			Key:       uuid.New(),
 			Status:    s,
@@ -855,8 +855,6 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		blobs = append(blobs, blob)
 		setupTestBlobRef(ctx, t, metaDB, blob)
 
-		// Update the timestamps here because MetaDB automatically sets UpdatesAt
-		blob.Timestamps.UpdatedAt = time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC)
 		bKey := blobRefKey(blob.Key)
 		if _, err := client.Put(ctx, bKey, blob); err != nil {
 			t.Fatalf("Failed to change UpdatedAt for %v: %v", blob.Key, err)
@@ -864,7 +862,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 	}
 
 	// Should return iterator.Done and nil when not found
-	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.StatusError, time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC))
+	iter, err := metaDB.ListBlobRefsByStatus(ctx, blobref.StatusUnknown)
 	assert.NoError(t, err)
 	if assert.NotNil(t, iter) {
 		b, err := iter.Next()
@@ -872,24 +870,16 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		assert.Nil(t, b)
 	}
 
-	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.StatusPendingDeletion, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
-	assert.NoError(t, err)
-	if assert.NotNil(t, iter) {
-		// Should return both of the PendingDeletion entries
-		got, err := iter.Next()
-		assert.NoError(t, err)
-		if diff := cmp.Diff(blobs[2], got, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Next() = (-want, +got):\n%s", diff)
-		}
-
-		got, err = iter.Next()
-		assert.NoError(t, err)
-		if diff := cmp.Diff(blobs[3], got, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Next() = (-want, +got):\n%s", diff)
+	iter, err = metaDB.ListBlobRefsByStatus(ctx, blobref.StatusPendingDeletion)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	got, err := iter.Next()
+	for err == nil {
+		if got.Status != blobref.StatusPendingDeletion {
+			t.Fatalf("got status %v, want %v", got.Status, blobref.StatusPendingDeletion)
 		}
 		got, err = iter.Next()
-		assert.Equal(t, iterator.Done, err)
-		assert.Nil(t, got)
 	}
 }
 
@@ -1239,49 +1229,36 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 	}
 
 	testCase := []struct {
-		name      string
-		status    blobref.Status
-		olderThan time.Time
-		want      []*chunkref.ChunkRef
+		name   string
+		status blobref.Status
 	}{
 		{
 			"not found",
-			blobref.StatusError,
-			time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC),
-			[]*chunkref.ChunkRef{},
+			blobref.StatusUnknown,
 		},
 		{
 			"PendingDeletion",
 			blobref.StatusPendingDeletion,
-			time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC),
-			[]*chunkref.ChunkRef{chunks[2], chunks[3]},
 		},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			iter := metaDB.ListChunkRefsByStatus(ctx, tc.status, tc.olderThan)
+			iter := metaDB.ListChunkRefsByStatus(ctx, tc.status)
 			if iter == nil {
 				t.Fatalf("ListChunkRefsByStatus() = %v, want non-nil", iter)
 			}
-			got := []*chunkref.ChunkRef{}
-			for i := 0; i < len(tc.want); i++ {
-				c, err := iter.Next()
-				if err != nil {
-					t.Errorf("Next() failed: %v", err)
-				}
-				got = append(got, c)
-			}
 			c, err := iter.Next()
+			for err == nil {
+				if c.Status != tc.status {
+					t.Fatalf("got status %v, want %v", c.Status, tc.status)
+				}
+				c, err = iter.Next()
+			}
 			if !errors.Is(err, iterator.Done) {
 				t.Errorf("Next() = %v, want = iterator.Done", err)
 			}
 			if c != nil {
 				t.Errorf("Next() = %v, want = nil", iter)
-			}
-			if diff := cmp.Diff(tc.want, got,
-				cmpopts.SortSlices(func(a, b *chunkref.ChunkRef) bool { return a.Number < b.Number }),
-			); diff != "" {
-				t.Errorf("ListChunkRefsByStatus() iterator = (-want, +got):\n%s", diff)
 			}
 		})
 	}
@@ -1353,9 +1330,9 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		{
 			"Limit",
 			&pb.QueryRecordsRequest{
-				StoreKey:   stores[0].Key,
-				SortOrders: []*pb.SortOrder{{Property: pb.SortOrder_CREATED_AT}},
-				Limit:      1,
+				StoreKey: stores[0].Key,
+				Tags:     []string{"tag1"},
+				Limit:    1,
 			},
 			[]*record.Record{records[0]}, codes.OK,
 		},

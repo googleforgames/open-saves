@@ -1164,21 +1164,6 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 	assert.Equal(t, resp.Records[0].Properties["prop1"].Value, intVal1)
 	assert.Equal(t, resp.Records[1].Properties["prop1"].Value, intVal2)
 
-	queryReq = &pb.QueryRecordsRequest{
-		StoreKey: storeKey,
-		SortOrders: []*pb.SortOrder{
-			{
-				Property:  pb.SortOrder_UPDATED_AT,
-				Direction: pb.SortOrder_ASC,
-			},
-		},
-	}
-	resp, err = client.QueryRecords(ctx, queryReq)
-	// These records are created at the same time so no way of verifying the order.
-	// Just make sure there's no error returned by this query.
-	require.NoError(t, err)
-	require.Equal(t, 2, len(resp.Records))
-
 	// Test errors
 	queryReq = &pb.QueryRecordsRequest{
 		StoreKey: storeKey,
@@ -1186,18 +1171,6 @@ func TestOpenSaves_QueryRecords_Order(t *testing.T) {
 			{
 				Property:  pb.SortOrder_USER_PROPERTY,
 				Direction: pb.SortOrder_ASC,
-			},
-		},
-	}
-	_, err = client.QueryRecords(ctx, queryReq)
-	assert.Equal(t, codes.InvalidArgument, status.Code(err))
-
-	queryReq = &pb.QueryRecordsRequest{
-		StoreKey: storeKey,
-		SortOrders: []*pb.SortOrder{
-			{
-				Property:  pb.SortOrder_CREATED_AT,
-				Direction: 3,
 			},
 		},
 	}

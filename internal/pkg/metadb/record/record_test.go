@@ -124,12 +124,14 @@ func TestRecord_Save(t *testing.T) {
 				Value: &datastore.Entity{
 					Properties: []datastore.Property{
 						{
-							Name:  "CreatedAt",
-							Value: createdAt,
+							Name:    "CreatedAt",
+							Value:   createdAt,
+							NoIndex: true,
 						},
 						{
-							Name:  "UpdatedAt",
-							Value: updatedAt,
+							Name:    "UpdatedAt",
+							Value:   updatedAt,
+							NoIndex: true,
 						},
 						{
 							Name:    "Signature",
