@@ -171,7 +171,7 @@ func (c *Collector) deleteBlob(ctx context.Context, blob *blobref.BlobRef) {
 }
 
 func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.Status, olderThan time.Time) error {
-	log.Infof("Garbage collecting BlobRef objects with status = %v", status)
+	log.Infof("Garbage collecting BlobRef objects with status = %v, and older than %v", status, olderThan)
 	cursor, err := c.metaDB.ListBlobRefsByStatus(ctx, status)
 	if err != nil {
 		log.Fatalf("ListBlobRefsByStatus returned error: %v", err)
@@ -186,13 +186,15 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 			log.Errorf("cursor.Next() returned error: %v", err)
 			break
 		}
-		c.deleteBlob(ctx, blob)
+		if blob.Timestamps.UpdatedAt.Before(olderThan) {
+			c.deleteBlob(ctx, blob)
+		}
 	}
 	return nil
 }
 
 func (c *Collector) deleteMatchingChunkRefs(ctx context.Context, status blobref.Status, olderThan time.Time) error {
-	log.Infof("Garbage collecting ChunkRef objects with status = %v", status)
+	log.Infof("Garbage collecting ChunkRef objects with status = %v, and older than %v", status, olderThan)
 	cursor := c.metaDB.ListChunkRefsByStatus(ctx, status)
 	for {
 		chunk, err := cursor.Next()
@@ -203,12 +205,14 @@ func (c *Collector) deleteMatchingChunkRefs(ctx context.Context, status blobref.
 			log.Errorf("cursor.Next() return error: %v", err)
 			return err
 		}
-		if err := c.deleteChunk(ctx, chunk); err != nil {
-			log.Errorf("deleteChunk failed for chunk (%v): %v", chunk.Key, err)
-			continue
-		}
-		if err := c.metaDB.DeleteChunkRef(ctx, chunk.BlobRef, chunk.Key); err != nil {
-			log.Errorf("DeleteChunkRef failed for chunk (%v): %v", chunk.Key, err)
+		if chunk.Timestamps.UpdatedAt.Before(olderThan) {
+			if err := c.deleteChunk(ctx, chunk); err != nil {
+				log.Errorf("deleteChunk failed for chunk (%v): %v", chunk.Key, err)
+				continue
+			}
+			if err := c.metaDB.DeleteChunkRef(ctx, chunk.BlobRef, chunk.Key); err != nil {
+				log.Errorf("DeleteChunkRef failed for chunk (%v): %v", chunk.Key, err)
+			}
 		}
 	}
 	return nil

@@ -47,7 +47,7 @@ type Record struct {
 
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
-	Timestamps timestamps.Timestamps `datastore:",noindex"`
+	Timestamps timestamps.Timestamps
 
 	// StoreKey is used to generate a cache key and needs to be set
 	// before calling the CacheKey function.
