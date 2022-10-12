@@ -186,7 +186,7 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 			log.Errorf("cursor.Next() returned error: %v", err)
 			break
 		}
-		if blob.Timestamps.UpdatedAt.Before(olderThan) {
+		if !blob.Timestamps.UpdatedAt.After(olderThan) {
 			c.deleteBlob(ctx, blob)
 		}
 	}
@@ -205,7 +205,7 @@ func (c *Collector) deleteMatchingChunkRefs(ctx context.Context, status blobref.
 			log.Errorf("cursor.Next() return error: %v", err)
 			return err
 		}
-		if chunk.Timestamps.UpdatedAt.Before(olderThan) {
+		if !chunk.Timestamps.UpdatedAt.After(olderThan) {
 			if err := c.deleteChunk(ctx, chunk); err != nil {
 				log.Errorf("deleteChunk failed for chunk (%v): %v", chunk.Key, err)
 				continue

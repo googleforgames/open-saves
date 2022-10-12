@@ -845,7 +845,7 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		blobref.StatusPendingDeletion,
 		blobref.StatusPendingDeletion}
 	blobs := []*blobref.BlobRef{}
-	for i, s := range statuses {
+	for _, s := range statuses {
 		blob := &blobref.BlobRef{
 			Key:       uuid.New(),
 			Status:    s,
@@ -855,8 +855,6 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		blobs = append(blobs, blob)
 		setupTestBlobRef(ctx, t, metaDB, blob)
 
-		// Update the timestamps here because MetaDB automatically sets UpdatesAt
-		blob.Timestamps.UpdatedAt = time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC)
 		bKey := blobRefKey(blob.Key)
 		if _, err := client.Put(ctx, bKey, blob); err != nil {
 			t.Fatalf("Failed to change UpdatedAt for %v: %v", blob.Key, err)
