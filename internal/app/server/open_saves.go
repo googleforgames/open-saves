@@ -86,18 +86,20 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 			cacheStore:    cache,
 			ServiceConfig: *cfg,
 		}
-		sd, err := stackdriver.NewExporter(stackdriver.Options{
-			ProjectID: cfg.Project,
-		})
-		if err != nil {
-			log.Fatalf("Failed to create the Stackdriver exporter: %v", err)
-		}
-		// It is imperative to invoke flush before your main function exits
-		defer sd.Flush()
+		if cfg.ServerConfig.EnableTrace {
+			sd, err := stackdriver.NewExporter(stackdriver.Options{
+				ProjectID: cfg.Project,
+			})
+			if err != nil {
+				log.Fatalf("Failed to create the Stackdriver exporter: %v", err)
+			}
+			// It is imperative to invoke flush before your main function exits
+			defer sd.Flush()
 
-		// Register it as a trace exporter
-		trace.RegisterExporter(sd)
-		trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(0.2)})
+			// Register it as a trace exporter
+			trace.RegisterExporter(sd)
+			trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(cfg.ServerConfig.TraceSampleRate)})
+		}
 		return server, nil
 	default:
 		return nil, fmt.Errorf("cloud provider(%q) is not yet supported", cfg.ServerConfig.Cloud)

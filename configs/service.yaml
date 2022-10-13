@@ -1,17 +1,20 @@
 open_saves_port: 6000
-open_saves_cloud: "gcp"
-open_saves_bucket: ""
-open_saves_project: ""
-log_level: "info"
-shutdown_grace_period: "5s"
-cache_default_ttl: "5m"
+open_saves_cloud: 'gcp'
+open_saves_bucket: ''
+open_saves_project: ''
+log_level: 'info'
+shutdown_grace_period: '5s'
+cache_default_ttl: '5m'
 
-redis_address: "localhost:6379"
+redis_address: 'localhost:6379'
 redis_max_idle: 500
 redis_pool_size: 10000
 redis_idle_timeout: 0
 redis_max_retries: 3
-redis_min_retry_backoff: "8ms"
-redis_max_retry_backoff: "512ms"
+redis_min_retry_backoff: '8ms'
+redis_max_retry_backoff: '512ms'
 
 blob_max_inline_size: 65536
+
+enable_trace: true
+trace_sample_rate: 0.2

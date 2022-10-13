@@ -90,6 +90,7 @@ func Load(path string) (*ServiceConfig, error) {
 	if viper.GetString(RedisAddress) == "" {
 		log.Fatal("missing -cache argument for cache store")
 	}
+	log.Printf("trace: %b, rate: %d\n", viper.GetBool(EnableTrace), viper.GetFloat64(TraceSampleRate))
 
 	serverConfig := ServerConfig{
 		Address:             fmt.Sprintf(":%d", viper.GetUint(OpenSavesPort)),
@@ -97,6 +98,8 @@ func Load(path string) (*ServiceConfig, error) {
 		Bucket:              viper.GetString(OpenSavesBucket),
 		Project:             viper.GetString(OpenSavesProject),
 		ShutdownGracePeriod: viper.GetDuration(ShutdownGracePeriod),
+		EnableTrace:         viper.GetBool(EnableTrace),
+		TraceSampleRate:     viper.GetFloat64(TraceSampleRate),
 	}
 
 	// Cloud Run environment populates the PORT env var, so check for it here.
