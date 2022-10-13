@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"io"
 
+	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
+	"go.opencensus.io/trace"
 
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
@@ -84,6 +86,18 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 			cacheStore:    cache,
 			ServiceConfig: *cfg,
 		}
+		sd, err := stackdriver.NewExporter(stackdriver.Options{
+			ProjectID: cfg.Project,
+		})
+		if err != nil {
+			log.Fatalf("Failed to create the Stackdriver exporter: %v", err)
+		}
+		// It is imperative to invoke flush before your main function exits
+		defer sd.Flush()
+
+		// Register it as a trace exporter
+		trace.RegisterExporter(sd)
+		trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(0.2)})
 		return server, nil
 	default:
 		return nil, fmt.Errorf("cloud provider(%q) is not yet supported", cfg.ServerConfig.Cloud)
