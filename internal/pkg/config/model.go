@@ -35,6 +35,12 @@ const (
 	RedisMaxRetryBackoff = "redis_max_retry_backoff"
 
 	BlobMaxInlineSize = "blob_max_inline_size"
+
+	// The following enables OpenCensus Tracing via Cloud Trace
+	// for the Datastore client library.
+	// It is EXPERIMENTAL and subject to change or removal without notice.
+	EnableTrace     = "enable_trace"
+	TraceSampleRate = "trace_sample_rate"
 )
 
 type ServiceConfig struct {
@@ -51,6 +57,11 @@ type ServerConfig struct {
 	Bucket              string
 	Project             string
 	ShutdownGracePeriod time.Duration
+	// The following enables OpenCensus Tracing via Cloud Trace
+	// for the Datastore client library.
+	// It is EXPERIMENTAL and subject to change or removal without notice.
+	EnableTrace     bool
+	TraceSampleRate float64
 }
 
 // CacheConfig has configurations for caching control (not Redis specific).
