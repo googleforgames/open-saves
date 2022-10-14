@@ -1,4 +1,3 @@
-open_saves_port: 6000
 open_saves_cloud: "gcp"
 open_saves_bucket: ""
 open_saves_project: ""
@@ -15,3 +14,9 @@ redis_min_retry_backoff: "8ms"
 redis_max_retry_backoff: "512ms"
 
 blob_max_inline_size: 65536
+
+# The following enables OpenCensus Tracing via Cloud Trace
+# for the Datastore client library.
+# It is EXPERIMENTAL and subject to change or removal without notice.
+enable_trace: false 
+trace_sample_rate: 0.00
