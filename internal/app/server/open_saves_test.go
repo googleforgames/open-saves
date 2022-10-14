@@ -131,6 +131,7 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 }
 
 func TestOpenSaves_RunServer(t *testing.T) {
+	t.Skip()
 	serviceConfig, err := getServiceConfig()
 	if err != nil {
 		t.Fatalf("getServiceConfig err: %v", err)

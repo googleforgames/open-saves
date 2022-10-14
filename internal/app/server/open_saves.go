@@ -87,6 +87,8 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 			ServiceConfig: *cfg,
 		}
 		if cfg.ServerConfig.EnableTrace {
+			rate := cfg.ServerConfig.TraceSampleRate
+			log.Printf("Enabling CloudTrace exporter with sample rate: %f\n", rate)
 			sd, err := stackdriver.NewExporter(stackdriver.Options{
 				ProjectID: cfg.Project,
 			})
@@ -98,7 +100,7 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 
 			// Register it as a trace exporter
 			trace.RegisterExporter(sd)
-			trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(cfg.ServerConfig.TraceSampleRate)})
+			trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(rate)})
 		}
 		return server, nil
 	default:

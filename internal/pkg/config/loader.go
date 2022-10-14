@@ -90,7 +90,6 @@ func Load(path string) (*ServiceConfig, error) {
 	if viper.GetString(RedisAddress) == "" {
 		log.Fatal("missing -cache argument for cache store")
 	}
-	log.Printf("trace: %t, rate: %f\n", viper.GetBool(EnableTrace), viper.GetFloat64(TraceSampleRate))
 
 	serverConfig := ServerConfig{
 		Address:             fmt.Sprintf(":%d", viper.GetUint(OpenSavesPort)),

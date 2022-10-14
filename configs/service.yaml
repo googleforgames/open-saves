@@ -16,5 +16,8 @@ redis_max_retry_backoff: '512ms'
 
 blob_max_inline_size: 65536
 
-enable_trace: true
-trace_sample_rate: 0.2
+# The following enables OpenCensus Tracing via Cloud Trace
+# for the Datastore client library.
+# It is EXPERIMENTAL and subject to change or removal without notice.
+enable_trace: false 
+trace_sample_rate: 0.00
