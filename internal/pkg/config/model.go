@@ -57,8 +57,11 @@ type ServerConfig struct {
 	Bucket              string
 	Project             string
 	ShutdownGracePeriod time.Duration
-	EnableTrace         bool
-	TraceSampleRate     float64
+	// The following enables OpenCensus Tracing via Cloud Trace
+	// for the Datastore client library.
+	// It is EXPERIMENTAL and subject to change or removal without notice.
+	EnableTrace     bool
+	TraceSampleRate float64
 }
 
 // CacheConfig has configurations for caching control (not Redis specific).
