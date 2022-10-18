@@ -66,6 +66,12 @@ service OpenSaves {
   // makes the blob available for reads.
   rpc CommitChunkedUpload(CommitChunkedUploadRequest) returns (BlobMetadata) {}
 
+  // CommitChunkedUpload commits a chunked blob upload session and
+  // makes the blob available for reads. It also adds an UpdateRecord
+  // as part of the transaction to update the record, to minimize writes
+  // to the same entity.
+  rpc CommitChunkedUploadWithUpdateRecord(CommitChunkedUploadWithUpdateRecordRequest) returns (BlobMetadata) {}
+
   // AbortChunkedUploads aborts a chunked blob upload session and
   // discards temporary objects.
   rpc AbortChunkedUpload(AbortChunkedUploadRequest)
@@ -578,6 +584,16 @@ message CommitChunkedUploadRequest {
 
   // Performance hints.
   Hint hint = 2;
+}
+
+message CommitChunkedUploadWithUpdateRecordRequest {
+  // session_id is the ID of a chunked upload session to commit.
+  string session_id = 1;
+
+  // Performance hints.
+  Hint hint = 2;
+
+  UpdateRecordRequest update_record = 3;
 }
 
 message AbortChunkedUploadRequest {

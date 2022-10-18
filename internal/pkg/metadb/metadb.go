@@ -545,6 +545,75 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 	return record, blob, nil
 }
 
+// PromoteBlobRefWithRecordUpdater promotes the provided BlobRef object as a current
+// external blob reference and updates a record in one transaction.
+// Returned errors:
+//   - NotFound: the specified record or the blobref was not found
+//   - Internal: BlobRef status transition error
+func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blobref.BlobRef, updater RecordUpdater) (*record.Record, *blobref.BlobRef, error) {
+	record := new(record.Record)
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
+		if err := tx.Get(rkey, record); err != nil {
+			return err
+		}
+		if record.ExternalBlob == uuid.Nil {
+			// Simply add the new blob if previously didn't have a blob
+			record = removeInlineBlob(record)
+		} else {
+			// Mark previous blob for deletion
+			oldBlob, err := m.getBlobRef(ctx, tx, record.ExternalBlob)
+			if err != nil {
+				return err
+			}
+			record, err = m.markBlobRefForDeletion(tx, record, oldBlob, blob.Key)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Update the blob size for chunked uploads
+		if blob.Chunked {
+			// TODO(yuryu): should check if chunks are continuous?
+			size, count, err := m.chunkObjectsSizeSum(ctx, tx, blob)
+			if err != nil {
+				return err
+			}
+			if blob.ChunkCount != 0 && blob.ChunkCount != count {
+				return status.Errorf(codes.FailedPrecondition, "expected chunk count doesn't match: expected (%v), actual (%v)", blob.ChunkCount, count)
+			}
+			blob.ChunkCount = count
+			record.ChunkCount = count
+			blob.Size = size
+		} else {
+			record.ChunkCount = 0
+		}
+		if blob.Status != blobref.StatusReady {
+			if blob.Ready() != nil {
+				return status.Error(codes.Internal, "blob is not ready to become current")
+			}
+		}
+		blob.Timestamps.Update()
+		if _, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob)); err != nil {
+			return err
+		}
+
+		record, err := updater(record)
+		if err != nil {
+			return err
+		}
+		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record)); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, nil, datastoreErrToGRPCStatus(err)
+	}
+	return record, blob, nil
+}
+
 // RemoveBlobFromRecord removes the ExternalBlob from the record specified by
 // storeKey and recordKey. It also changes the status of the blob object to
 // BlobRefStatusPendingDeletion.

@@ -228,7 +228,7 @@ func assertEqualRecord(t *testing.T, expected, actual *pb.Record) {
 		assert.Equal(t, expected.BlobSize, actual.BlobSize)
 		assert.ElementsMatch(t, expected.Tags, actual.Tags)
 		assert.Equal(t, expected.OwnerId, actual.OwnerId)
-		// assert.Equal(t, expectecd.Properties, actual.Properties) doesn't work.
+		// assert.Equal(t, expected.Properties, actual.Properties) doesn't work.
 		// See Issue #138
 		assert.Equal(t, len(expected.Properties), len(actual.Properties))
 		for k, v := range expected.Properties {
@@ -1881,6 +1881,102 @@ func TestOpenSaves_UploadChunkedBlobWithChunkCount(t *testing.T) {
 			assert.NotEqual(t, record.Signature, updatedRecord.Signature)
 		}
 	}
+
+	for i := 0; i < chunkCount; i++ {
+		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
+	}
+
+	// Deletion test
+	if _, err := client.DeleteBlob(ctx, &pb.DeleteBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	}); err != nil {
+		t.Errorf("DeleteBlob failed: %v", err)
+	}
+	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+}
+
+func TestOpenSaves_UploadChunkedBlobWithUpdateRecord(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.NewString()}
+	record = setupTestRecord(ctx, t, client, store.Key, record)
+
+	const chunkSize = 1*1024*1024 + 13 // 1 Mi + 13 B
+	const chunkCount = 4
+	testChunk := make([]byte, chunkSize)
+	for i := 0; i < chunkSize; i++ {
+		testChunk[i] = byte(i % 256)
+	}
+
+	beforeCreateChunk := time.Now()
+	var sessionId string
+	if res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+		ChunkSize: chunkSize,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, res) {
+			_, err := uuid.Parse(res.SessionId)
+			assert.NoError(t, err)
+			sessionId = res.SessionId
+		}
+	}
+	t.Cleanup(func() {
+		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
+	})
+
+	for i := 0; i < chunkCount; i++ {
+		uploadChunk(ctx, t, client, sessionId, int64(i), testChunk)
+		// UploadChunk shouldn't update Signature.
+		if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: store.Key, Key: record.Key}); assert.NoError(t, err) {
+			assert.Equal(t, record.Signature, actual.Signature)
+		}
+	}
+
+	updateTo := record
+	stringVal1 := &pb.Property_StringValue{StringValue: "foo"}
+	updateTo.Properties = map[string]*pb.Property{
+		"prop1": {
+			Type:  pb.Property_STRING,
+			Value: stringVal1,
+		},
+	}
+
+	if meta, err := client.CommitChunkedUploadWithUpdateRecord(ctx, &pb.CommitChunkedUploadWithUpdateRecordRequest{
+		SessionId: sessionId,
+		UpdateRecord: &pb.UpdateRecordRequest{
+			StoreKey: store.GetKey(),
+			Record:   updateTo,
+		},
+	}); assert.NoError(t, err) {
+		assert.Equal(t, int64(len(testChunk)*chunkCount), meta.Size)
+		assert.True(t, meta.Chunked)
+		assert.Equal(t, int64(chunkCount), meta.ChunkCount)
+		assert.False(t, meta.HasCrc32C)
+		assert.Empty(t, meta.Md5)
+		assert.Equal(t, store.Key, meta.StoreKey)
+		assert.Equal(t, record.Key, meta.RecordKey)
+	}
+
+	// Check if the metadata is reflected to the record as well.
+	updatedRecord, err := client.GetRecord(ctx, &pb.GetRecordRequest{
+		StoreKey: store.Key, Key: record.Key,
+	})
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, updatedRecord) {
+			assert.Equal(t, int64(len(testChunk)*chunkCount), updatedRecord.BlobSize)
+			assert.Equal(t, int64(chunkCount), updatedRecord.ChunkCount)
+			assert.True(t, updatedRecord.Chunked)
+			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
+			assert.True(t, beforeCreateChunk.Before(updatedRecord.GetUpdatedAt().AsTime()))
+			assert.NotEqual(t, record.Signature, updatedRecord.Signature)
+		}
+	}
+	assert.Equal(t, updatedRecord.Properties["prop1"].Value, stringVal1)
 
 	for i := 0; i < chunkCount; i++ {
 		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
