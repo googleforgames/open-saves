@@ -574,7 +574,6 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 
 		// Update the blob size for chunked uploads
 		if blob.Chunked {
-			// TODO(yuryu): should check if chunks are continuous?
 			size, count, err := m.chunkObjectsSizeSum(ctx, tx, blob)
 			if err != nil {
 				return err
@@ -598,6 +597,7 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 			return err
 		}
 
+		// Call the custom defined updater method as well to modify the record.
 		record, err := updater(record)
 		if err != nil {
 			return err
