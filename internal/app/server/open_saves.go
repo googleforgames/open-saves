@@ -639,11 +639,7 @@ func (s *openSavesServer) CommitChunkedUploadWithUpdateRecord(ctx context.Contex
 		log.Errorf("Invalid proto for store (%s), record (%s): %v", storeKey, pbRecord.GetKey(), err)
 		return nil, status.Errorf(codes.InvalidArgument, "Invalid record proto: %v", err)
 	}
-	record, _, err := s.metaDB.PromoteBlobRefWithRecordUpdater(ctx, blob, func(r *record.Record) (*record.Record, error) {
-		if updateTo.Timestamps.Signature != uuid.Nil && r.Timestamps.Signature != updateTo.Timestamps.Signature {
-			return nil, status.Errorf(codes.Aborted, "Signature mismatch: expected (%v), actual (%v)",
-				updateTo.Timestamps.Signature.String(), r.Timestamps.Signature.String())
-		}
+	record, _, err := s.metaDB.PromoteBlobRefWithRecordUpdater(ctx, blob, updateTo, func(r *record.Record) (*record.Record, error) {
 		r.BlobSize = blob.Size
 		r.ExternalBlob = blob.Key
 		r.Chunked = blob.Chunked

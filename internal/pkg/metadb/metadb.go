@@ -550,12 +550,16 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 // Returned errors:
 //   - NotFound: the specified record or the blobref was not found
 //   - Internal: BlobRef status transition error
-func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blobref.BlobRef, updater RecordUpdater) (*record.Record, *blobref.BlobRef, error) {
+func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blobref.BlobRef, updateTo *record.Record, updater RecordUpdater) (*record.Record, *blobref.BlobRef, error) {
 	record := new(record.Record)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
 		if err := tx.Get(rkey, record); err != nil {
 			return err
+		}
+		if updateTo.Timestamps.Signature != uuid.Nil && record.Timestamps.Signature != updateTo.Timestamps.Signature {
+			return status.Errorf(codes.Aborted, "Signature mismatch: expected (%v), actual (%v)",
+				updateTo.Timestamps.Signature.String(), record.Timestamps.Signature.String())
 		}
 		if record.ExternalBlob == uuid.Nil {
 			// Simply add the new blob if previously didn't have a blob
