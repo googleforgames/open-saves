@@ -188,6 +188,7 @@ when creating (uploading) a new blob object.
 | ----- | ---- | ----- | ----------- |
 | session_id | [string](#string) |  | session_id is the ID of a chunked upload session to commit. |
 | hint | [Hint](#opensaves-Hint) |  | Performance hints. |
+| record | [Record](#opensaves-Record) |  | Optional record object to update during the commit operation |
 
 
 
@@ -815,7 +816,7 @@ Public interface of the Open Saves service.
 | CreateBlob | [CreateBlobRequest](#opensaves-CreateBlobRequest) stream | [BlobMetadata](#opensaves-BlobMetadata) | CreateBlob adds a new blob to a record. |
 | CreateChunkedBlob | [CreateChunkedBlobRequest](#opensaves-CreateChunkedBlobRequest) | [CreateChunkedBlobResponse](#opensaves-CreateChunkedBlobResponse) | CreateChunkedBlob starts a new chunked blob upload session. |
 | UploadChunk | [UploadChunkRequest](#opensaves-UploadChunkRequest) stream | [ChunkMetadata](#opensaves-ChunkMetadata) | UploadChunk uploads and stores each each chunk. |
-| CommitChunkedUpload | [CommitChunkedUploadRequest](#opensaves-CommitChunkedUploadRequest) | [BlobMetadata](#opensaves-BlobMetadata) | CommitChunkedUpload commits a chunked blob upload session and makes the blob available for reads. |
+| CommitChunkedUpload | [CommitChunkedUploadRequest](#opensaves-CommitChunkedUploadRequest) | [BlobMetadata](#opensaves-BlobMetadata) | CommitChunkedUpload commits a chunked blob upload session and makes the blob available for reads. An optional record can be passed to perform an update within the same transaction. |
 | AbortChunkedUpload | [AbortChunkedUploadRequest](#opensaves-AbortChunkedUploadRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | AbortChunkedUploads aborts a chunked blob upload session and discards temporary objects. |
 | GetBlob | [GetBlobRequest](#opensaves-GetBlobRequest) | [GetBlobResponse](#opensaves-GetBlobResponse) stream | GetBlob retrieves a blob object in a record. Currently this method does not support chunked blobs and returns an UNIMPLEMENTED error if called for chunked blobs. TODO(yuryu): Support chunked blobs and return such objects entirely. |
 | GetBlobChunk | [GetBlobChunkRequest](#opensaves-GetBlobChunkRequest) | [GetBlobChunkResponse](#opensaves-GetBlobChunkResponse) stream | GetBlobChunk returns a chunk of a blob object uploaded using CreateChunkedBlob. It returns an INVALID_ARGUMENT error if the blob is not a chunked object. |
