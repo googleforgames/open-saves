@@ -1971,9 +1971,9 @@ func TestOpenSaves_UploadChunkedBlobWithUpdateRecord(t *testing.T) {
 			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
 			assert.True(t, beforeCreateChunk.Before(updatedRecord.GetUpdatedAt().AsTime()))
 			assert.NotEqual(t, record.Signature, updatedRecord.Signature)
+			assert.Equal(t, updatedRecord.Properties["prop1"].Value, stringVal1)
 		}
 	}
-	assert.Equal(t, updatedRecord.Properties["prop1"].Value, stringVal1)
 
 	for i := 0; i < chunkCount; i++ {
 		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
