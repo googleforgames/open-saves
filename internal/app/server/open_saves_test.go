@@ -1946,12 +1946,9 @@ func TestOpenSaves_UploadChunkedBlobWithUpdateRecord(t *testing.T) {
 		},
 	}
 
-	if meta, err := client.CommitChunkedUploadWithUpdateRecord(ctx, &pb.CommitChunkedUploadWithUpdateRecordRequest{
+	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
 		SessionId: sessionId,
-		UpdateRecord: &pb.UpdateRecordRequest{
-			StoreKey: store.GetKey(),
-			Record:   updateTo,
-		},
+		Record:    updateTo,
 	}); assert.NoError(t, err) {
 		assert.Equal(t, int64(len(testChunk)*chunkCount), meta.Size)
 		assert.True(t, meta.Chunked)

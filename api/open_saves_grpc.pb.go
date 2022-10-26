@@ -50,13 +50,9 @@ type OpenSavesClient interface {
 	// UploadChunk uploads and stores each each chunk.
 	UploadChunk(ctx context.Context, opts ...grpc.CallOption) (OpenSaves_UploadChunkClient, error)
 	// CommitChunkedUpload commits a chunked blob upload session and
-	// makes the blob available for reads.
+	// makes the blob available for reads. An optional record can be passed
+	// to perform an update within the same transaction.
 	CommitChunkedUpload(ctx context.Context, in *CommitChunkedUploadRequest, opts ...grpc.CallOption) (*BlobMetadata, error)
-	// CommitChunkedUpload commits a chunked blob upload session and
-	// makes the blob available for reads. It also adds an UpdateRecord
-	// as part of the transaction to update the record, to minimize writes
-	// to the same entity.
-	CommitChunkedUploadWithUpdateRecord(ctx context.Context, in *CommitChunkedUploadWithUpdateRecordRequest, opts ...grpc.CallOption) (*BlobMetadata, error)
 	// AbortChunkedUploads aborts a chunked blob upload session and
 	// discards temporary objects.
 	AbortChunkedUpload(ctx context.Context, in *AbortChunkedUploadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -315,15 +311,6 @@ func (c *openSavesClient) CommitChunkedUpload(ctx context.Context, in *CommitChu
 	return out, nil
 }
 
-func (c *openSavesClient) CommitChunkedUploadWithUpdateRecord(ctx context.Context, in *CommitChunkedUploadWithUpdateRecordRequest, opts ...grpc.CallOption) (*BlobMetadata, error) {
-	out := new(BlobMetadata)
-	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/CommitChunkedUploadWithUpdateRecord", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *openSavesClient) AbortChunkedUpload(ctx context.Context, in *AbortChunkedUploadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/AbortChunkedUpload", in, out, opts...)
@@ -509,13 +496,9 @@ type OpenSavesServer interface {
 	// UploadChunk uploads and stores each each chunk.
 	UploadChunk(OpenSaves_UploadChunkServer) error
 	// CommitChunkedUpload commits a chunked blob upload session and
-	// makes the blob available for reads.
+	// makes the blob available for reads. An optional record can be passed
+	// to perform an update within the same transaction.
 	CommitChunkedUpload(context.Context, *CommitChunkedUploadRequest) (*BlobMetadata, error)
-	// CommitChunkedUpload commits a chunked blob upload session and
-	// makes the blob available for reads. It also adds an UpdateRecord
-	// as part of the transaction to update the record, to minimize writes
-	// to the same entity.
-	CommitChunkedUploadWithUpdateRecord(context.Context, *CommitChunkedUploadWithUpdateRecordRequest) (*BlobMetadata, error)
 	// AbortChunkedUploads aborts a chunked blob upload session and
 	// discards temporary objects.
 	AbortChunkedUpload(context.Context, *AbortChunkedUploadRequest) (*emptypb.Empty, error)
@@ -642,9 +625,6 @@ func (UnimplementedOpenSavesServer) UploadChunk(OpenSaves_UploadChunkServer) err
 }
 func (UnimplementedOpenSavesServer) CommitChunkedUpload(context.Context, *CommitChunkedUploadRequest) (*BlobMetadata, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommitChunkedUpload not implemented")
-}
-func (UnimplementedOpenSavesServer) CommitChunkedUploadWithUpdateRecord(context.Context, *CommitChunkedUploadWithUpdateRecordRequest) (*BlobMetadata, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CommitChunkedUploadWithUpdateRecord not implemented")
 }
 func (UnimplementedOpenSavesServer) AbortChunkedUpload(context.Context, *AbortChunkedUploadRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AbortChunkedUpload not implemented")
@@ -945,24 +925,6 @@ func _OpenSaves_CommitChunkedUpload_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OpenSaves_CommitChunkedUploadWithUpdateRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CommitChunkedUploadWithUpdateRecordRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OpenSavesServer).CommitChunkedUploadWithUpdateRecord(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/opensaves.OpenSaves/CommitChunkedUploadWithUpdateRecord",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OpenSavesServer).CommitChunkedUploadWithUpdateRecord(ctx, req.(*CommitChunkedUploadWithUpdateRecordRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _OpenSaves_AbortChunkedUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AbortChunkedUploadRequest)
 	if err := dec(in); err != nil {
@@ -1235,10 +1197,6 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CommitChunkedUpload",
 			Handler:    _OpenSaves_CommitChunkedUpload_Handler,
-		},
-		{
-			MethodName: "CommitChunkedUploadWithUpdateRecord",
-			Handler:    _OpenSaves_CommitChunkedUploadWithUpdateRecord_Handler,
 		},
 		{
 			MethodName: "AbortChunkedUpload",

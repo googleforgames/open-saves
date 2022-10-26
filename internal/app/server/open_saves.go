@@ -611,51 +611,44 @@ func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.Commi
 		log.Errorf("Cannot retrieve chunked blob metadata for session (%v): %v", blobKey, err)
 		return nil, err
 	}
-	record, _, err := s.metaDB.PromoteBlobRefToCurrent(ctx, blob)
-	if err != nil {
-		log.Errorf("PromoteBlobRefToCurrent failed for object %v: %v", blob.ObjectPath(), err)
-		// Do not delete the blob object here. Leave it to the garbage collector.
-		return nil, err
+	// The record in the request is optional
+	var updateTo *record.Record
+	storeKey := blob.StoreKey
+	pbRecord := req.GetRecord()
+	if pbRecord != nil {
+		updateTo, err = record.FromProto(storeKey, pbRecord)
+		if err != nil {
+			log.Errorf("Invalid proto for store (%s), record (%s): %v", storeKey, pbRecord.GetKey(), err)
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid record proto: %v", err)
+		}
 	}
-	s.cacheRecord(ctx, record, req.GetHint())
-	return blob.ToProto(), nil
-}
-
-func (s *openSavesServer) CommitChunkedUploadWithUpdateRecord(ctx context.Context, req *pb.CommitChunkedUploadWithUpdateRecordRequest) (*pb.BlobMetadata, error) {
-	storeKey := req.GetUpdateRecord().GetStoreKey()
-	pbRecord := req.GetUpdateRecord().GetRecord()
-	blobKey, err := uuid.Parse(req.GetSessionId())
-	if err != nil {
-		log.Errorf("SessionId is not a valid UUID string: %v", err)
-		return nil, status.Errorf(codes.InvalidArgument, "SessionId is not a valid UUID string: %v", err)
+	var updatedRecord *record.Record
+	if updateTo != nil {
+		updatedRecord, _, err = s.metaDB.PromoteBlobRefWithRecordUpdater(ctx, blob, updateTo, func(r *record.Record) (*record.Record, error) {
+			r.BlobSize = blob.Size
+			r.ExternalBlob = blob.Key
+			r.Chunked = blob.Chunked
+			r.Timestamps.Update()
+			r.OwnerID = updateTo.OwnerID
+			r.Properties = updateTo.Properties
+			r.Tags = updateTo.Tags
+			r.OpaqueString = updateTo.OpaqueString
+			return r, nil
+		})
+		if err != nil {
+			log.Errorf("PromoteBlobRefWithRecordUpdater failed for object %v: %v", blob.ObjectPath(), err)
+			// Do not delete the blob object here. Leave it to the garbage collector.
+			return nil, err
+		}
+	} else {
+		updatedRecord, _, err = s.metaDB.PromoteBlobRefToCurrent(ctx, blob)
+		if err != nil {
+			log.Errorf("PromoteBlobRefToCurrent failed for object %v: %v", blob.ObjectPath(), err)
+			// Do not delete the blob object here. Leave it to the garbage collector.
+			return nil, err
+		}
 	}
-	blob, err := s.metaDB.GetBlobRef(ctx, blobKey)
-	if err != nil {
-		log.Errorf("Cannot retrieve chunked blob metadata for session (%v): %v", blobKey, err)
-		return nil, err
-	}
-	updateTo, err := record.FromProto(storeKey, pbRecord)
-	if err != nil {
-		log.Errorf("Invalid proto for store (%s), record (%s): %v", storeKey, pbRecord.GetKey(), err)
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid record proto: %v", err)
-	}
-	record, _, err := s.metaDB.PromoteBlobRefWithRecordUpdater(ctx, blob, updateTo, func(r *record.Record) (*record.Record, error) {
-		r.BlobSize = blob.Size
-		r.ExternalBlob = blob.Key
-		r.Chunked = blob.Chunked
-		r.Timestamps.Update()
-		r.OwnerID = updateTo.OwnerID
-		r.Properties = updateTo.Properties
-		r.Tags = updateTo.Tags
-		r.OpaqueString = updateTo.OpaqueString
-		return r, nil
-	})
-	if err != nil {
-		log.Errorf("PromoteBlobRefWithRecordUpdater failed for object %v: %v", blob.ObjectPath(), err)
-		// Do not delete the blob object here. Leave it to the garbage collector.
-		return nil, err
-	}
-	s.cacheRecord(ctx, record, req.GetHint())
+	s.cacheRecord(ctx, updatedRecord, req.GetHint())
 	return blob.ToProto(), nil
 }
 
