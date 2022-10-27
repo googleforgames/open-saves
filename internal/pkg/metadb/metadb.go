@@ -898,22 +898,30 @@ func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey s
 	return nil, status.Errorf(codes.NotFound, "chunk number (%v) was not found for record (%v)", number, recordKey)
 }
 
-// MarkChunkRefReady marks the specified chunk as Ready. If the current session has another chunk
-// with the same Number, it will be marked for deletion.
-func (m *MetaDB) MarkChunkRefReady(ctx context.Context, chunk *chunkref.ChunkRef) error {
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		blob, err := m.getBlobRef(ctx, tx, chunk.BlobRef)
-		if err != nil {
-			return err
+// ValidateChunkRefPreconditions check if the parent blobref is chunked before attempting to upload any data
+func (m *MetaDB) ValidateChunkRefPreconditions(ctx context.Context, chunk *chunkref.ChunkRef) (*blobref.BlobRef, error) {
+	blob, err := m.getBlobRef(ctx, nil, chunk.BlobRef)
+	if err != nil {
+		return nil, err
+	} else {
+		if !blob.Chunked {
+			return nil, status.Errorf(codes.FailedPrecondition, "BlobRef (%v) is not chunked", chunk.BlobRef)
 		}
+	}
+	return blob, nil
+}
 
-		// Mark the chunk ready (Datastore's transaction isolation guarantees this is not visible until
-		// we commit the transaction).
+// InsertChunkRefAsReady inserts a new ChunkRef object to the datastore. If the current session has another chunk
+// with the same Number, it will be marked for deletion.
+func (m *MetaDB) InsertChunkRefAsReady(ctx context.Context, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) error {
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		if err := chunk.Ready(); err != nil {
 			return err
 		}
 		chunk.Timestamps.Update()
-		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createChunkRefKey(blob.Key, chunk.Key), chunk)); err != nil {
+
+		mut := ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
+		if err := m.mutateSingleInTransaction(tx, mut); err != nil {
 			return err
 		}
 
@@ -934,22 +942,6 @@ func (m *MetaDB) MarkChunkRefReady(ctx context.Context, chunk *chunkref.ChunkRef
 			}
 		}
 		return nil
-	})
-	return err
-}
-
-// InsertChunkRef inserts a new ChunkRef object to the datastore.
-func (m *MetaDB) InsertChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) error {
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		if blob, err := m.getBlobRef(ctx, tx, chunk.BlobRef); err != nil {
-			return err
-		} else {
-			if !blob.Chunked {
-				return status.Errorf(codes.FailedPrecondition, "BlobRef (%v) is not chunked", chunk.BlobRef)
-			}
-		}
-		mut := ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
-		return m.mutateSingleInTransaction(tx, mut)
 	})
 	return err
 }
