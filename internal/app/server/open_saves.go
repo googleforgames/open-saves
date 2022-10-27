@@ -539,20 +539,16 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 		return err
 	}
 
-	writer, err := s.blobStore.NewWriter(ctx, chunk.ObjectPath())
+	contextWithCancel, cancel := context.WithCancel(ctx)
+	writer, err := s.blobStore.NewWriter(contextWithCancel, chunk.ObjectPath())
 	if err != nil {
+		cancel()
 		return err
 	}
-	deleteOnExit := true
 	defer func() {
 		if writer != nil {
-			writer.Close()
-		}
-		if deleteOnExit {
-			// Delete the object from GS if there are errors uploading the data or inserting a chunkref
-			if derr := s.blobStore.Delete(ctx, chunk.ObjectPath()); derr != nil {
-				log.Errorf("Delete chunk failed after writer.Close() error: %v", derr)
-			}
+			cancel()
+			_ = writer.Close()
 		}
 	}()
 
@@ -576,7 +572,7 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 			log.Errorf("UploadChunk: BlobStore write error: %v", err)
 			return err
 		}
-		digest.Write(fragment)
+		_, _ = digest.Write(fragment)
 		written += n
 		// TODO(yuryu): This is not suitable for unit tests until we make the value
 		// configurable, or have a BlobStore mock.
@@ -598,16 +594,26 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	chunk.Checksums = digest.Checksums()
 
 	if err := chunk.ValidateIfPresent(meta); err != nil {
+		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Error(err)
 		return err
 	}
 
 	if err := s.metaDB.InsertChunkRefAsReady(ctx, blob, chunk); err != nil {
+		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Errorf("Failed to insert chunkref metadata (%v), blobref (%v): %v", chunk.Key, chunk.BlobRef, err)
 		return err
 	}
-	deleteOnExit = false
 	return stream.SendAndClose(chunk.ToProto())
+}
+
+// deleteObjectOnExit deletes the object from GS if there are errors uploading the data or inserting a chunkref
+func (s *openSavesServer) deleteObjectOnExit(ctx context.Context, path string) error {
+	err := s.blobStore.Delete(ctx, path)
+	if err != nil {
+		log.Errorf("Delete chunk failed after writer.Close() error: %v", err)
+	}
+	return err
 }
 
 func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.CommitChunkedUploadRequest) (*pb.BlobMetadata, error) {
