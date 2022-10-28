@@ -317,13 +317,6 @@ func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *blobref.Blob
 	}
 }
 
-func (s *openSavesServer) chunkRefFail(ctx context.Context, chunk *chunkref.ChunkRef) {
-	chunk.Fail()
-	if err := s.metaDB.UpdateChunkRef(ctx, chunk); err != nil {
-		log.Errorf("Failed to mark ChunkRef (%v) as Failed: %v", chunk.Key, err)
-	}
-}
-
 func (s *openSavesServer) insertExternalBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	log.Debugf("Inserting external blob: %v\n", meta)
 	// Create a blob reference based on the metadata.
@@ -539,21 +532,23 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 		return status.Errorf(codes.InvalidArgument, "SessionId is not a valid UUID string: %v", err)
 	}
 
-	// Create a chunk reference based on the metadata.
+	// Create a chunk reference based on the metadata. Do not add to blobref right away to minimize writes
 	chunk := chunkref.New(blobKey, int32(meta.GetNumber()))
-	if err := s.metaDB.InsertChunkRef(ctx, chunk); err != nil {
+	blob, err := s.metaDB.ValidateChunkRefPreconditions(ctx, chunk)
+	if err != nil {
 		return err
 	}
 
-	writer, err := s.blobStore.NewWriter(ctx, chunk.ObjectPath())
+	contextWithCancel, cancel := context.WithCancel(ctx)
+	writer, err := s.blobStore.NewWriter(contextWithCancel, chunk.ObjectPath())
 	if err != nil {
+		cancel()
 		return err
 	}
 	defer func() {
 		if writer != nil {
-			writer.Close()
-			// This means an abnormal exit, so make sure to mark the blob as Fail.
-			s.chunkRefFail(ctx, chunk)
+			cancel()
+			_ = writer.Close()
 		}
 	}()
 
@@ -577,7 +572,7 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 			log.Errorf("UploadChunk: BlobStore write error: %v", err)
 			return err
 		}
-		digest.Write(fragment)
+		_, _ = digest.Write(fragment)
 		written += n
 		// TODO(yuryu): This is not suitable for unit tests until we make the value
 		// configurable, or have a BlobStore mock.
@@ -591,31 +586,41 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	writer = nil
 	if err != nil {
 		log.Errorf("writer.Close() failed on chunk object %v: %v", chunk.ObjectPath(), err)
-		s.chunkRefFail(ctx, chunk)
-		// The uploaded object can be deleted immediately.
-		if derr := s.blobStore.Delete(ctx, chunk.ObjectPath()); derr != nil {
-			log.Errorf("Delete chunk failed after writer.Close() error: %v", derr)
-		}
 		return err
 	}
 
 	// Update the chunk size based on the actual bytes written
-	// MarkChunkRefReady commits the new change to Datastore
 	chunk.Size = int32(written)
 	chunk.Checksums = digest.Checksums()
 
+	if err := chunk.Ready(); err != nil {
+		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
+		log.Error(err)
+		return err
+	}
+	chunk.Timestamps.Update()
+
 	if err := chunk.ValidateIfPresent(meta); err != nil {
+		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Error(err)
 		return err
 	}
 
-	if err := s.metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
-		log.Errorf("Failed to update chunkref metadata (%v): %v", chunk.Key, err)
-		s.chunkRefFail(ctx, chunk)
-		// Do not delete the chunk object here. Leave it to the garbage collector.
+	if err := s.metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
+		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
+		log.Errorf("Failed to insert chunkref metadata (%v), blobref (%v): %v", chunk.Key, chunk.BlobRef, err)
 		return err
 	}
 	return stream.SendAndClose(chunk.ToProto())
+}
+
+// deleteObjectOnExit deletes the object from GS if there are errors uploading the data or inserting a chunkref
+func (s *openSavesServer) deleteObjectOnExit(ctx context.Context, path string) error {
+	err := s.blobStore.Delete(ctx, path)
+	if err != nil {
+		log.Errorf("Delete chunk failed after writer.Close() error: %v", err)
+	}
+	return err
 }
 
 func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.CommitChunkedUploadRequest) (*pb.BlobMetadata, error) {
