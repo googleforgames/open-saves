@@ -35,10 +35,7 @@ const (
 	// TODO(yuryu): Make these configurable
 	testProject       = "triton-for-games-dev"
 	testBucket        = "gs://triton-integration"
-	testBufferSize    = 1024 * 1024
 	testCacheAddr     = "localhost:6379"
-	storeKind         = "store"
-	recordKind        = "record"
 	blobKind          = "blob"
 	chunkKind         = "chunk"
 	testTimeThreshold = -1 * time.Hour
@@ -120,10 +117,10 @@ func chunkRefKey(chunk *chunkref.ChunkRef) *datastore.Key {
 		datastore.NameKey(blobKind, chunk.BlobRef.String(), nil))
 }
 
-func setupTestChunkRef(ctx context.Context, t *testing.T, collector *Collector, ds *datastore.Client, chunk *chunkref.ChunkRef) {
+func setupTestChunkRef(ctx context.Context, t *testing.T, collector *Collector, ds *datastore.Client, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) {
 	t.Helper()
 
-	if err := collector.metaDB.InsertChunkRef(ctx, chunk); err != nil {
+	if err := collector.metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
 		t.Fatalf("InsertChunkRef failed: %v", err)
 	}
 	t.Cleanup(func() {
@@ -254,7 +251,7 @@ func TestCollector_DeletesChunkedBlobs(t *testing.T) {
 	chunks[3].Fail()
 
 	for _, c := range chunks {
-		setupTestChunkRef(ctx, t, collector, ds, c)
+		setupTestChunkRef(ctx, t, collector, ds, blob, c)
 		setupExternalBlob(ctx, t, collector, c.ObjectPath())
 	}
 	collector.run(ctx)
