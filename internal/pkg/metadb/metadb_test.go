@@ -40,13 +40,10 @@ import (
 )
 
 const (
-	storeKind          = "store"
-	recordKind         = "record"
-	blobKind           = "blob"
-	chunkKind          = "chunk"
-	timestampTestDelta = 5 * time.Second
-	testProject        = "triton-for-games-dev"
-	testNamespace      = "datastore-unittests"
+	blobKind      = "blob"
+	chunkKind     = "chunk"
+	testProject   = "triton-for-games-dev"
+	testNamespace = "datastore-unittests"
 )
 
 func TestMetaDB_NewMetaDB(t *testing.T) {
@@ -169,9 +166,9 @@ func setupTestBlobRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob 
 	return got
 }
 
-func setupTestChunkRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, chunk *chunkref.ChunkRef) {
+func setupTestChunkRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) {
 	t.Helper()
-	if err := metaDB.InsertChunkRef(ctx, chunk); err != nil {
+	if err := metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
 		t.Fatalf("InsertChunkRef() failed for chunk key (%v): %v", chunk.Key, err)
 	}
 
@@ -977,23 +974,21 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 	chunks := []*chunkref.ChunkRef{}
 	for i := 0; i < testChunkCount; i++ {
 		chunk := chunkref.New(blob.Key, int32(i))
-		setupTestChunkRef(ctx, t, metaDB, chunk)
+		chunk.Size = testChunkSize
+		if err := chunk.Ready(); err != nil {
+			t.Fatalf("Ready() failed for chunk (%v): %v", chunk.Key, err)
+		}
+		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 		chunks = append(chunks, chunk)
 	}
 
 	// Mark the chunks ready
 	for _, chunk := range chunks {
-		chunk.Size = testChunkSize
-		now := time.Now()
-		if err := metaDB.MarkChunkRefReady(ctx, chunk); err != nil {
-			t.Fatalf("MarkChunkRefReady() failed for chunk (%v): %v", chunk.Key, err)
-		}
 		dsKey := chunkRefKey(chunk.BlobRef, chunk.Key)
 		got := new(chunkref.ChunkRef)
 		if err := ds.Get(ctx, dsKey, got); err != nil {
 			t.Errorf("Failed to get updated ChunkRef (%v): %v", dsKey, err)
 		} else {
-			assert.True(t, now.Before(got.Timestamps.UpdatedAt))
 			assert.Equal(t, blobref.StatusReady, got.Status)
 		}
 	}
@@ -1074,7 +1069,7 @@ func TestMetaDB_MarkUncommittedBlobForDeletion(t *testing.T) {
 	store, record, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
 
 	chunk := chunkref.New(blob.Key, 0)
-	setupTestChunkRef(ctx, t, metaDB, chunk)
+	setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 
 	assert.NoError(t, metaDB.MarkUncommittedBlobForDeletion(ctx, blob.Key))
 
@@ -1099,7 +1094,7 @@ func TestMetaDB_UpdateChunkRef(t *testing.T) {
 	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
 
 	chunk := chunkref.New(blob.Key, 0)
-	setupTestChunkRef(ctx, t, metaDB, chunk)
+	setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 
 	chunk.Fail()
 	assert.NoError(t, metaDB.UpdateChunkRef(ctx, chunk))
@@ -1125,13 +1120,10 @@ func TestMetaDB_MultipleChunksWithSameNumber(t *testing.T) {
 		chunkref.New(blob.Key, 0),
 	}
 
-	for _, chunk := range chunks {
-		setupTestChunkRef(ctx, t, metaDB, chunk)
-	}
-
 	for i, chunk := range chunks {
 		chunk.Size = int32(i)
-		assert.NoError(t, metaDB.MarkChunkRefReady(ctx, chunk))
+		assert.NoError(t, chunk.Ready())
+		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 	}
 
 	chunks[0].Status = blobref.StatusPendingDeletion
@@ -1177,7 +1169,7 @@ func TestMetaDB_GetChildChunkRefs(t *testing.T) {
 	chunks[2].Status = blobref.StatusPendingDeletion
 
 	for _, chunk := range chunks {
-		setupTestChunkRef(ctx, t, metaDB, chunk)
+		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 	}
 
 	cur := metaDB.GetChildChunkRefs(ctx, blob.Key)
@@ -1225,7 +1217,7 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 			},
 		}
 		chunks = append(chunks, chunk)
-		setupTestChunkRef(ctx, t, metaDB, chunk)
+		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 	}
 
 	testCase := []struct {

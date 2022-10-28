@@ -911,14 +911,10 @@ func (m *MetaDB) ValidateChunkRefPreconditions(ctx context.Context, chunk *chunk
 	return blob, nil
 }
 
-// InsertChunkRefAsReady inserts a new ChunkRef object to the datastore. If the current session has another chunk
+// InsertChunkRef inserts a new ChunkRef object to the datastore. If the current session has another chunk
 // with the same Number, it will be marked for deletion.
-func (m *MetaDB) InsertChunkRefAsReady(ctx context.Context, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) error {
+func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) error {
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		if err := chunk.Ready(); err != nil {
-			return err
-		}
-		chunk.Timestamps.Update()
 
 		mut := ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
 		if err := m.mutateSingleInTransaction(tx, mut); err != nil {

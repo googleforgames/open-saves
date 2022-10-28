@@ -593,13 +593,20 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	chunk.Size = int32(written)
 	chunk.Checksums = digest.Checksums()
 
+	if err := chunk.Ready(); err != nil {
+		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
+		log.Error(err)
+		return err
+	}
+	chunk.Timestamps.Update()
+
 	if err := chunk.ValidateIfPresent(meta); err != nil {
 		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Error(err)
 		return err
 	}
 
-	if err := s.metaDB.InsertChunkRefAsReady(ctx, blob, chunk); err != nil {
+	if err := s.metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
 		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Errorf("Failed to insert chunkref metadata (%v), blobref (%v): %v", chunk.Key, chunk.BlobRef, err)
 		return err
