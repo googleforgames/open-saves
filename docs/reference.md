@@ -38,6 +38,7 @@
     - [QueryRecordsResponse](#opensaves-QueryRecordsResponse)
     - [Record](#opensaves-Record)
     - [Record.PropertiesEntry](#opensaves-Record-PropertiesEntry)
+    - [RecordResponse](#opensaves-RecordResponse)
     - [SortOrder](#opensaves-SortOrder)
     - [Store](#opensaves-Store)
     - [UpdateRecordRequest](#opensaves-UpdateRecordRequest)
@@ -601,6 +602,7 @@ Multiple conditions are AND&#39;ed together.
 | sort_orders | [SortOrder](#opensaves-SortOrder) | repeated | List of sort orders to return records. These SortOrders are applied in sequence. |
 | limit | [int32](#int32) |  | the limit of the number of records to return. |
 | keys_only | [bool](#bool) |  | If keys_only is set to true, the server will only return records.key and store_keys in the QueryRecordsResponse message. |
+| offset | [int32](#int32) |  | Number of records to skip when performing queries - use with keys_only |
 
 
 
@@ -658,6 +660,22 @@ Record represents each entity in the Open Saves database.
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [Property](#opensaves-Property) |  |  |
+
+
+
+
+
+
+<a name="opensaves-RecordResponse"></a>
+
+### RecordResponse
+RecordResponse are returned as records in a stream response
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| record | [Record](#opensaves-Record) |  | Record matching the query criteria |
+| store_key | [string](#string) |  | Store key of the record matching the query criteria |
 
 
 
@@ -811,6 +829,7 @@ Public interface of the Open Saves service.
 | CreateRecord | [CreateRecordRequest](#opensaves-CreateRecordRequest) | [Record](#opensaves-Record) | CreateRecord creates a new record. This returns an error if the specified key already exists. |
 | GetRecord | [GetRecordRequest](#opensaves-GetRecordRequest) | [Record](#opensaves-Record) | GetRecord returns a record with the specified key. |
 | QueryRecords | [QueryRecordsRequest](#opensaves-QueryRecordsRequest) | [QueryRecordsResponse](#opensaves-QueryRecordsResponse) | QueryRecords performs a query and returns matching records. |
+| QueryRecordsStream | [QueryRecordsRequest](#opensaves-QueryRecordsRequest) | [RecordResponse](#opensaves-RecordResponse) stream | QueryRecords performs a query and returns matching records. |
 | UpdateRecord | [UpdateRecordRequest](#opensaves-UpdateRecordRequest) | [Record](#opensaves-Record) | UpdateRecord updates an existing record. This returns an error and does not create a new record if the key doesn&#39;t exist. |
 | DeleteRecord | [DeleteRecordRequest](#opensaves-DeleteRecordRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | DeleteRecord deletes a single record with the specified key. |
 | CreateBlob | [CreateBlobRequest](#opensaves-CreateBlobRequest) stream | [BlobMetadata](#opensaves-BlobMetadata) | CreateBlob adds a new blob to a record. |
