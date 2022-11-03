@@ -370,7 +370,7 @@ message QueryRecordsRequest {
   // and store_keys in the QueryRecordsResponse message.
   bool keys_only = 7;
 
-  // Number of records to skip when performing queries - use with keys_only
+  // Number of records to skip when performing queries - use with keys_only.
   int32 offset = 8;
 }
 

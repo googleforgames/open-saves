@@ -1264,8 +1264,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 	metaDB := newMetaDB(ctx, t)
 
 	storeKeys := []string{
-		newRecordKey(),
-		newRecordKey(),
+		newStoreKey(),
+		newStoreKey(),
 	}
 	sort.Strings(storeKeys)
 
