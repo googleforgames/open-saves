@@ -45,9 +45,6 @@ service OpenSaves {
   // QueryRecords performs a query and returns matching records.
   rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {}
 
-  // QueryRecords performs a query and returns matching records.
-  rpc QueryRecordsStream(QueryRecordsRequest) returns (stream RecordResponse) {}
-
   // UpdateRecord updates an existing record. This returns an error and
   // does not create a new record if the key doesn't exist.
   rpc UpdateRecord(UpdateRecordRequest) returns (Record) {}
@@ -441,14 +438,6 @@ message QueryRecordsResponse {
   // The order of keys is the same as the records field,
   // e.g. store_keys[0] is the store for records[0], and so on.
   repeated string store_keys = 2;
-}
-
-// RecordResponse are returned as records in a stream response
-message RecordResponse {
-  // Record matching the query criteria
-  Record record = 1;
-  // Store key of the record matching the query criteria
-  string store_key = 2;
 }
 
 message UpdateRecordRequest {

@@ -783,7 +783,6 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 }
 
 // QueryRecords returns a list of records that match the given filters.
-// TODO(https://github.com/googleforgames/open-saves/issues/339): consider refactoring this to fewer arguments.
 func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) ([]*record.Record, error) {
 	query := m.newQuery(recordKind)
 	if req.GetStoreKey() != "" {
@@ -830,6 +829,9 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 	}
 	if limit := req.GetLimit(); limit > 0 {
 		query = query.Limit(int(limit))
+	}
+	if offset := req.GetOffset(); offset > 0 {
+		query = query.Offset(int(offset))
 	}
 	if req.GetKeysOnly() {
 		query = query.KeysOnly()

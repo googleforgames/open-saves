@@ -17,6 +17,7 @@ package metadb_test
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -1266,21 +1267,31 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 	for i := range stores {
 		stores[i], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: newStoreKey()}, nil)
 	}
+
+	// Create the records with keys that are ordered to help in verifying the records
+	// returned with offset and limit
+	keys := []string{
+		newRecordKey(),
+		newRecordKey(),
+		newRecordKey(),
+	}
+	sort.Strings(keys)
+
 	records := []*record.Record{
 		{
-			Key:        newRecordKey(),
+			Key:        keys[0],
 			OwnerID:    "abc",
 			Tags:       []string{"tag1", "tag2"},
 			Properties: make(record.PropertyMap),
 		},
 		{
-			Key:        newRecordKey(),
+			Key:        keys[1],
 			OwnerID:    "cba",
 			Tags:       []string{"gat1", "gat2"},
 			Properties: make(record.PropertyMap),
 		},
 		{
-			Key:        newRecordKey(),
+			Key:        keys[2],
 			OwnerID:    "xyz",
 			Tags:       []string{"tag1", "tag2"},
 			Properties: make(record.PropertyMap),
@@ -1327,6 +1338,20 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 				Limit:    1,
 			},
 			[]*record.Record{records[0]}, codes.OK,
+		},
+		{
+			"Limit No Filtering",
+			&pb.QueryRecordsRequest{
+				Limit: 1,
+			},
+			[]*record.Record{records[0]}, codes.OK,
+		},
+		{
+			"Offset No Filtering",
+			&pb.QueryRecordsRequest{
+				Offset: 1,
+			},
+			[]*record.Record{records[1], records[2]}, codes.OK,
 		},
 		{
 			"Keys Only",
