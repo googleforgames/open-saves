@@ -1348,16 +1348,18 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		{
 			"Limit No Filtering",
 			&pb.QueryRecordsRequest{
-				Limit: 1,
+				StoreKey: stores[0].Key,
+				Limit:    1,
 			},
 			[]*record.Record{records[0]}, codes.OK,
 		},
 		{
 			"Offset No Filtering",
 			&pb.QueryRecordsRequest{
-				Offset: 1,
+				StoreKey: stores[0].Key,
+				Offset:   1,
 			},
-			[]*record.Record{records[1], records[2]}, codes.OK,
+			[]*record.Record{records[1]}, codes.OK,
 		},
 		{
 			"Keys Only",
