@@ -1263,9 +1263,15 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 
 	metaDB := newMetaDB(ctx, t)
 
+	storeKeys := []string{
+		newRecordKey(),
+		newRecordKey(),
+	}
+	sort.Strings(storeKeys)
+
 	stores := make([]*store.Store, 2)
 	for i := range stores {
-		stores[i], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: newStoreKey()}, nil)
+		stores[i], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: storeKeys[i]}, nil)
 	}
 
 	// Create the records with keys that are ordered to help in verifying the records
@@ -1368,6 +1374,7 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			// The default order of the records returned by Query are sorted per store + record keys
 			rr, err := metaDB.QueryRecords(ctx, tc.req)
 			assert.Empty(t, cmp.Diff(rr, tc.wantRecords,
 				cmpopts.SortSlices(func(x, y *record.Record) bool {
