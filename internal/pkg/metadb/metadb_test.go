@@ -1260,22 +1260,20 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 func TestMetaDB_QueryRecords(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-
 	metaDB := newMetaDB(ctx, t)
-
-	storeKeys := []string{
-		newStoreKey(),
-		newStoreKey(),
-	}
-	sort.Strings(storeKeys)
 
 	stores := make([]*store.Store, 2)
 	for i := range stores {
-		stores[i], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: storeKeys[i]}, nil)
+		stores[i], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: newStoreKey()}, nil)
 	}
 
-	// Create the records with keys that are ordered to help in verifying the records
-	// returned with offset and limit
+	// Create unique strings for the tags to avoid pulling records all stores when
+	// the storeKey is not included in the query request
+	tag1 := uuid.NewString()
+	tag2 := uuid.NewString()
+	tag3 := uuid.NewString()
+	tag4 := uuid.NewString()
+
 	keys := []string{
 		newRecordKey(),
 		newRecordKey(),
@@ -1287,19 +1285,19 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		{
 			Key:        keys[0],
 			OwnerID:    "abc",
-			Tags:       []string{"tag1", "tag2"},
+			Tags:       []string{tag1, tag2},
 			Properties: make(record.PropertyMap),
 		},
 		{
 			Key:        keys[1],
 			OwnerID:    "cba",
-			Tags:       []string{"gat1", "gat2"},
+			Tags:       []string{tag3, tag4},
 			Properties: make(record.PropertyMap),
 		},
 		{
 			Key:        keys[2],
 			OwnerID:    "xyz",
-			Tags:       []string{"tag1", "tag2"},
+			Tags:       []string{tag1, tag2},
 			Properties: make(record.PropertyMap),
 		},
 	}
@@ -1325,14 +1323,14 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			"Tags No Result",
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[1].Key,
-				Tags:     []string{"tag1", "gat2"},
+				Tags:     []string{tag1, tag4},
 			},
 			nil, codes.OK,
 		},
 		{
 			"Tags Multiple Records",
 			&pb.QueryRecordsRequest{
-				Tags: []string{"tag1"},
+				Tags: []string{tag1},
 			},
 			[]*record.Record{records[0], records[2]}, codes.OK,
 		},
@@ -1340,7 +1338,7 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			"Limit",
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[0].Key,
-				Tags:     []string{"tag1"},
+				Tags:     []string{tag1},
 				Limit:    1,
 			},
 			[]*record.Record{records[0]}, codes.OK,
@@ -1366,7 +1364,7 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[0].Key,
 				OwnerId:  "abc",
-				Tags:     []string{"tag1"},
+				Tags:     []string{tag1},
 				KeysOnly: true,
 			},
 			[]*record.Record{{Key: records[0].Key, StoreKey: records[0].StoreKey}}, codes.OK,
@@ -1390,3 +1388,6 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		})
 	}
 }
+
+//func TestMetaDB_GetMultiRecords(t *testing.T) {
+//}

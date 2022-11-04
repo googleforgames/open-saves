@@ -872,6 +872,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 
 	// If an offset was passed and the clients want full records, fetch records by keys
 	if useOffset && !req.GetKeysOnly() {
+		match = make([]*record.Record, len(keys))
 		if err := m.client.GetMulti(ctx, keys, match); err != nil {
 			return nil, status.Errorf(codes.Internal, "metadb QueryRecords: %v", err)
 		}
@@ -889,8 +890,7 @@ func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []st
 	}
 
 	// Query the datastore for the records by keys
-	var records []*record.Record
-
+	records := make([]*record.Record, len(keys))
 	if err := m.client.GetMulti(ctx, keys, records); err != nil {
 		return nil, status.Errorf(codes.Internal, "metadb GetMultiRecords: %v", err)
 	}
