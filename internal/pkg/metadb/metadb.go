@@ -874,14 +874,19 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 	if useOffset && !req.GetKeysOnly() {
 		match = make([]*record.Record, len(keys))
 		if err := m.client.GetMulti(ctx, keys, match); err != nil {
-			return nil, status.Errorf(codes.Internal, "metadb QueryRecords: %v", err)
+			if _, ok := err.(ds.MultiError); ok {
+				// Error(s) encountered when getting some entities (not supposed to happen here)
+				return match, err
+			}
+			// Datastore internal error
+			return nil, datastoreErrToGRPCStatus(err)
 		}
 	}
 
 	return match, nil
 }
 
-// GetMultiRecords returns records by using a batch get request against datastore.
+// GetMultiRecords returns records by using the get multi request interface from datastore.
 func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []string) ([]*record.Record, error) {
 	// Build the key array with parameters
 	keys, err := m.createDatastoreKeys(storeKeys, recordKeys)
@@ -891,8 +896,13 @@ func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []st
 
 	// Query the datastore for the records by keys
 	records := make([]*record.Record, len(keys))
-	if err := m.client.GetMulti(ctx, keys, records); err != nil {
-		return nil, status.Errorf(codes.Internal, "metadb GetMultiRecords: %v", err)
+	if err = m.client.GetMulti(ctx, keys, records); err != nil {
+		if _, ok := err.(ds.MultiError); ok {
+			// Error(s) encountered when getting some entities
+			return records, err
+		}
+		// Datastore internal error
+		return nil, datastoreErrToGRPCStatus(err)
 	}
 
 	return records, nil
