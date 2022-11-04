@@ -783,7 +783,6 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 }
 
 // QueryRecords returns a list of records that match the given filters.
-// TODO(https://github.com/googleforgames/open-saves/issues/339): consider refactoring this to fewer arguments.
 func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) ([]*record.Record, error) {
 	query := m.newQuery(recordKind)
 	if req.GetStoreKey() != "" {
@@ -828,15 +827,27 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 			return nil, status.Errorf(codes.InvalidArgument, "got invalid SortOrder direction value: %v", s.Direction)
 		}
 	}
+	// Determine if we query keys only based on offset and request params
+
 	if limit := req.GetLimit(); limit > 0 {
 		query = query.Limit(int(limit))
 	}
+	queryKeysOnly := false
+	useOffset := false
+	if offset := req.GetOffset(); offset > 0 {
+		query = query.Offset(int(offset))
+		query = query.KeysOnly()
+		queryKeysOnly = true
+		useOffset = true
+	}
 	if req.GetKeysOnly() {
 		query = query.KeysOnly()
+		queryKeysOnly = true
 	}
 	iter := m.client.Run(ctx, query)
 
 	var match []*record.Record
+	var keys []*ds.Key
 	for {
 		var r record.Record
 		key, err := iter.Next(&r)
@@ -844,17 +855,74 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 			break
 		}
 		if err != nil {
-			return nil, status.Errorf(codes.Internal,
-				"metadb QueryRecords: %v", err)
+			return nil, status.Errorf(codes.Internal, "metadb QueryRecords: %v", err)
 		}
-		if req.GetKeysOnly() {
+		if queryKeysOnly {
 			if err := r.LoadKey(key); err != nil {
 				return nil, status.Errorf(codes.Internal, "metadb QueryRecords LoadKey: %v", err)
 			}
 		}
-		match = append(match, &r)
+
+		if useOffset && !req.GetKeysOnly() {
+			keys = append(keys, key)
+		} else {
+			match = append(match, &r)
+		}
 	}
+
+	// If an offset was passed and the clients want full records, fetch records by keys
+	if useOffset && !req.GetKeysOnly() {
+		match = make([]*record.Record, len(keys))
+		if err := m.client.GetMulti(ctx, keys, match); err != nil {
+			if _, ok := err.(ds.MultiError); ok {
+				// Error(s) encountered when getting some entities (not supposed to happen here)
+				return match, err
+			}
+			// Datastore internal error
+			return nil, datastoreErrToGRPCStatus(err)
+		}
+	}
+
 	return match, nil
+}
+
+// GetMultiRecords returns records by using the get multi request interface from datastore.
+func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []string) ([]*record.Record, error) {
+	// Build the key array with parameters
+	keys, err := m.createDatastoreKeys(storeKeys, recordKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	// Query the datastore for the records by keys
+	records := make([]*record.Record, len(keys))
+	if err = m.client.GetMulti(ctx, keys, records); err != nil {
+		if _, ok := err.(ds.MultiError); ok {
+			// Error(s) encountered when getting some entities
+			return records, err
+		}
+		// Datastore internal error
+		return nil, datastoreErrToGRPCStatus(err)
+	}
+
+	return records, nil
+}
+
+func (m *MetaDB) createDatastoreKeys(storeKeys, recordKeys []string) ([]*ds.Key, error) {
+	if len(storeKeys) != len(recordKeys) {
+		return nil, status.Errorf(codes.Internal, "metadb createDatastoreKeys: invalid store/record key array(s)  length")
+	}
+	var keys []*ds.Key
+	if len(storeKeys) == 0 {
+		return keys, nil
+	}
+
+	for i := 0; i < len(storeKeys); i++ {
+		key := m.createRecordKey(storeKeys[i], recordKeys[i])
+		keys = append(keys, key)
+	}
+
+	return keys, nil
 }
 
 func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, storeKey, recordKey string, blobKey uuid.UUID, number int32) ([]*chunkref.ChunkRef, error) {

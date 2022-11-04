@@ -601,6 +601,7 @@ Multiple conditions are AND&#39;ed together.
 | sort_orders | [SortOrder](#opensaves-SortOrder) | repeated | List of sort orders to return records. These SortOrders are applied in sequence. |
 | limit | [int32](#int32) |  | the limit of the number of records to return. |
 | keys_only | [bool](#bool) |  | If keys_only is set to true, the server will only return records.key and store_keys in the QueryRecordsResponse message. |
+| offset | [int32](#int32) |  | Number of records to skip when performing queries. |
 
 
 
