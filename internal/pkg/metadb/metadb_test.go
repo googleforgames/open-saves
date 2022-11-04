@@ -17,6 +17,8 @@ package metadb_test
 import (
 	"context"
 	"errors"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
+	"sort"
 	"testing"
 	"time"
 
@@ -1259,30 +1261,44 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 func TestMetaDB_QueryRecords(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-
 	metaDB := newMetaDB(ctx, t)
 
 	stores := make([]*store.Store, 2)
 	for i := range stores {
 		stores[i], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: newStoreKey()}, nil)
 	}
+
+	// Create unique strings for the tags to avoid pulling records all stores when
+	// the storeKey is not included in the query request
+	tag1 := uuid.NewString()
+	tag2 := uuid.NewString()
+	tag3 := uuid.NewString()
+	tag4 := uuid.NewString()
+
+	keys := []string{
+		newRecordKey(),
+		newRecordKey(),
+		newRecordKey(),
+	}
+	sort.Strings(keys)
+
 	records := []*record.Record{
 		{
-			Key:        newRecordKey(),
+			Key:        keys[0],
 			OwnerID:    "abc",
-			Tags:       []string{"tag1", "tag2"},
+			Tags:       []string{tag1, tag2},
 			Properties: make(record.PropertyMap),
 		},
 		{
-			Key:        newRecordKey(),
+			Key:        keys[1],
 			OwnerID:    "cba",
-			Tags:       []string{"gat1", "gat2"},
+			Tags:       []string{tag3, tag4},
 			Properties: make(record.PropertyMap),
 		},
 		{
-			Key:        newRecordKey(),
+			Key:        keys[2],
 			OwnerID:    "xyz",
-			Tags:       []string{"tag1", "tag2"},
+			Tags:       []string{tag1, tag2},
 			Properties: make(record.PropertyMap),
 		},
 	}
@@ -1308,14 +1324,14 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			"Tags No Result",
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[1].Key,
-				Tags:     []string{"tag1", "gat2"},
+				Tags:     []string{tag1, tag4},
 			},
 			nil, codes.OK,
 		},
 		{
 			"Tags Multiple Records",
 			&pb.QueryRecordsRequest{
-				Tags: []string{"tag1"},
+				Tags: []string{tag1},
 			},
 			[]*record.Record{records[0], records[2]}, codes.OK,
 		},
@@ -1323,17 +1339,33 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			"Limit",
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[0].Key,
-				Tags:     []string{"tag1"},
+				Tags:     []string{tag1},
 				Limit:    1,
 			},
 			[]*record.Record{records[0]}, codes.OK,
+		},
+		{
+			"Limit No Filtering",
+			&pb.QueryRecordsRequest{
+				StoreKey: stores[0].Key,
+				Limit:    1,
+			},
+			[]*record.Record{records[0]}, codes.OK,
+		},
+		{
+			"Offset No Filtering",
+			&pb.QueryRecordsRequest{
+				StoreKey: stores[0].Key,
+				Offset:   1,
+			},
+			[]*record.Record{records[1]}, codes.OK,
 		},
 		{
 			"Keys Only",
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[0].Key,
 				OwnerId:  "abc",
-				Tags:     []string{"tag1"},
+				Tags:     []string{tag1},
 				KeysOnly: true,
 			},
 			[]*record.Record{{Key: records[0].Key, StoreKey: records[0].StoreKey}}, codes.OK,
@@ -1352,6 +1384,120 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			assert.Equal(t, tc.wantCode, status.Code(err))
 			if tc.wantCode == codes.OK {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestMetaDB_GetMultiRecords(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+
+	// Only stores 0 and 1 exist in Datastore
+	stores := make([]*store.Store, 3)
+	stores[0], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: newStoreKey()}, nil)
+	stores[1], _ = setupTestStoreRecord(ctx, t, metaDB, &store.Store{Key: newStoreKey()}, nil)
+	stores[2] = &store.Store{Key: newStoreKey()}
+
+	records := []*record.Record{
+		{
+			Key:        newRecordKey(),
+			Tags:       []string{"first"},
+			Properties: make(record.PropertyMap),
+			Blob:       []uint8{},
+			Checksums:  checksums.Checksums{MD5: []uint8{}, CRC32C: 0, HasCRC32C: false},
+		},
+		{
+			Key:        newRecordKey(),
+			Tags:       []string{"second"},
+			Properties: make(record.PropertyMap),
+			Blob:       []uint8{},
+			Checksums:  checksums.Checksums{MD5: []uint8{}, CRC32C: 0, HasCRC32C: false},
+		},
+		{
+			Key:        newRecordKey(),
+			Tags:       []string{"third"},
+			Properties: make(record.PropertyMap),
+			Blob:       []uint8{},
+			Checksums:  checksums.Checksums{MD5: []uint8{}, CRC32C: 0, HasCRC32C: false},
+		},
+		{
+			Key:        newRecordKey(),
+			Tags:       []string{"fourth", "does not exists"},
+			Properties: make(record.PropertyMap),
+			Blob:       []uint8{},
+			Checksums:  checksums.Checksums{MD5: []uint8{}, CRC32C: 0, HasCRC32C: false},
+			StoreKey:   stores[2].Key,
+		},
+	}
+	// Only records 0, 1, 2 exist in Datastore
+	records[0] = setupTestRecord(ctx, t, metaDB, stores[0].Key, records[0])
+	records[1] = setupTestRecord(ctx, t, metaDB, stores[0].Key, records[1])
+	records[2] = setupTestRecord(ctx, t, metaDB, stores[1].Key, records[2])
+
+	testCases := []struct {
+		name        string
+		storeKeys   []string
+		recordKeys  []string
+		wantRecords []*record.Record
+		wantErrors  error
+	}{
+		{
+			"Get all existing record",
+			[]string{records[0].StoreKey, records[1].StoreKey, records[2].StoreKey},
+			[]string{records[0].Key, records[1].Key, records[2].Key},
+			[]*record.Record{records[0], records[1], records[2]},
+			nil,
+		},
+		{
+			"Get Records invalid array length",
+			[]string{records[0].StoreKey},
+			[]string{records[0].Key, records[1].Key},
+			nil,
+			status.Errorf(codes.Internal, "metadb createDatastoreKeys: invalid store/record key array(s)  length"),
+		},
+		{
+			"Get non existing record",
+			[]string{records[3].StoreKey},
+			[]string{records[3].Key},
+			[]*record.Record{nil},
+			datastore.MultiError{datastore.ErrNoSuchEntity},
+		},
+		{
+			"Get records with one missing",
+			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
+			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
+			[]*record.Record{records[0], records[1], nil, records[2]},
+			datastore.MultiError{nil, nil, datastore.ErrNoSuchEntity, nil},
+		},
+		{
+			"Get records with one non-existing store key",
+			[]string{uuid.NewString(), records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
+			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
+			[]*record.Record{nil, records[1], nil, records[2]},
+			datastore.MultiError{datastore.ErrNoSuchEntity, nil, datastore.ErrNoSuchEntity, nil},
+		},
+		{
+			"Get records with one non-existing record key",
+			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
+			[]string{uuid.NewString(), records[1].Key, records[3].Key, records[2].Key},
+			[]*record.Record{nil, records[1], nil, records[2]},
+			datastore.MultiError{datastore.ErrNoSuchEntity, nil, datastore.ErrNoSuchEntity, nil},
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rr, err := metaDB.GetMultiRecords(ctx, tc.storeKeys, tc.recordKeys)
+			assert.Empty(t, cmp.Diff(rr, tc.wantRecords), cmpopts.EquateEmpty())
+			if tc.wantErrors == nil {
+				assert.NoError(t, err)
+			} else if errs, ok := err.(datastore.MultiError); ok {
+				assert.EqualValues(t, tc.wantErrors, errs)
+			} else {
+				assert.Equal(t, tc.wantErrors, err)
 			}
 		})
 	}

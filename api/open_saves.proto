@@ -91,12 +91,12 @@ service OpenSaves {
   // omitted.
   rpc Ping(PingRequest) returns (PingResponse) {}
 
-  // CompareAndSwap compares the property to old_value and updates the property to value 
+  // CompareAndSwap compares the property to old_value and updates the property to value
   // if the old_value and the current property are equal.
   // The updated field in CompareAndSwapResponse is set to true if the swap is executed.
   // For example, CompareAndSwap(property, value = 42, old_value = 24) will set the
   // property to 42 if the current value is 24.
-  // CompareAndSwap also supports swapping with a value of another type, e.g. 
+  // CompareAndSwap also supports swapping with a value of another type, e.g.
   // CompareAndSwap(property, value = "42", old_value = 24).
   // Otherwise it will not update the property and return the current (unchanged) value
   // and updated = false. The operation is executed atomically.
@@ -131,7 +131,7 @@ service OpenSaves {
   // AtomicSubInt does the same except it subtracts a number.
   rpc AtomicSubInt(AtomicIntRequest) returns (AtomicIntResponse) {}
 
-  // AtomicInc increments the number of an integer property if less than upper_bound. 
+  // AtomicInc increments the number of an integer property if less than upper_bound.
   // Otherwise it resets the property to lower_bound.
   // if (property < upper_bound) {
   //   property++
@@ -359,16 +359,19 @@ message QueryRecordsRequest {
   // owner_id is the owner of records, represented as an external user ID.
   string owner_id = 4;
 
-  // List of sort orders to return records. These SortOrders are applied 
+  // List of sort orders to return records. These SortOrders are applied
   // in sequence.
   repeated SortOrder sort_orders = 5;
 
   // the limit of the number of records to return.
   int32 limit = 6;
 
-  // If keys_only is set to true, the server will only return records.key 
+  // If keys_only is set to true, the server will only return records.key
   // and store_keys in the QueryRecordsResponse message.
   bool keys_only = 7;
+
+  // Number of records to skip when performing queries.
+  int32 offset = 8;
 }
 
 // FilterOperator has a list of comperators.
@@ -517,7 +520,7 @@ message CreateChunkedBlobRequest {
 
   // Size of each chunk
   int64 chunk_size = 3;
-  
+
   // Expected number of chunks.
   // When set to non-zero, the server checks if it has received the exact number of
   // chunks when CommitChunkedUpload is called.
@@ -677,7 +680,7 @@ message CompareAndSwapRequest {
   // old_value is compared against the current property value.
   Property old_value = 5;
 
-  // Performance hints. 
+  // Performance hints.
   Hint hint = 6;
 }
 
@@ -686,7 +689,7 @@ message CompareAndSwapRequest {
 message CompareAndSwapResponse {
   // updated indicates that the condition is satisfied and the property has been updated.
   bool updated = 1;
-  
+
   // value is the old value of the property.
   Property value = 2;
 }
@@ -706,7 +709,7 @@ message AtomicIntRequest {
   // value is the operand for each method (see method descriptions).
   int64 value = 4;
 
-  // Performance hints. 
+  // Performance hints.
   Hint hint = 5;
 }
 
@@ -715,7 +718,7 @@ message AtomicIntRequest {
 message AtomicIntResponse {
   // updated indicates that the condition is satisfied and the property has been updated.
   bool updated = 1;
-  
+
   // value is the property value before the atomic operation.
   int64 value = 2;
 }
@@ -737,6 +740,6 @@ message AtomicIncRequest {
   // upper_bound is the upper bound of the interval.
   int64 upper_bound = 5;
 
-  // Performance hints. 
+  // Performance hints.
   Hint hint = 6;
 }
