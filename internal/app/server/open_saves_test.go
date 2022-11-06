@@ -1241,6 +1241,190 @@ func TestOpenSaves_QueryRecords_Offset(t *testing.T) {
 	require.Equal(t, 2, len(resp.StoreKeys))
 }
 
+func TestOpenSaves_GetMultiRecords_InvalidArguments(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+
+	getReq := &pb.GetMultiRecordsRequest{
+		StoreKeys: []string{uuid.NewString(), uuid.NewString(), uuid.NewString()},
+		Keys:      []string{uuid.NewString(), uuid.NewString()},
+	}
+	streamClient, err := client.GetMultiRecords(ctx, getReq)
+	if err != nil {
+		// The error returned here is related to opening the stream
+		assert.Nil(t, err)
+	}
+	defer func() {
+		if streamClient != nil {
+			_ = streamClient.CloseSend()
+		}
+	}()
+
+	var records []*record.Record
+	for {
+		var recResp *pb.RecordResponse
+		recResp, err = streamClient.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			// Capture any non-recoverable errors returned by the streaming response
+			break
+		}
+		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
+		if err != nil {
+			t.Errorf("record.FromProto returned error: %v", err)
+			break
+		}
+		records = append(records, record)
+	}
+
+	assert.Error(t, err)
+	assert.EqualValues(t, err, status.Errorf(codes.InvalidArgument, "metadb createDatastoreKeys: invalid store/record key array(s)  length"))
+}
+
+func TestOpenSaves_GetMultiRecords(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	pbRecords := make([]*pb.Record, 3)
+	for i := range pbRecords {
+		pbRecords[i] = setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()})
+	}
+
+	getReq := &pb.GetMultiRecordsRequest{
+		StoreKeys: []string{storeKey, storeKey, storeKey},
+		Keys:      []string{pbRecords[0].Key, pbRecords[1].Key, pbRecords[2].Key},
+	}
+	streamClient, err := client.GetMultiRecords(ctx, getReq)
+	defer func() {
+		if streamClient != nil {
+			_ = streamClient.CloseSend()
+		}
+	}()
+
+	var records []*record.Record
+	for {
+		var recResp *pb.RecordResponse
+		recResp, err = streamClient.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("GetMultiRecords.Recv returned error: %v", err)
+			break
+		}
+		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
+		if err != nil {
+			t.Errorf("record.FromProto returned error: %v", err)
+			break
+		}
+		records = append(records, record)
+	}
+
+	require.Equal(t, err, io.EOF)
+	require.Equal(t, 3, len(records))
+	for i := range records {
+		assert.EqualValues(t, records[i].Key, pbRecords[i].Key)
+		assert.EqualValues(t, records[i].StoreKey, storeKey)
+	}
+}
+
+func TestOpenSaves_GetMultiRecords_OneNotFound(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	pbRecords := make([]*pb.Record, 3)
+	for i := range pbRecords {
+		pbRecords[i] = setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()})
+	}
+
+	getReq := &pb.GetMultiRecordsRequest{
+		StoreKeys: []string{storeKey, storeKey, storeKey, storeKey},
+		Keys:      []string{pbRecords[0].Key, pbRecords[1].Key, uuid.NewString(), pbRecords[2].Key},
+	}
+	streamClient, err := client.GetMultiRecords(ctx, getReq)
+	defer func() {
+		if streamClient != nil {
+			_ = streamClient.CloseSend()
+		}
+	}()
+
+	var records []*record.Record
+	for {
+		var recResp *pb.RecordResponse
+		recResp, err = streamClient.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("GetMultiRecords.Recv returned error: %v", err)
+			break
+		}
+		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
+		if err != nil {
+			t.Errorf("record.FromProto returned error: %v", err)
+			break
+		}
+		records = append(records, record)
+	}
+
+	require.Equal(t, err, io.EOF)
+	require.Equal(t, 3, len(records))
+	for i := range records {
+		assert.EqualValues(t, records[i].Key, pbRecords[i].Key)
+		assert.EqualValues(t, records[i].StoreKey, storeKey)
+	}
+}
+
+func TestOpenSaves_GetMultiRecords_AllNotFound(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	getReq := &pb.GetMultiRecordsRequest{
+		StoreKeys: []string{storeKey, storeKey, storeKey},
+		Keys:      []string{uuid.NewString(), uuid.NewString(), uuid.NewString()},
+	}
+	streamClient, err := client.GetMultiRecords(ctx, getReq)
+	defer func() {
+		if streamClient != nil {
+			_ = streamClient.CloseSend()
+		}
+	}()
+
+	var records []*record.Record
+	for {
+		var recResp *pb.RecordResponse
+		recResp, err = streamClient.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("GetMultiRecords.Recv returned error: %v", err)
+			break
+		}
+		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
+		if err != nil {
+			t.Errorf("record.FromProto returned error: %v", err)
+			break
+		}
+		records = append(records, record)
+	}
+
+	require.Equal(t, err, io.EOF)
+	require.Equal(t, 0, len(records))
+}
+
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")

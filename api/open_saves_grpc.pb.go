@@ -36,6 +36,8 @@ type OpenSavesClient interface {
 	CreateRecord(ctx context.Context, in *CreateRecordRequest, opts ...grpc.CallOption) (*Record, error)
 	// GetRecord returns a record with the specified key.
 	GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*Record, error)
+	// GetMultiRecords retrieves multiple records, specified by keys.
+	GetMultiRecords(ctx context.Context, in *GetMultiRecordsRequest, opts ...grpc.CallOption) (OpenSaves_GetMultiRecordsClient, error)
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(ctx context.Context, in *QueryRecordsRequest, opts ...grpc.CallOption) (*QueryRecordsResponse, error)
 	// UpdateRecord updates an existing record. This returns an error and
@@ -198,6 +200,38 @@ func (c *openSavesClient) GetRecord(ctx context.Context, in *GetRecordRequest, o
 	return out, nil
 }
 
+func (c *openSavesClient) GetMultiRecords(ctx context.Context, in *GetMultiRecordsRequest, opts ...grpc.CallOption) (OpenSaves_GetMultiRecordsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[0], "/opensaves.OpenSaves/GetMultiRecords", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &openSavesGetMultiRecordsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type OpenSaves_GetMultiRecordsClient interface {
+	Recv() (*RecordResponse, error)
+	grpc.ClientStream
+}
+
+type openSavesGetMultiRecordsClient struct {
+	grpc.ClientStream
+}
+
+func (x *openSavesGetMultiRecordsClient) Recv() (*RecordResponse, error) {
+	m := new(RecordResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *openSavesClient) QueryRecords(ctx context.Context, in *QueryRecordsRequest, opts ...grpc.CallOption) (*QueryRecordsResponse, error) {
 	out := new(QueryRecordsResponse)
 	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/QueryRecords", in, out, opts...)
@@ -226,7 +260,7 @@ func (c *openSavesClient) DeleteRecord(ctx context.Context, in *DeleteRecordRequ
 }
 
 func (c *openSavesClient) CreateBlob(ctx context.Context, opts ...grpc.CallOption) (OpenSaves_CreateBlobClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[0], "/opensaves.OpenSaves/CreateBlob", opts...)
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[1], "/opensaves.OpenSaves/CreateBlob", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +303,7 @@ func (c *openSavesClient) CreateChunkedBlob(ctx context.Context, in *CreateChunk
 }
 
 func (c *openSavesClient) UploadChunk(ctx context.Context, opts ...grpc.CallOption) (OpenSaves_UploadChunkClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[1], "/opensaves.OpenSaves/UploadChunk", opts...)
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[2], "/opensaves.OpenSaves/UploadChunk", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +355,7 @@ func (c *openSavesClient) AbortChunkedUpload(ctx context.Context, in *AbortChunk
 }
 
 func (c *openSavesClient) GetBlob(ctx context.Context, in *GetBlobRequest, opts ...grpc.CallOption) (OpenSaves_GetBlobClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[2], "/opensaves.OpenSaves/GetBlob", opts...)
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[3], "/opensaves.OpenSaves/GetBlob", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +387,7 @@ func (x *openSavesGetBlobClient) Recv() (*GetBlobResponse, error) {
 }
 
 func (c *openSavesClient) GetBlobChunk(ctx context.Context, in *GetBlobChunkRequest, opts ...grpc.CallOption) (OpenSaves_GetBlobChunkClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[3], "/opensaves.OpenSaves/GetBlobChunk", opts...)
+	stream, err := c.cc.NewStream(ctx, &OpenSaves_ServiceDesc.Streams[4], "/opensaves.OpenSaves/GetBlobChunk", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -482,6 +516,8 @@ type OpenSavesServer interface {
 	CreateRecord(context.Context, *CreateRecordRequest) (*Record, error)
 	// GetRecord returns a record with the specified key.
 	GetRecord(context.Context, *GetRecordRequest) (*Record, error)
+	// GetMultiRecords retrieves multiple records, specified by keys.
+	GetMultiRecords(*GetMultiRecordsRequest, OpenSaves_GetMultiRecordsServer) error
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error)
 	// UpdateRecord updates an existing record. This returns an error and
@@ -604,6 +640,9 @@ func (UnimplementedOpenSavesServer) CreateRecord(context.Context, *CreateRecordR
 }
 func (UnimplementedOpenSavesServer) GetRecord(context.Context, *GetRecordRequest) (*Record, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRecord not implemented")
+}
+func (UnimplementedOpenSavesServer) GetMultiRecords(*GetMultiRecordsRequest, OpenSaves_GetMultiRecordsServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetMultiRecords not implemented")
 }
 func (UnimplementedOpenSavesServer) QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryRecords not implemented")
@@ -781,6 +820,27 @@ func _OpenSaves_GetRecord_Handler(srv interface{}, ctx context.Context, dec func
 		return srv.(OpenSavesServer).GetRecord(ctx, req.(*GetRecordRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _OpenSaves_GetMultiRecords_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetMultiRecordsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OpenSavesServer).GetMultiRecords(m, &openSavesGetMultiRecordsServer{stream})
+}
+
+type OpenSaves_GetMultiRecordsServer interface {
+	Send(*RecordResponse) error
+	grpc.ServerStream
+}
+
+type openSavesGetMultiRecordsServer struct {
+	grpc.ServerStream
+}
+
+func (x *openSavesGetMultiRecordsServer) Send(m *RecordResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _OpenSaves_QueryRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1240,6 +1300,11 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetMultiRecords",
+			Handler:       _OpenSaves_GetMultiRecords_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "CreateBlob",
 			Handler:       _OpenSaves_CreateBlob_Handler,

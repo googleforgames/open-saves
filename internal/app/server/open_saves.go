@@ -250,6 +250,33 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecords
 	}, nil
 }
 
+func (s *openSavesServer) GetMultiRecords(req *pb.GetMultiRecordsRequest, stream pb.OpenSaves_GetMultiRecordsServer) error {
+	ctx := stream.Context()
+	// Get the records by keys
+	records, err := s.metaDB.GetMultiRecords(ctx, req.GetStoreKeys(), req.GetKeys())
+	if err != nil {
+		log.Warnf("GetMultiRecords unable to retrieve records: %v", err)
+		return err
+	}
+	// Return a gRPC stream response of RecordResponse objects
+	for _, rec := range records {
+		// Datastore returns nil for records that can't be found maintaining index order
+		if rec == nil {
+			continue
+		}
+		recProto := rec.ToProto()
+		err = stream.Send(&pb.RecordResponse{
+			Record:   recProto,
+			StoreKey: rec.StoreKey,
+		})
+		if err != nil {
+			log.Errorf("GetMultiRecords: stream send error for object (%v): %v", rec, err)
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
 	log.Debugf("Inserting inline blob: %v\n", meta)
 	// Receive the blob

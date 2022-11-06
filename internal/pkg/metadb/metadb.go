@@ -898,8 +898,8 @@ func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []st
 	records := make([]*record.Record, len(keys))
 	if err = m.client.GetMulti(ctx, keys, records); err != nil {
 		if _, ok := err.(ds.MultiError); ok {
-			// Error(s) encountered when getting some entities
-			return records, err
+			// Error(s) encountered when getting some entities, ignore
+			return records, nil
 		}
 		// Datastore internal error
 		return nil, datastoreErrToGRPCStatus(err)
@@ -910,7 +910,7 @@ func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []st
 
 func (m *MetaDB) createDatastoreKeys(storeKeys, recordKeys []string) ([]*ds.Key, error) {
 	if len(storeKeys) != len(recordKeys) {
-		return nil, status.Errorf(codes.Internal, "metadb createDatastoreKeys: invalid store/record key array(s)  length")
+		return nil, status.Errorf(codes.InvalidArgument, "metadb createDatastoreKeys: invalid store/record key array(s)  length")
 	}
 	var keys []*ds.Key
 	if len(storeKeys) == 0 {

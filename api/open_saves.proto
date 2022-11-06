@@ -42,6 +42,9 @@ service OpenSaves {
   // GetRecord returns a record with the specified key.
   rpc GetRecord(GetRecordRequest) returns (Record) {}
 
+  // GetMultiRecords fetches records by keys.
+  rpc GetMultiRecords(GetMultiRecordsRequest) returns (stream RecordResponse) {}
+
   // QueryRecords performs a query and returns matching records.
   rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {}
 
@@ -343,6 +346,14 @@ message GetRecordRequest {
   Hint hint = 3;
 }
 
+message GetMultiRecordsRequest {
+  // The keys of the stores the records belongs to.
+  repeated string store_keys = 1;
+
+  // The keys of the records to get.
+  repeated string keys = 2;
+}
+
 // QueryRecordsRequest contains conditions to search particular records.
 // Multiple conditions are AND'ed together.
 message QueryRecordsRequest {
@@ -428,6 +439,14 @@ message SortOrder {
 
   // The name of the user defined property.
   string user_property_name = 4;
+}
+
+message RecordResponse {
+  // Record fetched from Datastore.
+  Record record = 1;
+
+  // Corresponding store key of record.
+  string store_key = 2;
 }
 
 message QueryRecordsResponse {
