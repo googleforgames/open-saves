@@ -899,7 +899,7 @@ func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []st
 	if err = m.client.GetMulti(ctx, keys, records); err != nil {
 		if _, ok := err.(ds.MultiError); ok {
 			// Error(s) encountered when getting some entities, ignore
-			return records, nil
+			return records, err
 		}
 		// Datastore internal error
 		return nil, datastoreErrToGRPCStatus(err)

@@ -43,7 +43,7 @@ service OpenSaves {
   rpc GetRecord(GetRecordRequest) returns (Record) {}
 
   // GetMultiRecords fetches records by keys.
-  rpc GetMultiRecords(GetMultiRecordsRequest) returns (stream RecordResponse) {}
+  rpc GetMultiRecords(GetMultiRecordsRequest) returns (stream GetMultiRecordsResponse) {}
 
   // QueryRecords performs a query and returns matching records.
   rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {}
@@ -441,12 +441,16 @@ message SortOrder {
   string user_property_name = 4;
 }
 
-message RecordResponse {
-  // Record fetched from Datastore.
+message GetMultiRecordEntity {
   Record record = 1;
-
-  // Corresponding store key of record.
   string store_key = 2;
+}
+
+message GetMultiRecordsResponse {
+  oneof response {
+    GetMultiRecordEntity entity = 1;
+    string error = 2;
+  }
 }
 
 message QueryRecordsResponse {

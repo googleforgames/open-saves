@@ -1462,28 +1462,28 @@ func TestMetaDB_GetMultiRecords(t *testing.T) {
 			[]string{records[3].StoreKey},
 			[]string{records[3].Key},
 			[]*record.Record{nil},
-			nil,
+			datastore.MultiError{datastore.ErrNoSuchEntity},
 		},
 		{
 			"Get records with one missing",
 			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{records[0], records[1], nil, records[2]},
-			nil,
+			datastore.MultiError{nil, nil, datastore.ErrNoSuchEntity, nil},
 		},
 		{
 			"Get records with one non-existing store key",
 			[]string{uuid.NewString(), records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{nil, records[1], nil, records[2]},
-			nil,
+			datastore.MultiError{datastore.ErrNoSuchEntity, nil, datastore.ErrNoSuchEntity, nil},
 		},
 		{
 			"Get records with one non-existing record key",
 			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{uuid.NewString(), records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{nil, records[1], nil, records[2]},
-			nil,
+			datastore.MultiError{datastore.ErrNoSuchEntity, nil, datastore.ErrNoSuchEntity, nil},
 		},
 	}
 	for _, tc := range testCases {

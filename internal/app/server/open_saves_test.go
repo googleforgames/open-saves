@@ -1261,10 +1261,11 @@ func TestOpenSaves_GetMultiRecords_InvalidArguments(t *testing.T) {
 		}
 	}()
 
+	var errors []string
 	var records []*record.Record
 	for {
-		var recResp *pb.RecordResponse
-		recResp, err = streamClient.Recv()
+		var resp *pb.GetMultiRecordsResponse
+		resp, err = streamClient.Recv()
 		if err == io.EOF {
 			break
 		}
@@ -1272,12 +1273,21 @@ func TestOpenSaves_GetMultiRecords_InvalidArguments(t *testing.T) {
 			// Capture any non-recoverable errors returned by the streaming response
 			break
 		}
-		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
-		if err != nil {
-			t.Errorf("record.FromProto returned error: %v", err)
-			break
+
+		if entity := resp.GetEntity(); entity != nil {
+			var rec *record.Record
+			rec, err = record.FromProto(entity.GetStoreKey(), entity.GetRecord())
+			if err != nil {
+				t.Errorf("record.FromProto returned error: %v", err)
+				break
+			}
+			records = append(records, rec)
+			errors = append(errors, "")
+		} else {
+			errStr := resp.GetError()
+			records = append(records, nil)
+			errors = append(errors, errStr)
 		}
-		records = append(records, record)
 	}
 
 	assert.Error(t, err)
@@ -1308,23 +1318,33 @@ func TestOpenSaves_GetMultiRecords(t *testing.T) {
 		}
 	}()
 
+	var errors []string
 	var records []*record.Record
 	for {
-		var recResp *pb.RecordResponse
-		recResp, err = streamClient.Recv()
+		var resp *pb.GetMultiRecordsResponse
+		resp, err = streamClient.Recv()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			t.Errorf("GetMultiRecords.Recv returned error: %v", err)
+			// Capture any non-recoverable errors returned by the streaming response
 			break
 		}
-		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
-		if err != nil {
-			t.Errorf("record.FromProto returned error: %v", err)
-			break
+
+		if entity := resp.GetEntity(); entity != nil {
+			var rec *record.Record
+			rec, err = record.FromProto(entity.GetStoreKey(), entity.GetRecord())
+			if err != nil {
+				t.Errorf("record.FromProto returned error: %v", err)
+				break
+			}
+			records = append(records, rec)
+			errors = append(errors, "")
+		} else {
+			errStr := resp.GetError()
+			records = append(records, nil)
+			errors = append(errors, errStr)
 		}
-		records = append(records, record)
 	}
 
 	require.Equal(t, err, io.EOF)
@@ -1347,10 +1367,11 @@ func TestOpenSaves_GetMultiRecords_OneNotFound(t *testing.T) {
 	for i := range pbRecords {
 		pbRecords[i] = setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()})
 	}
+	pbRecords = append(pbRecords, &pb.Record{Key: uuid.NewString()})
 
 	getReq := &pb.GetMultiRecordsRequest{
 		StoreKeys: []string{storeKey, storeKey, storeKey, storeKey},
-		Keys:      []string{pbRecords[0].Key, pbRecords[1].Key, uuid.NewString(), pbRecords[2].Key},
+		Keys:      []string{pbRecords[0].Key, pbRecords[1].Key, pbRecords[2].Key, pbRecords[3].Key},
 	}
 	streamClient, err := client.GetMultiRecords(ctx, getReq)
 	defer func() {
@@ -1359,30 +1380,44 @@ func TestOpenSaves_GetMultiRecords_OneNotFound(t *testing.T) {
 		}
 	}()
 
+	var errors []string
 	var records []*record.Record
 	for {
-		var recResp *pb.RecordResponse
-		recResp, err = streamClient.Recv()
+		var resp *pb.GetMultiRecordsResponse
+		resp, err = streamClient.Recv()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			t.Errorf("GetMultiRecords.Recv returned error: %v", err)
+			// Capture any non-recoverable errors returned by the streaming response
 			break
 		}
-		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
-		if err != nil {
-			t.Errorf("record.FromProto returned error: %v", err)
-			break
+
+		if entity := resp.GetEntity(); entity != nil {
+			var rec *record.Record
+			rec, err = record.FromProto(entity.GetStoreKey(), entity.GetRecord())
+			if err != nil {
+				t.Errorf("record.FromProto returned error: %v", err)
+				break
+			}
+			records = append(records, rec)
+			errors = append(errors, "")
+		} else {
+			errStr := resp.GetError()
+			records = append(records, nil)
+			errors = append(errors, errStr)
 		}
-		records = append(records, record)
 	}
 
 	require.Equal(t, err, io.EOF)
-	require.Equal(t, 3, len(records))
+	require.Equal(t, 4, len(records))
 	for i := range records {
-		assert.EqualValues(t, records[i].Key, pbRecords[i].Key)
-		assert.EqualValues(t, records[i].StoreKey, storeKey)
+		if records[i] != nil {
+			assert.EqualValues(t, records[i].Key, pbRecords[i].Key)
+			assert.EqualValues(t, records[i].StoreKey, storeKey)
+		} else {
+			assert.NotEmpty(t, errors[i])
+		}
 	}
 }
 
@@ -1402,27 +1437,40 @@ func TestOpenSaves_GetMultiRecords_AllNotFound(t *testing.T) {
 		}
 	}()
 
+	var errors []string
 	var records []*record.Record
 	for {
-		var recResp *pb.RecordResponse
-		recResp, err = streamClient.Recv()
+		var resp *pb.GetMultiRecordsResponse
+		resp, err = streamClient.Recv()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			t.Errorf("GetMultiRecords.Recv returned error: %v", err)
+			// Capture any non-recoverable errors returned by the streaming response
 			break
 		}
-		record, err := record.FromProto(recResp.GetStoreKey(), recResp.GetRecord())
-		if err != nil {
-			t.Errorf("record.FromProto returned error: %v", err)
-			break
+
+		if entity := resp.GetEntity(); entity != nil {
+			var rec *record.Record
+			rec, err = record.FromProto(entity.GetStoreKey(), entity.GetRecord())
+			if err != nil {
+				t.Errorf("record.FromProto returned error: %v", err)
+				break
+			}
+			records = append(records, rec)
+			errors = append(errors, "")
+		} else {
+			errStr := resp.GetError()
+			records = append(records, nil)
+			errors = append(errors, errStr)
 		}
-		records = append(records, record)
 	}
 
 	require.Equal(t, err, io.EOF)
-	require.Equal(t, 0, len(records))
+	require.Equal(t, 3, len(records))
+	for i := range errors {
+		assert.NotEmpty(t, errors[i])
+	}
 }
 
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {

@@ -16,6 +16,7 @@ package server
 
 import (
 	"bytes"
+	ds "cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
@@ -254,21 +255,43 @@ func (s *openSavesServer) GetMultiRecords(req *pb.GetMultiRecordsRequest, stream
 	ctx := stream.Context()
 	// Get the records by keys
 	records, err := s.metaDB.GetMultiRecords(ctx, req.GetStoreKeys(), req.GetKeys())
+
+	// Check if there was an unexpected error
+	var multiErr ds.MultiError
 	if err != nil {
-		log.Warnf("GetMultiRecords unable to retrieve records: %v", err)
-		return err
-	}
-	// Return a gRPC stream response of RecordResponse objects
-	for _, rec := range records {
-		// Datastore returns nil for records that can't be found maintaining index order
-		if rec == nil {
-			continue
+		var ok bool
+		if multiErr, ok = err.(ds.MultiError); !ok {
+			log.Warnf("GetMultiRecords unable to retrieve records: %v", err)
+			return err
 		}
-		recProto := rec.ToProto()
-		err = stream.Send(&pb.RecordResponse{
-			Record:   recProto,
-			StoreKey: rec.StoreKey,
-		})
+	}
+
+	// Return a gRPC stream response of RecordResponse objects
+	notFoundErr := status.Errorf(codes.NotFound, "record no found")
+
+	for i, rec := range records {
+		// Datastore returns nil for records that can't be found maintaining index of request parameters
+		if rec != nil {
+			recProto := rec.ToProto()
+			err = stream.Send(&pb.GetMultiRecordsResponse{
+				Response: &pb.GetMultiRecordsResponse_Entity{
+					Entity: &pb.GetMultiRecordEntity{
+						Record:   recProto,
+						StoreKey: req.StoreKeys[i],
+					},
+				},
+			})
+		} else {
+			errMsg := notFoundErr
+			if multiErr != nil {
+				errMsg = multiErr[i]
+			}
+			err = stream.Send(&pb.GetMultiRecordsResponse{
+				Response: &pb.GetMultiRecordsResponse_Error{
+					Error: errMsg.Error(),
+				},
+			})
+		}
 		if err != nil {
 			log.Errorf("GetMultiRecords: stream send error for object (%v): %v", rec, err)
 			return err
