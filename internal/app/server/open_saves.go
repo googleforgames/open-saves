@@ -251,53 +251,33 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecords
 	}, nil
 }
 
-func (s *openSavesServer) GetMultiRecords(req *pb.GetMultiRecordsRequest, stream pb.OpenSaves_GetMultiRecordsServer) error {
-	ctx := stream.Context()
-	// Get the records by keys
+func (s *openSavesServer) GetMultiRecords(ctx context.Context, req *pb.GetMultiRecordsRequest) (*pb.GetMultiRecordsResponse, error) {
 	records, err := s.metaDB.GetMultiRecords(ctx, req.GetStoreKeys(), req.GetKeys())
 
 	// Check if there was an unexpected error
-	var multiErr ds.MultiError
 	if err != nil {
-		var ok bool
-		if multiErr, ok = err.(ds.MultiError); !ok {
+		if _, ok := err.(ds.MultiError); !ok {
 			log.Warnf("GetMultiRecords unable to retrieve records: %v", err)
-			return err
+			return nil, err
 		}
 	}
 
-	// Return a gRPC stream response of RecordResponse objects
-	notFoundErr := status.Errorf(codes.NotFound, "record no found")
-
+	response := &pb.GetMultiRecordsResponse{
+		Entities: []*pb.GetMultiRecordEntity{},
+	}
 	for i, rec := range records {
 		// Datastore returns nil for records that can't be found maintaining index of request parameters
 		if rec != nil {
 			recProto := rec.ToProto()
-			err = stream.Send(&pb.GetMultiRecordsResponse{
-				Response: &pb.GetMultiRecordsResponse_Entity{
-					Entity: &pb.GetMultiRecordEntity{
-						Record:   recProto,
-						StoreKey: req.StoreKeys[i],
-					},
-				},
-			})
-		} else {
-			errMsg := notFoundErr
-			if multiErr != nil {
-				errMsg = multiErr[i]
+			entity := &pb.GetMultiRecordEntity{
+				Record:   recProto,
+				StoreKey: req.GetStoreKeys()[i],
+				Index:    int32(i),
 			}
-			err = stream.Send(&pb.GetMultiRecordsResponse{
-				Response: &pb.GetMultiRecordsResponse_Error{
-					Error: errMsg.Error(),
-				},
-			})
-		}
-		if err != nil {
-			log.Errorf("GetMultiRecords: stream send error for object (%v): %v", rec, err)
-			return err
+			response.Entities = append(response.Entities, entity)
 		}
 	}
-	return nil
+	return response, nil
 }
 
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {
