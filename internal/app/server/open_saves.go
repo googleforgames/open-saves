@@ -16,7 +16,6 @@ package server
 
 import (
 	"bytes"
-	ds "cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
@@ -251,31 +250,41 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecords
 	}, nil
 }
 
-func (s *openSavesServer) GetMultiRecords(ctx context.Context, req *pb.GetMultiRecordsRequest) (*pb.GetMultiRecordsResponse, error) {
-	records, err := s.metaDB.GetMultiRecords(ctx, req.GetStoreKeys(), req.GetKeys())
+func (s *openSavesServer) GetRecords(ctx context.Context, req *pb.GetRecordsRequest) (*pb.GetRecordsResponse, error) {
+	records, err := s.metaDB.GetRecords(ctx, req.GetStoreKeys(), req.GetKeys())
 
 	// Check if there was an unexpected error
+	var errors metadb.MultiError
 	if err != nil {
-		if _, ok := err.(ds.MultiError); !ok {
-			log.Warnf("GetMultiRecords unable to retrieve records: %v", err)
+		var ok bool
+		if errors, ok = err.(metadb.MultiError); !ok {
+			log.Errorf("GetRecords unable to retrieve records: %v", err)
 			return nil, err
 		}
 	}
 
-	response := &pb.GetMultiRecordsResponse{
-		Entities: []*pb.GetMultiRecordEntity{},
+	response := &pb.GetRecordsResponse{
+		Results: []*pb.GetRecordsResponse_Result{},
 	}
 	for i, rec := range records {
-		// Datastore returns nil for records that can't be found maintaining index of request parameters
+		var protoRec *pb.Record
+		var storeKey string
+		var statusCode codes.Code
+
 		if rec != nil {
-			recProto := rec.ToProto()
-			entity := &pb.GetMultiRecordEntity{
-				Record:   recProto,
-				StoreKey: req.GetStoreKeys()[i],
-				Index:    int32(i),
-			}
-			response.Entities = append(response.Entities, entity)
+			protoRec = rec.ToProto()
+			storeKey = rec.StoreKey
 		}
+		if errors != nil {
+			statusCode = status.Code(errors[i])
+		}
+
+		result := &pb.GetRecordsResponse_Result{
+			Record:     protoRec,
+			StoreKey:   storeKey,
+			StatusCode: uint32(statusCode),
+		}
+		response.Results = append(response.Results, result)
 	}
 	return response, nil
 }

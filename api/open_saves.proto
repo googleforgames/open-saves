@@ -42,8 +42,8 @@ service OpenSaves {
   // GetRecord returns a record with the specified key.
   rpc GetRecord(GetRecordRequest) returns (Record) {}
 
-  // GetMultiRecords fetches records by keys.
-  rpc GetMultiRecords(GetMultiRecordsRequest) returns (GetMultiRecordsResponse) {}
+  // GetRecords fetches multiple records by keys.
+  rpc GetRecords(GetRecordsRequest) returns (GetRecordsResponse) {}
 
   // QueryRecords performs a query and returns matching records.
   rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {}
@@ -346,7 +346,7 @@ message GetRecordRequest {
   Hint hint = 3;
 }
 
-message GetMultiRecordsRequest {
+message GetRecordsRequest {
   // The keys of the stores the records belongs to.
   repeated string store_keys = 1;
 
@@ -441,14 +441,13 @@ message SortOrder {
   string user_property_name = 4;
 }
 
-message GetMultiRecordEntity {
-  Record record = 1;
-  string store_key = 2;
-  int32 index = 3;
-}
-
-message GetMultiRecordsResponse {
-  repeated GetMultiRecordEntity entities = 1;
+message GetRecordsResponse {
+  message Result {
+    uint32 status_code = 1;
+    string store_key = 2;
+    Record record = 3;
+  }
+  repeated Result results = 1;
 }
 
 message QueryRecordsResponse {

@@ -36,8 +36,8 @@ type OpenSavesClient interface {
 	CreateRecord(ctx context.Context, in *CreateRecordRequest, opts ...grpc.CallOption) (*Record, error)
 	// GetRecord returns a record with the specified key.
 	GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*Record, error)
-	// GetMultiRecords fetches records by keys.
-	GetMultiRecords(ctx context.Context, in *GetMultiRecordsRequest, opts ...grpc.CallOption) (*GetMultiRecordsResponse, error)
+	// GetRecords fetches multiple records by keys.
+	GetRecords(ctx context.Context, in *GetRecordsRequest, opts ...grpc.CallOption) (*GetRecordsResponse, error)
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(ctx context.Context, in *QueryRecordsRequest, opts ...grpc.CallOption) (*QueryRecordsResponse, error)
 	// UpdateRecord updates an existing record. This returns an error and
@@ -200,9 +200,9 @@ func (c *openSavesClient) GetRecord(ctx context.Context, in *GetRecordRequest, o
 	return out, nil
 }
 
-func (c *openSavesClient) GetMultiRecords(ctx context.Context, in *GetMultiRecordsRequest, opts ...grpc.CallOption) (*GetMultiRecordsResponse, error) {
-	out := new(GetMultiRecordsResponse)
-	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/GetMultiRecords", in, out, opts...)
+func (c *openSavesClient) GetRecords(ctx context.Context, in *GetRecordsRequest, opts ...grpc.CallOption) (*GetRecordsResponse, error) {
+	out := new(GetRecordsResponse)
+	err := c.cc.Invoke(ctx, "/opensaves.OpenSaves/GetRecords", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -493,8 +493,8 @@ type OpenSavesServer interface {
 	CreateRecord(context.Context, *CreateRecordRequest) (*Record, error)
 	// GetRecord returns a record with the specified key.
 	GetRecord(context.Context, *GetRecordRequest) (*Record, error)
-	// GetMultiRecords fetches records by keys.
-	GetMultiRecords(context.Context, *GetMultiRecordsRequest) (*GetMultiRecordsResponse, error)
+	// GetRecords fetches multiple records by keys.
+	GetRecords(context.Context, *GetRecordsRequest) (*GetRecordsResponse, error)
 	// QueryRecords performs a query and returns matching records.
 	QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error)
 	// UpdateRecord updates an existing record. This returns an error and
@@ -618,8 +618,8 @@ func (UnimplementedOpenSavesServer) CreateRecord(context.Context, *CreateRecordR
 func (UnimplementedOpenSavesServer) GetRecord(context.Context, *GetRecordRequest) (*Record, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRecord not implemented")
 }
-func (UnimplementedOpenSavesServer) GetMultiRecords(context.Context, *GetMultiRecordsRequest) (*GetMultiRecordsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetMultiRecords not implemented")
+func (UnimplementedOpenSavesServer) GetRecords(context.Context, *GetRecordsRequest) (*GetRecordsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRecords not implemented")
 }
 func (UnimplementedOpenSavesServer) QueryRecords(context.Context, *QueryRecordsRequest) (*QueryRecordsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryRecords not implemented")
@@ -799,20 +799,20 @@ func _OpenSaves_GetRecord_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OpenSaves_GetMultiRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetMultiRecordsRequest)
+func _OpenSaves_GetRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRecordsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OpenSavesServer).GetMultiRecords(ctx, in)
+		return srv.(OpenSavesServer).GetRecords(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/opensaves.OpenSaves/GetMultiRecords",
+		FullMethod: "/opensaves.OpenSaves/GetRecords",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OpenSavesServer).GetMultiRecords(ctx, req.(*GetMultiRecordsRequest))
+		return srv.(OpenSavesServer).GetRecords(ctx, req.(*GetRecordsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1213,8 +1213,8 @@ var OpenSaves_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _OpenSaves_GetRecord_Handler,
 		},
 		{
-			MethodName: "GetMultiRecords",
-			Handler:    _OpenSaves_GetMultiRecords_Handler,
+			MethodName: "GetRecords",
+			Handler:    _OpenSaves_GetRecords_Handler,
 		},
 		{
 			MethodName: "QueryRecords",

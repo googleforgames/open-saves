@@ -1389,7 +1389,7 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 	}
 }
 
-func TestMetaDB_GetMultiRecords(t *testing.T) {
+func TestMetaDB_GetRecords(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
@@ -1436,6 +1436,8 @@ func TestMetaDB_GetMultiRecords(t *testing.T) {
 	records[1] = setupTestRecord(ctx, t, metaDB, stores[0].Key, records[1])
 	records[2] = setupTestRecord(ctx, t, metaDB, stores[1].Key, records[2])
 
+	notFoundError := status.Error(codes.NotFound, "datastore: no such entity")
+
 	testCases := []struct {
 		name        string
 		storeKeys   []string
@@ -1455,46 +1457,46 @@ func TestMetaDB_GetMultiRecords(t *testing.T) {
 			[]string{records[0].StoreKey},
 			[]string{records[0].Key, records[1].Key},
 			nil,
-			status.Errorf(codes.InvalidArgument, "metadb createDatastoreKeys: invalid store/record key array(s)  length"),
+			status.Error(codes.InvalidArgument, "metadb createDatastoreKeys: invalid store/record key array(s) length"),
 		},
 		{
 			"Get non existing record",
 			[]string{records[3].StoreKey},
 			[]string{records[3].Key},
 			[]*record.Record{nil},
-			datastore.MultiError{datastore.ErrNoSuchEntity},
+			m.MultiError{notFoundError},
 		},
 		{
 			"Get records with one missing",
 			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{records[0], records[1], nil, records[2]},
-			datastore.MultiError{nil, nil, datastore.ErrNoSuchEntity, nil},
+			m.MultiError{nil, nil, notFoundError, nil},
 		},
 		{
 			"Get records with one non-existing store key",
 			[]string{uuid.NewString(), records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{nil, records[1], nil, records[2]},
-			datastore.MultiError{datastore.ErrNoSuchEntity, nil, datastore.ErrNoSuchEntity, nil},
+			m.MultiError{notFoundError, nil, notFoundError, nil},
 		},
 		{
 			"Get records with one non-existing record key",
 			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{uuid.NewString(), records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{nil, records[1], nil, records[2]},
-			datastore.MultiError{datastore.ErrNoSuchEntity, nil, datastore.ErrNoSuchEntity, nil},
+			m.MultiError{notFoundError, nil, notFoundError, nil},
 		},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			rr, err := metaDB.GetMultiRecords(ctx, tc.storeKeys, tc.recordKeys)
+			rr, err := metaDB.GetRecords(ctx, tc.storeKeys, tc.recordKeys)
 			assert.Empty(t, cmp.Diff(rr, tc.wantRecords), cmpopts.EquateEmpty())
 			if tc.wantErrors == nil {
 				assert.NoError(t, err)
-			} else if errs, ok := err.(datastore.MultiError); ok {
+			} else if errs, ok := err.(m.MultiError); ok {
 				assert.EqualValues(t, tc.wantErrors, errs)
 			} else {
 				assert.Equal(t, tc.wantErrors, err)

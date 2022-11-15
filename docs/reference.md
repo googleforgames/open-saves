@@ -3,7 +3,7 @@
 
 ## Table of Contents
 
-- [api/open_saves.proto](#api_open_saves-proto)
+- [open_saves.proto](#open_saves-proto)
     - [AbortChunkedUploadRequest](#opensaves-AbortChunkedUploadRequest)
     - [AtomicIncRequest](#opensaves-AtomicIncRequest)
     - [AtomicIntRequest](#opensaves-AtomicIntRequest)
@@ -25,10 +25,10 @@
     - [GetBlobChunkResponse](#opensaves-GetBlobChunkResponse)
     - [GetBlobRequest](#opensaves-GetBlobRequest)
     - [GetBlobResponse](#opensaves-GetBlobResponse)
-    - [GetMultiRecordEntity](#opensaves-GetMultiRecordEntity)
-    - [GetMultiRecordsRequest](#opensaves-GetMultiRecordsRequest)
-    - [GetMultiRecordsResponse](#opensaves-GetMultiRecordsResponse)
     - [GetRecordRequest](#opensaves-GetRecordRequest)
+    - [GetRecordsRequest](#opensaves-GetRecordsRequest)
+    - [GetRecordsResponse](#opensaves-GetRecordsResponse)
+    - [GetRecordsResponse.Result](#opensaves-GetRecordsResponse-Result)
     - [GetStoreRequest](#opensaves-GetStoreRequest)
     - [Hint](#opensaves-Hint)
     - [ListStoresRequest](#opensaves-ListStoresRequest)
@@ -57,10 +57,10 @@
 
 
 
-<a name="api_open_saves-proto"></a>
+<a name="open_saves-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## api/open_saves.proto
+## open_saves.proto
 
 
 
@@ -438,26 +438,26 @@ field.
 
 
 
-<a name="opensaves-GetMultiRecordEntity"></a>
+<a name="opensaves-GetRecordRequest"></a>
 
-### GetMultiRecordEntity
+### GetRecordRequest
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| record | [Record](#opensaves-Record) |  |  |
-| store_key | [string](#string) |  |  |
-| index | [int32](#int32) |  |  |
+| store_key | [string](#string) |  | The key of the store that the record belongs to. |
+| key | [string](#string) |  | The key of the record to get. |
+| hint | [Hint](#opensaves-Hint) |  | Performance hints. |
 
 
 
 
 
 
-<a name="opensaves-GetMultiRecordsRequest"></a>
+<a name="opensaves-GetRecordsRequest"></a>
 
-### GetMultiRecordsRequest
+### GetRecordsRequest
 
 
 
@@ -471,32 +471,32 @@ field.
 
 
 
-<a name="opensaves-GetMultiRecordsResponse"></a>
+<a name="opensaves-GetRecordsResponse"></a>
 
-### GetMultiRecordsResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| entities | [GetMultiRecordEntity](#opensaves-GetMultiRecordEntity) | repeated |  |
-
-
-
-
-
-
-<a name="opensaves-GetRecordRequest"></a>
-
-### GetRecordRequest
+### GetRecordsResponse
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| store_key | [string](#string) |  | The key of the store that the record belongs to. |
-| key | [string](#string) |  | The key of the record to get. |
-| hint | [Hint](#opensaves-Hint) |  | Performance hints. |
+| results | [GetRecordsResponse.Result](#opensaves-GetRecordsResponse-Result) | repeated |  |
+
+
+
+
+
+
+<a name="opensaves-GetRecordsResponse-Result"></a>
+
+### GetRecordsResponse.Result
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [google.rpc.Status](#google-rpc-Status) |  |  |
+| store_key | [string](#string) |  |  |
+| record | [Record](#opensaves-Record) |  |  |
 
 
 
@@ -862,7 +862,7 @@ Public interface of the Open Saves service.
 | DeleteStore | [DeleteStoreRequest](#opensaves-DeleteStoreRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | DeleteStore deletes a single store with the specified key. |
 | CreateRecord | [CreateRecordRequest](#opensaves-CreateRecordRequest) | [Record](#opensaves-Record) | CreateRecord creates a new record. This returns an error if the specified key already exists. |
 | GetRecord | [GetRecordRequest](#opensaves-GetRecordRequest) | [Record](#opensaves-Record) | GetRecord returns a record with the specified key. |
-| GetMultiRecords | [GetMultiRecordsRequest](#opensaves-GetMultiRecordsRequest) | [GetMultiRecordsResponse](#opensaves-GetMultiRecordsResponse) | GetMultiRecords fetches records by keys. |
+| GetRecords | [GetRecordsRequest](#opensaves-GetRecordsRequest) | [GetRecordsResponse](#opensaves-GetRecordsResponse) | GetRecords fetches multiple records by keys. |
 | QueryRecords | [QueryRecordsRequest](#opensaves-QueryRecordsRequest) | [QueryRecordsResponse](#opensaves-QueryRecordsResponse) | QueryRecords performs a query and returns matching records. |
 | UpdateRecord | [UpdateRecordRequest](#opensaves-UpdateRecordRequest) | [Record](#opensaves-Record) | UpdateRecord updates an existing record. This returns an error and does not create a new record if the key doesn&#39;t exist. |
 | DeleteRecord | [DeleteRecordRequest](#opensaves-DeleteRecordRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | DeleteRecord deletes a single record with the specified key. |
