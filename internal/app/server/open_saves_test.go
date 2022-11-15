@@ -1241,7 +1241,7 @@ func TestOpenSaves_QueryRecords_Offset(t *testing.T) {
 	require.Equal(t, 2, len(resp.StoreKeys))
 }
 
-func TestOpenSaves_GetMultiRecords_InvalidArguments(t *testing.T) {
+func TestOpenSaves_GetRecords_InvalidArguments(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
@@ -1257,7 +1257,7 @@ func TestOpenSaves_GetMultiRecords_InvalidArguments(t *testing.T) {
 	assert.EqualValues(t, status.Code(err), codes.InvalidArgument)
 }
 
-func TestOpenSaves_GetMultiRecords(t *testing.T) {
+func TestOpenSaves_GetRecords(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
@@ -1280,7 +1280,7 @@ func TestOpenSaves_GetMultiRecords(t *testing.T) {
 
 	var records []*record.Record
 	for _, entity := range response.GetResults() {
-		require.EqualValues(t, codes.OK, entity.GetStatusCode())
+		require.EqualValues(t, codes.OK, entity.GetStatus().Code)
 		rec, err := record.FromProto(entity.GetStoreKey(), entity.GetRecord())
 		assert.Nil(t, err)
 		records = append(records, rec)
@@ -1293,7 +1293,7 @@ func TestOpenSaves_GetMultiRecords(t *testing.T) {
 	}
 }
 
-func TestOpenSaves_GetMultiRecords_OneNotFound(t *testing.T) {
+func TestOpenSaves_GetRecords_OneNotFound(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
@@ -1325,18 +1325,20 @@ func TestOpenSaves_GetMultiRecords_OneNotFound(t *testing.T) {
 	require.NotNil(t, response.GetResults())
 	require.Equal(t, 4, len(response.GetResults()))
 	for i, result := range response.GetResults() {
-		require.Equal(t, expectedStatus[i], result.GetStatusCode())
-		if result.GetStatusCode() == uint32(codes.OK) {
+		require.Equal(t, expectedStatus[i], result.GetStatus().Code)
+		if result.GetStatus().Code == uint32(codes.OK) {
 			var rec *record.Record
 			rec, err = record.FromProto(result.GetStoreKey(), result.GetRecord())
 			assert.Nil(t, err)
 			assert.EqualValues(t, rec.Key, pbRecords[i].Key)
 			assert.EqualValues(t, rec.StoreKey, storeKey)
+		} else {
+			require.NotEmpty(t, result.GetStatus().Message)
 		}
 	}
 }
 
-func TestOpenSaves_GetMultiRecords_AllNotFound(t *testing.T) {
+func TestOpenSaves_GetRecords_AllNotFound(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
 	_, client := getTestClient(ctx, t, listener)
@@ -1352,7 +1354,8 @@ func TestOpenSaves_GetMultiRecords_AllNotFound(t *testing.T) {
 	require.Equal(t, 3, len(response.GetResults()))
 	for _, result := range response.GetResults() {
 		require.Nil(t, result.GetRecord())
-		require.Equal(t, uint32(codes.NotFound), result.GetStatusCode())
+		require.Equal(t, uint32(codes.NotFound), result.GetStatus().Code)
+		require.NotEmpty(t, result.GetStatus().Message)
 	}
 }
 

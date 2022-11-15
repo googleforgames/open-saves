@@ -267,23 +267,33 @@ func (s *openSavesServer) GetRecords(ctx context.Context, req *pb.GetRecordsRequ
 	response := &pb.GetRecordsResponse{
 		Results: []*pb.GetRecordsResponse_Result{},
 	}
+	statusOk := &pb.Status{
+		Code:    uint32(codes.OK),
+		Message: codes.OK.String(),
+	}
 	for i, rec := range records {
 		var protoRec *pb.Record
 		var storeKey string
-		var statusCode codes.Code
+		var pbStatus *pb.Status
 
 		if rec != nil {
 			protoRec = rec.ToProto()
 			storeKey = rec.StoreKey
 		}
-		if errors != nil {
-			statusCode = status.Code(errors[i])
+		if errors != nil && errors[i] != nil {
+			statusCode := status.Code(errors[i])
+			pbStatus = &pb.Status{
+				Code:    uint32(statusCode),
+				Message: errors[i].Error(),
+			}
+		} else {
+			pbStatus = statusOk
 		}
 
 		result := &pb.GetRecordsResponse_Result{
-			Record:     protoRec,
-			StoreKey:   storeKey,
-			StatusCode: uint32(statusCode),
+			Record:   protoRec,
+			StoreKey: storeKey,
+			Status:   pbStatus,
 		}
 		response.Results = append(response.Results, result)
 	}
