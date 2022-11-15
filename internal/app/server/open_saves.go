@@ -16,6 +16,7 @@ package server
 
 import (
 	"bytes"
+	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
@@ -254,10 +255,10 @@ func (s *openSavesServer) GetRecords(ctx context.Context, req *pb.GetRecordsRequ
 	records, err := s.metaDB.GetRecords(ctx, req.GetStoreKeys(), req.GetKeys())
 
 	// Check if there was an unexpected error
-	var errors metadb.MultiError
+	var errors datastore.MultiError
 	if err != nil {
 		var ok bool
-		if errors, ok = err.(metadb.MultiError); !ok {
+		if errors, ok = err.(datastore.MultiError); !ok {
 			log.Errorf("GetRecords unable to retrieve records: %v", err)
 			return nil, err
 		}

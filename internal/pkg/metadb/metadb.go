@@ -882,7 +882,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 		}
 	}
 
-	return match, m.toMultiError(err)
+	return match, m.toGRPCStatus(err)
 }
 
 // GetRecords returns records by using the get multi request interface from datastore.
@@ -901,20 +901,16 @@ func (m *MetaDB) GetRecords(ctx context.Context, storeKeys, recordKeys []string)
 			return nil, datastoreErrToGRPCStatus(err)
 		}
 	}
-	return records, m.toMultiError(err)
+	return records, m.toGRPCStatus(err)
 }
 
-func (m *MetaDB) toMultiError(err error) error {
+func (m *MetaDB) toGRPCStatus(err error) error {
 	if err != nil {
 		if dsErr, ok := err.(ds.MultiError); ok {
-			var metaErr MultiError
-			if err != nil {
-				metaErr = make(MultiError, len(dsErr))
-				for i := range dsErr {
-					metaErr[i] = datastoreErrToGRPCStatus(dsErr[i])
-				}
+			for i := range dsErr {
+				dsErr[i] = datastoreErrToGRPCStatus(dsErr[i])
 			}
-			return metaErr
+			return dsErr
 		}
 	}
 	return err

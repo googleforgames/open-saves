@@ -1464,28 +1464,28 @@ func TestMetaDB_GetRecords(t *testing.T) {
 			[]string{records[3].StoreKey},
 			[]string{records[3].Key},
 			[]*record.Record{nil},
-			m.MultiError{notFoundError},
+			datastore.MultiError{notFoundError},
 		},
 		{
 			"Get records with one missing",
 			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{records[0], records[1], nil, records[2]},
-			m.MultiError{nil, nil, notFoundError, nil},
+			datastore.MultiError{nil, nil, notFoundError, nil},
 		},
 		{
 			"Get records with one non-existing store key",
 			[]string{uuid.NewString(), records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{records[0].Key, records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{nil, records[1], nil, records[2]},
-			m.MultiError{notFoundError, nil, notFoundError, nil},
+			datastore.MultiError{notFoundError, nil, notFoundError, nil},
 		},
 		{
 			"Get records with one non-existing record key",
 			[]string{records[0].StoreKey, records[1].StoreKey, records[3].StoreKey, records[2].StoreKey},
 			[]string{uuid.NewString(), records[1].Key, records[3].Key, records[2].Key},
 			[]*record.Record{nil, records[1], nil, records[2]},
-			m.MultiError{notFoundError, nil, notFoundError, nil},
+			datastore.MultiError{notFoundError, nil, notFoundError, nil},
 		},
 	}
 	for _, tc := range testCases {
@@ -1496,7 +1496,7 @@ func TestMetaDB_GetRecords(t *testing.T) {
 			assert.Empty(t, cmp.Diff(rr, tc.wantRecords), cmpopts.EquateEmpty())
 			if tc.wantErrors == nil {
 				assert.NoError(t, err)
-			} else if errs, ok := err.(m.MultiError); ok {
+			} else if errs, ok := err.(datastore.MultiError); ok {
 				assert.EqualValues(t, tc.wantErrors, errs)
 			} else {
 				assert.Equal(t, tc.wantErrors, err)
