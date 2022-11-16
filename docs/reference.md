@@ -26,6 +26,9 @@
     - [GetBlobRequest](#opensaves-GetBlobRequest)
     - [GetBlobResponse](#opensaves-GetBlobResponse)
     - [GetRecordRequest](#opensaves-GetRecordRequest)
+    - [GetRecordsRequest](#opensaves-GetRecordsRequest)
+    - [GetRecordsResponse](#opensaves-GetRecordsResponse)
+    - [GetRecordsResponse.Result](#opensaves-GetRecordsResponse-Result)
     - [GetStoreRequest](#opensaves-GetStoreRequest)
     - [Hint](#opensaves-Hint)
     - [ListStoresRequest](#opensaves-ListStoresRequest)
@@ -39,6 +42,7 @@
     - [Record](#opensaves-Record)
     - [Record.PropertiesEntry](#opensaves-Record-PropertiesEntry)
     - [SortOrder](#opensaves-SortOrder)
+    - [Status](#opensaves-Status)
     - [Store](#opensaves-Store)
     - [UpdateRecordRequest](#opensaves-UpdateRecordRequest)
     - [UploadChunkRequest](#opensaves-UploadChunkRequest)
@@ -452,6 +456,54 @@ field.
 
 
 
+<a name="opensaves-GetRecordsRequest"></a>
+
+### GetRecordsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| store_keys | [string](#string) | repeated | The keys of the stores the records belongs to. |
+| keys | [string](#string) | repeated | The keys of the records to get. |
+
+
+
+
+
+
+<a name="opensaves-GetRecordsResponse"></a>
+
+### GetRecordsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| results | [GetRecordsResponse.Result](#opensaves-GetRecordsResponse-Result) | repeated |  |
+
+
+
+
+
+
+<a name="opensaves-GetRecordsResponse-Result"></a>
+
+### GetRecordsResponse.Result
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Status](#opensaves-Status) |  |  |
+| store_key | [string](#string) |  |  |
+| record | [Record](#opensaves-Record) |  |  |
+
+
+
+
+
+
 <a name="opensaves-GetStoreRequest"></a>
 
 ### GetStoreRequest
@@ -682,6 +734,23 @@ SortOrder is a way to order records returned by QueryRecords.
 
 
 
+<a name="opensaves-Status"></a>
+
+### Status
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [uint32](#uint32) |  |  |
+| message | [string](#string) |  |  |
+| details | [google.protobuf.Any](#google-protobuf-Any) | repeated |  |
+
+
+
+
+
+
 <a name="opensaves-Store"></a>
 
 ### Store
@@ -811,6 +880,7 @@ Public interface of the Open Saves service.
 | DeleteStore | [DeleteStoreRequest](#opensaves-DeleteStoreRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | DeleteStore deletes a single store with the specified key. |
 | CreateRecord | [CreateRecordRequest](#opensaves-CreateRecordRequest) | [Record](#opensaves-Record) | CreateRecord creates a new record. This returns an error if the specified key already exists. |
 | GetRecord | [GetRecordRequest](#opensaves-GetRecordRequest) | [Record](#opensaves-Record) | GetRecord returns a record with the specified key. |
+| GetRecords | [GetRecordsRequest](#opensaves-GetRecordsRequest) | [GetRecordsResponse](#opensaves-GetRecordsResponse) | GetRecords fetches multiple records by keys. |
 | QueryRecords | [QueryRecordsRequest](#opensaves-QueryRecordsRequest) | [QueryRecordsResponse](#opensaves-QueryRecordsResponse) | QueryRecords performs a query and returns matching records. |
 | UpdateRecord | [UpdateRecordRequest](#opensaves-UpdateRecordRequest) | [Record](#opensaves-Record) | UpdateRecord updates an existing record. This returns an error and does not create a new record if the key doesn&#39;t exist. |
 | DeleteRecord | [DeleteRecordRequest](#opensaves-DeleteRecordRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | DeleteRecord deletes a single record with the specified key. |
