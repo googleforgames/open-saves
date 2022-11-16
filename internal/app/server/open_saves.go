@@ -16,6 +16,7 @@ package server
 
 import (
 	"bytes"
+	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
@@ -248,6 +249,55 @@ func (s *openSavesServer) QueryRecords(ctx context.Context, req *pb.QueryRecords
 		Records:   rr,
 		StoreKeys: storeKeys,
 	}, nil
+}
+
+func (s *openSavesServer) GetRecords(ctx context.Context, req *pb.GetRecordsRequest) (*pb.GetRecordsResponse, error) {
+	records, err := s.metaDB.GetRecords(ctx, req.GetStoreKeys(), req.GetKeys())
+
+	// Check if there was an unexpected error
+	var errors datastore.MultiError
+	if err != nil {
+		var ok bool
+		if errors, ok = err.(datastore.MultiError); !ok {
+			log.Errorf("GetRecords unable to retrieve records: %v", err)
+			return nil, err
+		}
+	}
+
+	response := &pb.GetRecordsResponse{
+		Results: []*pb.GetRecordsResponse_Result{},
+	}
+	statusOk := &pb.Status{
+		Code:    uint32(codes.OK),
+		Message: codes.OK.String(),
+	}
+	for i, rec := range records {
+		var protoRec *pb.Record
+		var storeKey string
+		var pbStatus *pb.Status
+
+		if rec != nil {
+			protoRec = rec.ToProto()
+			storeKey = rec.StoreKey
+		}
+		if errors != nil && errors[i] != nil {
+			statusCode := status.Code(errors[i])
+			pbStatus = &pb.Status{
+				Code:    uint32(statusCode),
+				Message: errors[i].Error(),
+			}
+		} else {
+			pbStatus = statusOk
+		}
+
+		result := &pb.GetRecordsResponse_Result{
+			Record:   protoRec,
+			StoreKey: storeKey,
+			Status:   pbStatus,
+		}
+		response.Results = append(response.Results, result)
+	}
+	return response, nil
 }
 
 func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSaves_CreateBlobServer, meta *pb.BlobMetadata) error {

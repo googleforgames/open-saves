@@ -16,6 +16,7 @@ syntax = "proto3";
 
 package opensaves;
 
+import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -41,6 +42,9 @@ service OpenSaves {
 
   // GetRecord returns a record with the specified key.
   rpc GetRecord(GetRecordRequest) returns (Record) {}
+
+  // GetRecords fetches multiple records by keys.
+  rpc GetRecords(GetRecordsRequest) returns (GetRecordsResponse) {}
 
   // QueryRecords performs a query and returns matching records.
   rpc QueryRecords(QueryRecordsRequest) returns (QueryRecordsResponse) {}
@@ -343,6 +347,14 @@ message GetRecordRequest {
   Hint hint = 3;
 }
 
+message GetRecordsRequest {
+  // The keys of the stores the records belongs to.
+  repeated string store_keys = 1;
+
+  // The keys of the records to get.
+  repeated string keys = 2;
+}
+
 // QueryRecordsRequest contains conditions to search particular records.
 // Multiple conditions are AND'ed together.
 message QueryRecordsRequest {
@@ -428,6 +440,21 @@ message SortOrder {
 
   // The name of the user defined property.
   string user_property_name = 4;
+}
+
+message Status {
+  uint32 code = 1;
+  string message = 2;
+  repeated google.protobuf.Any details = 3;
+}
+
+message GetRecordsResponse {
+  message Result {
+    Status status = 1;
+    string store_key = 2;
+    Record record = 3;
+  }
+  repeated Result results = 1;
 }
 
 message QueryRecordsResponse {

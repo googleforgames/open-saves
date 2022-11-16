@@ -871,23 +871,22 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 	}
 
 	// If an offset was passed and the clients want full records, fetch records by keys
+	var err error
 	if useOffset && !req.GetKeysOnly() {
 		match = make([]*record.Record, len(keys))
-		if err := m.client.GetMulti(ctx, keys, match); err != nil {
-			if _, ok := err.(ds.MultiError); ok {
-				// Error(s) encountered when getting some entities (not supposed to happen here)
-				return match, err
+		if err = m.client.GetMulti(ctx, keys, match); err != nil {
+			if _, ok := err.(ds.MultiError); !ok {
+				// Datastore internal error
+				return nil, datastoreErrToGRPCStatus(err)
 			}
-			// Datastore internal error
-			return nil, datastoreErrToGRPCStatus(err)
 		}
 	}
 
-	return match, nil
+	return match, m.toGRPCStatus(err)
 }
 
-// GetMultiRecords returns records by using the get multi request interface from datastore.
-func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []string) ([]*record.Record, error) {
+// GetRecords returns records by using the get multi request interface from datastore.
+func (m *MetaDB) GetRecords(ctx context.Context, storeKeys, recordKeys []string) ([]*record.Record, error) {
 	// Build the key array with parameters
 	keys, err := m.createDatastoreKeys(storeKeys, recordKeys)
 	if err != nil {
@@ -897,20 +896,29 @@ func (m *MetaDB) GetMultiRecords(ctx context.Context, storeKeys, recordKeys []st
 	// Query the datastore for the records by keys
 	records := make([]*record.Record, len(keys))
 	if err = m.client.GetMulti(ctx, keys, records); err != nil {
-		if _, ok := err.(ds.MultiError); ok {
-			// Error(s) encountered when getting some entities
-			return records, err
+		if _, ok := err.(ds.MultiError); !ok {
+			// Datastore internal error
+			return nil, datastoreErrToGRPCStatus(err)
 		}
-		// Datastore internal error
-		return nil, datastoreErrToGRPCStatus(err)
 	}
+	return records, m.toGRPCStatus(err)
+}
 
-	return records, nil
+func (m *MetaDB) toGRPCStatus(err error) error {
+	if err != nil {
+		if dsErr, ok := err.(ds.MultiError); ok {
+			for i := range dsErr {
+				dsErr[i] = datastoreErrToGRPCStatus(dsErr[i])
+			}
+			return dsErr
+		}
+	}
+	return err
 }
 
 func (m *MetaDB) createDatastoreKeys(storeKeys, recordKeys []string) ([]*ds.Key, error) {
 	if len(storeKeys) != len(recordKeys) {
-		return nil, status.Errorf(codes.Internal, "metadb createDatastoreKeys: invalid store/record key array(s)  length")
+		return nil, status.Error(codes.InvalidArgument, "metadb createDatastoreKeys: invalid store/record key array(s) length")
 	}
 	var keys []*ds.Key
 	if len(storeKeys) == 0 {

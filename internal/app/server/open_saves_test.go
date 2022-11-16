@@ -1241,6 +1241,124 @@ func TestOpenSaves_QueryRecords_Offset(t *testing.T) {
 	require.Equal(t, 2, len(resp.StoreKeys))
 }
 
+func TestOpenSaves_GetRecords_InvalidArguments(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+
+	getReq := &pb.GetRecordsRequest{
+		StoreKeys: []string{uuid.NewString(), uuid.NewString(), uuid.NewString()},
+		Keys:      []string{uuid.NewString(), uuid.NewString()},
+	}
+	response, err := client.GetRecords(ctx, getReq)
+
+	assert.Nil(t, response)
+	assert.Error(t, err)
+	assert.EqualValues(t, status.Code(err), codes.InvalidArgument)
+}
+
+func TestOpenSaves_GetRecords(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	pbRecords := make([]*pb.Record, 3)
+	for i := range pbRecords {
+		pbRecords[i] = setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()})
+	}
+
+	getReq := &pb.GetRecordsRequest{
+		StoreKeys: []string{storeKey, storeKey, storeKey},
+		Keys:      []string{pbRecords[0].Key, pbRecords[1].Key, pbRecords[2].Key},
+	}
+	response, err := client.GetRecords(ctx, getReq)
+	assert.Nil(t, err)
+	assert.NotNil(t, response)
+
+	var records []*record.Record
+	for _, entity := range response.GetResults() {
+		require.EqualValues(t, codes.OK, entity.GetStatus().Code)
+		rec, err := record.FromProto(entity.GetStoreKey(), entity.GetRecord())
+		assert.Nil(t, err)
+		records = append(records, rec)
+	}
+
+	require.Equal(t, 3, len(records))
+	for i := range records {
+		assert.EqualValues(t, records[i].Key, pbRecords[i].Key)
+		assert.EqualValues(t, records[i].StoreKey, storeKey)
+	}
+}
+
+func TestOpenSaves_GetRecords_OneNotFound(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	store := &pb.Store{Key: storeKey}
+	setupTestStore(ctx, t, client, store)
+
+	pbRecords := []*pb.Record{
+		setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()}),
+		setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()}),
+		{Key: uuid.NewString()},
+		setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()}),
+	}
+	expectedStatus := []uint32{
+		uint32(codes.OK),
+		uint32(codes.OK),
+		uint32(codes.NotFound),
+		uint32(codes.OK),
+	}
+
+	getReq := &pb.GetRecordsRequest{
+		StoreKeys: []string{storeKey, storeKey, storeKey, storeKey},
+		Keys:      []string{pbRecords[0].Key, pbRecords[1].Key, pbRecords[2].Key, pbRecords[3].Key},
+	}
+	response, err := client.GetRecords(ctx, getReq)
+	assert.Nil(t, err)
+	assert.NotNil(t, response)
+
+	require.NotNil(t, response.GetResults())
+	require.Equal(t, 4, len(response.GetResults()))
+	for i, result := range response.GetResults() {
+		require.Equal(t, expectedStatus[i], result.GetStatus().Code)
+		if result.GetStatus().Code == uint32(codes.OK) {
+			var rec *record.Record
+			rec, err = record.FromProto(result.GetStoreKey(), result.GetRecord())
+			assert.Nil(t, err)
+			assert.EqualValues(t, rec.Key, pbRecords[i].Key)
+			assert.EqualValues(t, rec.StoreKey, storeKey)
+		} else {
+			require.NotEmpty(t, result.GetStatus().Message)
+		}
+	}
+}
+
+func TestOpenSaves_GetRecords_AllNotFound(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	getReq := &pb.GetRecordsRequest{
+		StoreKeys: []string{storeKey, storeKey, storeKey},
+		Keys:      []string{uuid.NewString(), uuid.NewString(), uuid.NewString()},
+	}
+	response, err := client.GetRecords(ctx, getReq)
+	assert.Nil(t, err)
+	assert.NotNil(t, response)
+
+	require.Equal(t, 3, len(response.GetResults()))
+	for _, result := range response.GetResults() {
+		require.Nil(t, result.GetRecord())
+		require.Equal(t, uint32(codes.NotFound), result.GetStatus().Code)
+		require.NotEmpty(t, result.GetStatus().Message)
+	}
+}
+
 func TestOpenSaves_CreateChunkedBlobNonExistent(t *testing.T) {
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
