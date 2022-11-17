@@ -26,19 +26,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
-	"github.com/googleforgames/open-saves/internal/pkg/cmd"
-	"github.com/googleforgames/open-saves/internal/pkg/config"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-
 	"cloud.google.com/go/datastore"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
+	"github.com/googleforgames/open-saves/internal/pkg/cmd"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/api/iterator"
@@ -1307,12 +1306,7 @@ func TestOpenSaves_GetRecords_OneNotFound(t *testing.T) {
 		{Key: uuid.NewString()},
 		setupTestRecord(ctx, t, client, storeKey, &pb.Record{Key: uuid.NewString()}),
 	}
-	expectedStatus := []uint32{
-		uint32(codes.OK),
-		uint32(codes.OK),
-		uint32(codes.NotFound),
-		uint32(codes.OK),
-	}
+	expectedStatus := []codes.Code{codes.OK, codes.OK, codes.NotFound, codes.OK}
 
 	getReq := &pb.GetRecordsRequest{
 		StoreKeys: []string{storeKey, storeKey, storeKey, storeKey},
@@ -1325,8 +1319,9 @@ func TestOpenSaves_GetRecords_OneNotFound(t *testing.T) {
 	require.NotNil(t, response.GetResults())
 	require.Equal(t, 4, len(response.GetResults()))
 	for i, result := range response.GetResults() {
-		require.Equal(t, expectedStatus[i], result.GetStatus().Code)
-		if result.GetStatus().Code == uint32(codes.OK) {
+		code := status.FromProto(result.GetStatus()).Code()
+		require.Equal(t, expectedStatus[i], code)
+		if code == codes.OK {
 			var rec *record.Record
 			rec, err = record.FromProto(result.GetStoreKey(), result.GetRecord())
 			assert.Nil(t, err)
@@ -1354,7 +1349,7 @@ func TestOpenSaves_GetRecords_AllNotFound(t *testing.T) {
 	require.Equal(t, 3, len(response.GetResults()))
 	for _, result := range response.GetResults() {
 		require.Nil(t, result.GetRecord())
-		require.Equal(t, uint32(codes.NotFound), result.GetStatus().Code)
+		require.Equal(t, codes.NotFound, status.FromProto(result.GetStatus()).Code())
 		require.NotEmpty(t, result.GetStatus().Message)
 	}
 }

@@ -42,7 +42,7 @@ mocks: ${MOCKS_GENERATED}
 docs: ${REFERENCE_DOC}
 
 ${REFERENCE_DOC}: ${API_DIR}/open_saves.proto
-	${PROTOC} --doc_out=$(dir $@) --doc_opt=markdown,$(notdir $@) $<
+	${PROTOC} -I${API_DIR} -Ithird_party/googleapis --doc_out=$(dir $@) --doc_opt=markdown,$(notdir $@) $<
 
 ${SERVER_BIN}: cmd/server/main.go protos FORCE
 	go build -o $@ $<

@@ -111,8 +111,19 @@ func (r *Record) LoadKey(k *datastore.Key) error {
 	return nil
 }
 
+// GetStoreKey() returns the parent StoreKey.
+func (r *Record) GetStoreKey() string {
+	if r == nil {
+		return ""
+	}
+	return r.StoreKey
+}
+
 // ToProto converts the struct to a proto.
 func (r *Record) ToProto() *pb.Record {
+	if r == nil {
+		return nil
+	}
 	ret := &pb.Record{
 		Key:          r.Key,
 		BlobSize:     r.BlobSize,

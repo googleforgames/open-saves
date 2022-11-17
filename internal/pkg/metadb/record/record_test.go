@@ -27,6 +27,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/testing/protocmp"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -303,53 +304,73 @@ func TestRecord_Load(t *testing.T) {
 }
 
 func TestRecord_ToProtoSimple(t *testing.T) {
-	testBlob := []byte{0x24, 0x42, 0x11}
-	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
-	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	t.Parallel()
 	signature := uuid.MustParse("70E894AE-1020-42E8-9710-3E2D408BC356")
-	record := &Record{
-		Key:          "key",
-		Blob:         testBlob,
-		BlobSize:     int64(len(testBlob)),
-		ExternalBlob: uuid.Nil,
-		Chunked:      true,
-		ChunkCount:   1,
-		Properties: PropertyMap{
-			"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
-			"prop2": {Type: pb.Property_STRING, StringValue: "value"},
+
+	testCases := []struct {
+		name string
+		r    *Record
+		want *pb.Record
+	}{
+		{
+			name: "canonical",
+			r: &Record{
+				Key:          "key",
+				Blob:         []byte{0x24, 0x42, 0x11},
+				BlobSize:     3,
+				ExternalBlob: uuid.Nil,
+				Chunked:      true,
+				ChunkCount:   1,
+				Properties: PropertyMap{
+					"prop1": {Type: pb.Property_INTEGER, IntegerValue: 42},
+					"prop2": {Type: pb.Property_STRING, StringValue: "value"},
+				},
+				OwnerID:      "owner",
+				Tags:         []string{"a", "b"},
+				OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+				Timestamps: timestamps.Timestamps{
+					CreatedAt: time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC),
+					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
+					Signature: signature,
+				},
+			},
+			want: &pb.Record{
+				Key:        "key",
+				BlobSize:   3,
+				Chunked:    true,
+				ChunkCount: 1,
+				Properties: map[string]*pb.Property{
+					"prop1": {
+						Type:  pb.Property_INTEGER,
+						Value: &pb.Property_IntegerValue{IntegerValue: 42},
+					},
+					"prop2": {
+						Type:  pb.Property_STRING,
+						Value: &pb.Property_StringValue{StringValue: "value"},
+					},
+				},
+				OwnerId:      "owner",
+				Tags:         []string{"a", "b"},
+				OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+				CreatedAt:    timestamppb.New(time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)),
+				UpdatedAt:    timestamppb.New(time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)),
+				Signature:    signature[:],
+			},
 		},
-		OwnerID:      "owner",
-		Tags:         []string{"a", "b"},
-		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-		Timestamps: timestamps.Timestamps{
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
-			Signature: signature,
+		{
+			name: "nil",
+			r:    nil,
+			want: nil,
 		},
 	}
-	expected := &pb.Record{
-		Key:        "key",
-		BlobSize:   int64(len(testBlob)),
-		Chunked:    true,
-		ChunkCount: 1,
-		Properties: map[string]*pb.Property{
-			"prop1": {
-				Type:  pb.Property_INTEGER,
-				Value: &pb.Property_IntegerValue{IntegerValue: 42},
-			},
-			"prop2": {
-				Type:  pb.Property_STRING,
-				Value: &pb.Property_StringValue{StringValue: "value"},
-			},
-		},
-		OwnerId:      "owner",
-		Tags:         []string{"a", "b"},
-		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-		CreatedAt:    timestamppb.New(createdAt),
-		UpdatedAt:    timestamppb.New(updatedAt),
-		Signature:    signature[:],
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.r.ToProto()
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("ToProto() = (-want, +got):\n%s", diff)
+			}
+		})
 	}
-	assert.Equal(t, expected, record.ToProto())
 }
 
 func TestRecord_NewRecordFromProto(t *testing.T) {
@@ -529,5 +550,26 @@ func TestRecord_EmptyInvalidSignature(t *testing.T) {
 	proto.Signature = []byte{0xff}
 	if rr, err := FromProto("", proto); assert.Error(t, err) {
 		assert.Nil(t, rr)
+	}
+}
+
+func TestRecord_GetStoreKey(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name string
+		r    *Record
+		want string
+	}{
+		{"canonical", &Record{StoreKey: "store"}, "store"},
+		{"nil", nil, ""},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.r.GetStoreKey()
+			if got != tc.want {
+				t.Errorf("GetStoreKey() = got %s, want %s", got, tc.want)
+			}
+		})
 	}
 }
