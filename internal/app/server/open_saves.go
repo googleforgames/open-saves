@@ -16,20 +16,18 @@ package server
 
 import (
 	"bytes"
-	"cloud.google.com/go/datastore"
 	"context"
 	"fmt"
 	"io"
 
+	"cloud.google.com/go/datastore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
-	"github.com/googleforgames/open-saves/internal/pkg/config"
-	"go.opencensus.io/trace"
-
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
 	"github.com/googleforgames/open-saves/internal/pkg/cache"
 	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
@@ -37,6 +35,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -267,33 +266,16 @@ func (s *openSavesServer) GetRecords(ctx context.Context, req *pb.GetRecordsRequ
 	response := &pb.GetRecordsResponse{
 		Results: []*pb.GetRecordsResponse_Result{},
 	}
-	statusOk := &pb.Status{
-		Code:    uint32(codes.OK),
-		Message: codes.OK.String(),
-	}
 	for i, rec := range records {
-		var protoRec *pb.Record
-		var storeKey string
-		var pbStatus *pb.Status
+		st := status.New(codes.OK, codes.OK.String())
 
-		if rec != nil {
-			protoRec = rec.ToProto()
-			storeKey = rec.StoreKey
-		}
 		if errors != nil && errors[i] != nil {
-			statusCode := status.Code(errors[i])
-			pbStatus = &pb.Status{
-				Code:    uint32(statusCode),
-				Message: errors[i].Error(),
-			}
-		} else {
-			pbStatus = statusOk
+			st = status.Convert(errors[i])
 		}
-
 		result := &pb.GetRecordsResponse_Result{
-			Record:   protoRec,
-			StoreKey: storeKey,
-			Status:   pbStatus,
+			Record:   rec.ToProto(),
+			StoreKey: rec.GetStoreKey(),
+			Status:   st.Proto(),
 		}
 		response.Results = append(response.Results, result)
 	}
