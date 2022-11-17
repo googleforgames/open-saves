@@ -18,9 +18,18 @@ steps:
     args:
       - -c
       - |
+        git submodule update --init --recursive || exit 0
+    id: submodule
+  - name: ${_BUILDER}
+    entrypoint: /bin/bash
+    args:
+      - -c
+      - |
         go mod download
         make install-tools
     id: prep
+    waitFor:
+      - submodule
   - name: ${_BUILDER}
     entrypoint: make
     args:

@@ -16,9 +16,9 @@ syntax = "proto3";
 
 package opensaves;
 
-import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
 
 option go_package = "github.com/googleforgames/open-saves;opensaves";
 
@@ -442,15 +442,9 @@ message SortOrder {
   string user_property_name = 4;
 }
 
-message Status {
-  uint32 code = 1;
-  string message = 2;
-  repeated google.protobuf.Any details = 3;
-}
-
 message GetRecordsResponse {
   message Result {
-    Status status = 1;
+    google.rpc.Status status = 1;
     string store_key = 2;
     Record record = 3;
   }

@@ -3,7 +3,7 @@
 
 ## Table of Contents
 
-- [api/open_saves.proto](#api_open_saves-proto)
+- [open_saves.proto](#open_saves-proto)
     - [AbortChunkedUploadRequest](#opensaves-AbortChunkedUploadRequest)
     - [AtomicIncRequest](#opensaves-AtomicIncRequest)
     - [AtomicIntRequest](#opensaves-AtomicIntRequest)
@@ -42,7 +42,6 @@
     - [Record](#opensaves-Record)
     - [Record.PropertiesEntry](#opensaves-Record-PropertiesEntry)
     - [SortOrder](#opensaves-SortOrder)
-    - [Status](#opensaves-Status)
     - [Store](#opensaves-Store)
     - [UpdateRecordRequest](#opensaves-UpdateRecordRequest)
     - [UploadChunkRequest](#opensaves-UploadChunkRequest)
@@ -58,10 +57,10 @@
 
 
 
-<a name="api_open_saves-proto"></a>
+<a name="open_saves-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## api/open_saves.proto
+## open_saves.proto
 
 
 
@@ -495,7 +494,7 @@ field.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| status | [Status](#opensaves-Status) |  |  |
+| status | [google.rpc.Status](#google-rpc-Status) |  |  |
 | store_key | [string](#string) |  |  |
 | record | [Record](#opensaves-Record) |  |  |
 
@@ -728,23 +727,6 @@ SortOrder is a way to order records returned by QueryRecords.
 | direction | [SortOrder.Direction](#opensaves-SortOrder-Direction) |  | Direction to sort by (either ascending or descending). |
 | property | [SortOrder.Property](#opensaves-SortOrder-Property) |  | Property to sort by. If using a user defined property, user_property_name must be passed in as well. |
 | user_property_name | [string](#string) |  | The name of the user defined property. |
-
-
-
-
-
-
-<a name="opensaves-Status"></a>
-
-### Status
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [uint32](#uint32) |  |  |
-| message | [string](#string) |  |  |
-| details | [google.protobuf.Any](#google-protobuf-Any) | repeated |  |
 
 
 
