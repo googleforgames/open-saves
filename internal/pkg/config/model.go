@@ -36,7 +36,6 @@ const (
 
 	BlobMaxInlineSize = "blob_max_inline_size"
 
-	GRPCKeepAliveEnabled               = "grpc_keepalive_enabled"
 	GRPCKeepAliveMaxConnectionIdle     = "grpc_keepalive_max_connection_idle"
 	GRPCKeepAliveMaxConnectionAge      = "grpc_keepalive_max_connection_age"
 	GRPCKeepAliveMaxConnectionAgeGrace = "grpc_keepalive_max_connection_age_grace"
@@ -55,7 +54,7 @@ type ServiceConfig struct {
 	CacheConfig
 	RedisConfig
 	BlobConfig
-	GRPCConfig
+	GRPCServerConfig
 }
 
 // ServerConfig defines common fields needed to start Open Saves.
@@ -96,17 +95,12 @@ type BlobConfig struct {
 	MaxInlineSize int
 }
 
-// GRPCConfig Holds general configuration for grpc server
-type GRPCConfig struct {
-	*GRPCKeepAliveConfig
-}
-
-// GRPCKeepAliveConfig has the configurations for grpc server keepAlive parameters
-// all the parameters are handled in seconds
-type GRPCKeepAliveConfig struct {
-	MaxConnectionIdle     int
-	MaxConnectionAge      int
-	MaxConnectionAgeGrace int
-	Time                  int
-	Timeout               int
+// GRPCServerConfig has the configurations for grpc server, for now keepAlive parameters
+// all the parameters are handled in time.Duration
+type GRPCServerConfig struct {
+	MaxConnectionIdle     time.Duration
+	MaxConnectionAge      time.Duration
+	MaxConnectionAgeGrace time.Duration
+	Time                  time.Duration
+	Timeout               time.Duration
 }

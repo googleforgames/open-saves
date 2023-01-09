@@ -129,23 +129,19 @@ func Load(path string) (*ServiceConfig, error) {
 		MaxInlineSize: viper.GetInt(BlobMaxInlineSize),
 	}
 
-	var grpcConfig GRPCConfig
-	kpEnabled := viper.GetBool(GRPCKeepAliveEnabled)
-	if kpEnabled {
-		grpcConfig.GRPCKeepAliveConfig = &GRPCKeepAliveConfig{
-			MaxConnectionIdle:     viper.GetInt(GRPCKeepAliveMaxConnectionIdle),
-			MaxConnectionAge:      viper.GetInt(GRPCKeepAliveMaxConnectionAge),
-			MaxConnectionAgeGrace: viper.GetInt(GRPCKeepAliveMaxConnectionAgeGrace),
-			Time:                  viper.GetInt(GRPCKeepAliveTime),
-			Timeout:               viper.GetInt(GRPCKeepAliveTimeout),
-		}
+	grpcSvConfig := GRPCServerConfig{
+		MaxConnectionIdle:     viper.GetDuration(GRPCKeepAliveMaxConnectionIdle),
+		MaxConnectionAge:      viper.GetDuration(GRPCKeepAliveMaxConnectionAge),
+		MaxConnectionAgeGrace: viper.GetDuration(GRPCKeepAliveMaxConnectionAgeGrace),
+		Time:                  viper.GetDuration(GRPCKeepAliveTime),
+		Timeout:               viper.GetDuration(GRPCKeepAliveTimeout),
 	}
 
 	return &ServiceConfig{
-		ServerConfig: serverConfig,
-		CacheConfig:  cacheConfig,
-		RedisConfig:  redisConfig,
-		BlobConfig:   blobConfig,
-		GRPCConfig:   grpcConfig,
+		ServerConfig:     serverConfig,
+		CacheConfig:      cacheConfig,
+		RedisConfig:      redisConfig,
+		BlobConfig:       blobConfig,
+		GRPCServerConfig: grpcSvConfig,
 	}, nil
 }

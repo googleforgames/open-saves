@@ -49,16 +49,14 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	var svOptions []grpc.ServerOption
-	if cfg.GRPCConfig.GRPCKeepAliveConfig != nil {
-		kp := grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle:     time.Duration(cfg.GRPCConfig.MaxConnectionIdle) * time.Second,
-			MaxConnectionAge:      time.Duration(cfg.GRPCConfig.MaxConnectionAge) * time.Second,
-			MaxConnectionAgeGrace: time.Duration(cfg.GRPCConfig.MaxConnectionAgeGrace) * time.Second,
-			Time:                  time.Duration(cfg.GRPCConfig.Time) * time.Second,
-			Timeout:               time.Duration(cfg.GRPCConfig.Timeout) * time.Second,
-		})
-		svOptions = append(svOptions, kp)
+	svOptions := []grpc.ServerOption{
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle:     cfg.GRPCServerConfig.MaxConnectionIdle,
+			MaxConnectionAge:      cfg.GRPCServerConfig.MaxConnectionAge,
+			MaxConnectionAgeGrace: cfg.GRPCServerConfig.MaxConnectionAgeGrace,
+			Time:                  cfg.GRPCServerConfig.Time,
+			Timeout:               cfg.GRPCServerConfig.Timeout,
+		}),
 	}
 
 	s := grpc.NewServer(svOptions...)
