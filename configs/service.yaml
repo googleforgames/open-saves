@@ -15,6 +15,13 @@ redis_max_retry_backoff: "512ms"
 
 blob_max_inline_size: 65536
 
+grpc_keepalive_enabled: false
+grpc_keepalive_max_connection_idle: 300
+grpc_keepalive_max_connection_age: 43200
+grpc_keepalive_max_connection_age_grace: 300
+grpc_keepalive_time: 3600
+grpc_keepalive_timeout: 20
+
 # The following enables OpenCensus Tracing via Cloud Trace
 # for the Datastore client library.
 # It is EXPERIMENTAL and subject to change or removal without notice.
