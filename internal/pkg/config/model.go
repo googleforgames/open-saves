@@ -36,6 +36,12 @@ const (
 
 	BlobMaxInlineSize = "blob_max_inline_size"
 
+	GRPCKeepAliveMaxConnectionIdle     = "grpc_keepalive_max_connection_idle"
+	GRPCKeepAliveMaxConnectionAge      = "grpc_keepalive_max_connection_age"
+	GRPCKeepAliveMaxConnectionAgeGrace = "grpc_keepalive_max_connection_age_grace"
+	GRPCKeepAliveTime                  = "grpc_keepalive_time"
+	GRPCKeepAliveTimeout               = "grpc_keepalive_timeout"
+
 	// The following enables OpenCensus Tracing via Cloud Trace
 	// for the Datastore client library.
 	// It is EXPERIMENTAL and subject to change or removal without notice.
@@ -48,6 +54,7 @@ type ServiceConfig struct {
 	CacheConfig
 	RedisConfig
 	BlobConfig
+	GRPCServerConfig
 }
 
 // ServerConfig defines common fields needed to start Open Saves.
@@ -86,4 +93,14 @@ type RedisConfig struct {
 // BlobConfig has Open Saves blob related configurations.
 type BlobConfig struct {
 	MaxInlineSize int
+}
+
+// GRPCServerConfig has the configurations for grpc server, for now keepAlive parameters
+// all the parameters are handled in time.Duration
+type GRPCServerConfig struct {
+	MaxConnectionIdle     time.Duration
+	MaxConnectionAge      time.Duration
+	MaxConnectionAgeGrace time.Duration
+	Time                  time.Duration
+	Timeout               time.Duration
 }

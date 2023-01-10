@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"google.golang.org/grpc/keepalive"
 	"net"
 	"os"
 	"os/signal"
@@ -48,7 +49,18 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	s := grpc.NewServer()
+	grpcOptions := []grpc.ServerOption{
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle:     cfg.GRPCServerConfig.MaxConnectionIdle,
+			MaxConnectionAge:      cfg.GRPCServerConfig.MaxConnectionAge,
+			MaxConnectionAgeGrace: cfg.GRPCServerConfig.MaxConnectionAgeGrace,
+			Time:                  cfg.GRPCServerConfig.Time,
+			Timeout:               cfg.GRPCServerConfig.Timeout,
+		}),
+	}
+
+	s := grpc.NewServer(grpcOptions...)
+
 	healthcheck := health.NewServer()
 	healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_SERVING)
 	healthgrpc.RegisterHealthServer(s, healthcheck)
