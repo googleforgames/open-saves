@@ -49,7 +49,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	svOptions := []grpc.ServerOption{
+	grpcOptions := []grpc.ServerOption{
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			MaxConnectionIdle:     cfg.GRPCServerConfig.MaxConnectionIdle,
 			MaxConnectionAge:      cfg.GRPCServerConfig.MaxConnectionAge,
@@ -59,7 +59,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}),
 	}
 
-	s := grpc.NewServer(svOptions...)
+	s := grpc.NewServer(grpcOptions...)
 
 	healthcheck := health.NewServer()
 	healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_SERVING)
