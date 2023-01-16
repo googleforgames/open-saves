@@ -16,12 +16,10 @@ package server
 
 import (
 	"bytes"
-	"context"
-	"fmt"
-	"io"
-
 	"cloud.google.com/go/datastore"
+	"context"
 	"contrib.go.opencensus.io/exporter/stackdriver"
+	"fmt"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
@@ -39,6 +37,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
+	"io"
 )
 
 // TODO(hongalex): make this a configurable field for users.
@@ -544,6 +543,33 @@ func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateC
 	return &pb.CreateChunkedBlobResponse{
 		SessionId: b.Key.String(),
 	}, nil
+}
+
+func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChunkUrlsRequest) (*pb.CreateChunkUrlsResponse, error) {
+
+	blobRef, err := s.metaDB.GetCurrentBlobRef(ctx, req.GetStoreKey(), req.GetKey())
+	if err != nil {
+		return nil, err
+	}
+
+	var urls []string
+	for i := int64(1); i <= blobRef.ChunkCount; i++ {
+		chunk, err := s.metaDB.FindChunkRefByNumber(ctx, req.GetStoreKey(), req.GetKey(), int32(i))
+		if err != nil {
+			log.Errorf("CreateChunkUrls failed to get chunk metadata for store (%v), record (%v), number (%v): %v", req.GetStoreKey(), req.GetKey(), int32(i), err)
+			return nil, err
+		}
+
+		url, err := s.blobStore.SignUrl(ctx, req.GetKey(), req.GetTtlInSeconds(), req.GetContentType(), "GET")
+		if err != nil {
+			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", i, s.ServerConfig.Bucket, chunk.Key, err)
+			return nil, err
+		}
+
+		urls = append(urls, url)
+	}
+
+	return &pb.CreateChunkUrlsResponse{ChunkUrls: urls}, nil
 }
 
 func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) error {

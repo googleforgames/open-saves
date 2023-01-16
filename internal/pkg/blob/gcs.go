@@ -17,6 +17,7 @@ package blob
 import (
 	"context"
 	"io"
+	"time"
 
 	"gocloud.dev/blob"
 	// Register the gocloud blob GCS driver
@@ -85,4 +86,16 @@ func (b *BlobGCP) Delete(ctx context.Context, path string) error {
 // Close releases any resources used by the instance.
 func (b *BlobGCP) Close() error {
 	return b.bucket.Close()
+}
+
+// SignUrl returns an open accessible signed url for the given blob key
+func (b *BlobGCP) SignUrl(ctx context.Context, key string, ttlInSeconds int64, contentType string, method string) (string, error) {
+	opts := &blob.SignedURLOptions{
+		Expiry:                   time.Duration(ttlInSeconds) * time.Second,
+		Method:                   method,
+		ContentType:              contentType,
+		EnforceAbsentContentType: false,
+		BeforeSign:               nil,
+	}
+	return b.bucket.SignedURL(ctx, key, opts)
 }

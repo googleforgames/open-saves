@@ -14,6 +14,8 @@
     - [CompareAndSwapRequest](#opensaves-CompareAndSwapRequest)
     - [CompareAndSwapResponse](#opensaves-CompareAndSwapResponse)
     - [CreateBlobRequest](#opensaves-CreateBlobRequest)
+    - [CreateChunkUrlsRequest](#opensaves-CreateChunkUrlsRequest)
+    - [CreateChunkUrlsResponse](#opensaves-CreateChunkUrlsResponse)
     - [CreateChunkedBlobRequest](#opensaves-CreateChunkedBlobRequest)
     - [CreateChunkedBlobResponse](#opensaves-CreateChunkedBlobResponse)
     - [CreateRecordRequest](#opensaves-CreateRecordRequest)
@@ -247,6 +249,39 @@ should contain content.
 | ----- | ---- | ----- | ----------- |
 | metadata | [BlobMetadata](#opensaves-BlobMetadata) |  | metadata is the metadata used to initialize the blob object with. |
 | content | [bytes](#bytes) |  | content is the binary content of the blob object. |
+
+
+
+
+
+
+<a name="opensaves-CreateChunkUrlsRequest"></a>
+
+### CreateChunkUrlsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| store_key | [string](#string) |  | The key of the store that the record belongs to. |
+| key | [string](#string) |  | The key of the record to get. |
+| ttl_in_seconds | [int64](#int64) |  | TTL |
+| content_type | [string](#string) |  | Content type of the chunks, e.g. &#34;image/png&#34; |
+
+
+
+
+
+
+<a name="opensaves-CreateChunkUrlsResponse"></a>
+
+### CreateChunkUrlsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chunk_urls | [string](#string) | repeated | Public signed URLs of the chunk objects uploaded against the record ordered according to chunk number |
 
 
 
@@ -868,6 +903,7 @@ Public interface of the Open Saves service.
 | DeleteRecord | [DeleteRecordRequest](#opensaves-DeleteRecordRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | DeleteRecord deletes a single record with the specified key. |
 | CreateBlob | [CreateBlobRequest](#opensaves-CreateBlobRequest) stream | [BlobMetadata](#opensaves-BlobMetadata) | CreateBlob adds a new blob to a record. |
 | CreateChunkedBlob | [CreateChunkedBlobRequest](#opensaves-CreateChunkedBlobRequest) | [CreateChunkedBlobResponse](#opensaves-CreateChunkedBlobResponse) | CreateChunkedBlob starts a new chunked blob upload session. |
+| CreateChunkUrls | [CreateChunkUrlsRequest](#opensaves-CreateChunkUrlsRequest) | [CreateChunkUrlsResponse](#opensaves-CreateChunkUrlsResponse) | CreateChunkUrls returns the TTL signed url for the record blob chunks. |
 | UploadChunk | [UploadChunkRequest](#opensaves-UploadChunkRequest) stream | [ChunkMetadata](#opensaves-ChunkMetadata) | UploadChunk uploads and stores each each chunk. |
 | CommitChunkedUpload | [CommitChunkedUploadRequest](#opensaves-CommitChunkedUploadRequest) | [BlobMetadata](#opensaves-BlobMetadata) | CommitChunkedUpload commits a chunked blob upload session and makes the blob available for reads. An optional record can be passed to perform an update within the same transaction. |
 | AbortChunkedUpload | [AbortChunkedUploadRequest](#opensaves-AbortChunkedUploadRequest) | [.google.protobuf.Empty](#google-protobuf-Empty) | AbortChunkedUploads aborts a chunked blob upload session and discards temporary objects. |
