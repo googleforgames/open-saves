@@ -2204,3 +2204,29 @@ func TestOpenSaves_LongOpaqueStrings(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenSaves_SignUrl(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.NewString()}
+	record = setupTestRecord(ctx, t, client, store.Key, record)
+
+	createBlob(ctx, t, client, store.Key, record.Key, []byte("12345"))
+
+	urlsReq := &pb.CreateChunkUrlsRequest{
+		StoreKey:     store.Key,
+		Key:          record.Key,
+		TtlInSeconds: 100,
+		ContentType:  "text/html",
+	}
+
+	resp, err := client.CreateChunkUrls(ctx, urlsReq)
+	require.NotNil(t, resp)
+	require.NoError(t, err)
+	require.Len(t, resp.ChunkUrls, 1)
+}
