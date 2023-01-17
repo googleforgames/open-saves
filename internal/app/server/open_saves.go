@@ -560,7 +560,7 @@ func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChu
 			return nil, err
 		}
 
-		url, err := s.blobStore.SignUrl(ctx, req.GetKey(), req.GetTtlInSeconds(), req.GetContentType(), "GET")
+		url, err := s.blobStore.SignUrl(ctx, chunk.Key.String(), req.GetTtlInSeconds(), req.GetContentType(), "GET")
 		if err != nil {
 			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", i, s.ServerConfig.Bucket, chunk.Key, err)
 			return nil, err

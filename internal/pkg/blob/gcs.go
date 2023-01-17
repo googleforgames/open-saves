@@ -15,18 +15,24 @@
 package blob
 
 import (
+	"cloud.google.com/go/storage"
 	"context"
+	"fmt"
+	"gocloud.dev/blob"
+	"gocloud.dev/gcp"
+	"google.golang.org/api/option"
 	"io"
+	"strings"
 	"time"
 
-	"gocloud.dev/blob"
 	// Register the gocloud blob GCS driver
 	_ "gocloud.dev/blob/gcsblob"
 )
 
 // BlobGCP is the GCP implementation of blob.BlobStore using Cloud Storage.
 type BlobGCP struct {
-	bucket *blob.Bucket
+	bucket       *blob.Bucket
+	bucketHandle *storage.BucketHandle
 }
 
 // Assert BlobGCP implements the Blob interface
@@ -34,15 +40,35 @@ var _ BlobStore = new(BlobGCP)
 
 // NewBlobGCP returns a new BlobGCP instance.
 func NewBlobGCP(ctx context.Context, bucketURL string) (*BlobGCP, error) {
+	//credentials loader necessary for storage SignURL
+	creds, err := gcp.DefaultCredentials(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// storage client
+	str, err := storage.NewClient(ctx, option.WithCredentials(creds))
+	if err != nil {
+		return nil, err
+	}
+
 	// blob.OpenBucket creates a *blob.Bucket from url.
 	bucket, err := blob.OpenBucket(ctx, bucketURL)
 	if err != nil {
 		return nil, err
 	}
 
+	// new implementation ask only for bucketName and open_saves_bucket env brings the full url
+	bucketName := strings.Split(bucketURL, "//")
+	if len(bucketName) != 2 {
+		return nil, fmt.Errorf("unable to parse bucket name from the bucket url")
+	}
+
 	// bucket is guaranteed not to be nil if OpenBucket succeeds.
+	// same for bucketHandle and storage.NewClient
 	gcs := &BlobGCP{
-		bucket: bucket,
+		bucket:       bucket,
+		bucketHandle: str.Bucket(bucketName[1]),
 	}
 
 	return gcs, nil
@@ -90,12 +116,12 @@ func (b *BlobGCP) Close() error {
 
 // SignUrl returns an open accessible signed url for the given blob key
 func (b *BlobGCP) SignUrl(ctx context.Context, key string, ttlInSeconds int64, contentType string, method string) (string, error) {
-	opts := &blob.SignedURLOptions{
-		Expiry:                   time.Duration(ttlInSeconds) * time.Second,
-		Method:                   method,
-		ContentType:              contentType,
-		EnforceAbsentContentType: false,
-		BeforeSign:               nil,
+
+	strOpts := &storage.SignedURLOptions{
+		Method:      method,
+		Expires:     time.Now().Add(time.Duration(ttlInSeconds) * time.Second),
+		ContentType: contentType,
 	}
-	return b.bucket.SignedURL(ctx, key, opts)
+
+	return b.bucketHandle.SignedURL(key, strOpts)
 }
