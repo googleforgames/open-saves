@@ -34,6 +34,7 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/trace"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -553,19 +554,21 @@ func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChu
 	}
 
 	var urls []string
-	for i := int64(1); i <= blobRef.ChunkCount; i++ {
-		chunk, err := s.metaDB.FindChunkRefByNumber(ctx, req.GetStoreKey(), req.GetKey(), int32(i))
+	cur := s.metaDB.GetChildChunkRefs(ctx, blobRef.Key)
+	for {
+		chunk, err := cur.Next()
+		if err == iterator.Done {
+			break
+		}
 		if err != nil {
-			log.Errorf("CreateChunkUrls failed to get chunk metadata for store (%v), record (%v), number (%v): %v", req.GetStoreKey(), req.GetKey(), int32(i), err)
+			log.Errorf("cursor.Next() returned error: %v", err)
 			return nil, err
 		}
-
 		url, err := s.blobStore.SignUrl(ctx, chunk.Key.String(), req.GetTtlInSeconds(), req.GetContentType(), "GET")
 		if err != nil {
-			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", i, s.ServerConfig.Bucket, chunk.Key, err)
+			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", chunk.Number, s.ServerConfig.Bucket, chunk.Key, err)
 			return nil, err
 		}
-
 		urls = append(urls, url)
 	}
 
