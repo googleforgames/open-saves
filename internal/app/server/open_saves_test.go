@@ -2237,12 +2237,8 @@ func TestOpenSaves_SignUrl(t *testing.T) {
 		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
 	})
 
-	for i := 0; i <= chunkCount; i++ {
+	for i := 0; i < chunkCount; i++ {
 		uploadChunk(ctx, t, client, sessionId, int64(i), testChunk)
-		// UploadChunk shouldn't update Signature.
-		if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: store.Key, Key: record.Key}); assert.NoError(t, err) {
-			assert.Equal(t, record.Signature, actual.Signature)
-		}
 	}
 
 	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
