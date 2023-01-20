@@ -63,7 +63,7 @@ service OpenSaves {
   rpc CreateChunkedBlob(CreateChunkedBlobRequest)
       returns (CreateChunkedBlobResponse) {}
 
-  //CreateChunkUrls returns the TTL signed url for the record blob chunks.
+  // CreateChunkUrls returns the TTL signed url for the record blob chunks.
   rpc CreateChunkUrls(CreateChunkUrlsRequest) returns (CreateChunkUrlsResponse) {}
 
   // UploadChunk uploads and stores each each chunk.
