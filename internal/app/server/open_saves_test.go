@@ -2261,7 +2261,7 @@ func TestOpenSaves_SignUrl(t *testing.T) {
 		StoreKey:     store.Key,
 		Key:          record.Key,
 		TtlInSeconds: 100,
-		ContentType:  "text/html",
+		//ContentType:  "text/html",
 	}
 
 	resp, err := client.CreateChunkUrls(ctx, urlsReq)
