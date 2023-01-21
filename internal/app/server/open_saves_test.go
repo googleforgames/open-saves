@@ -2265,7 +2265,7 @@ func TestOpenSaves_SignUrl(t *testing.T) {
 	}
 
 	resp, err := client.CreateChunkUrls(ctx, urlsReq)
-	require.NotNil(t, resp)
 	require.NoError(t, err)
+	require.NotNil(t, resp)
 	require.Len(t, resp.ChunkUrls, 1)
 }
