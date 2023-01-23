@@ -2204,3 +2204,69 @@ func TestOpenSaves_LongOpaqueStrings(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenSaves_SignUrl(t *testing.T) {
+	t.Skip("Skipping this test b/c of Cloud Build runtime errors, tests passing fine when run outside Cloud Build")
+
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.NewString()}
+	record = setupTestRecord(ctx, t, client, store.Key, record)
+
+	const chunkSize = 1*1024*1024 + 13 // 1 Mi + 13 B
+	const chunkCount = 1
+	testChunk := make([]byte, chunkSize)
+	for i := 0; i < chunkSize; i++ {
+		testChunk[i] = byte(i % 256)
+	}
+
+	var sessionId string
+	if res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+		ChunkSize: chunkSize,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, res) {
+			_, err := uuid.Parse(res.SessionId)
+			assert.NoError(t, err)
+			sessionId = res.SessionId
+		}
+	}
+	t.Cleanup(func() {
+		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
+	})
+
+	for i := 0; i < chunkCount; i++ {
+		uploadChunk(ctx, t, client, sessionId, int64(i), testChunk)
+	}
+
+	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
+		SessionId: sessionId,
+	}); assert.NoError(t, err) {
+		assert.Equal(t, int64(len(testChunk)*chunkCount), meta.Size)
+		assert.True(t, meta.Chunked)
+		assert.Equal(t, int64(chunkCount), meta.ChunkCount)
+		assert.False(t, meta.HasCrc32C)
+		assert.Empty(t, meta.Md5)
+		assert.Equal(t, store.Key, meta.StoreKey)
+		assert.Equal(t, record.Key, meta.RecordKey)
+	}
+
+	for i := 0; i < chunkCount; i++ {
+		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
+	}
+
+	urlsReq := &pb.CreateChunkUrlsRequest{
+		StoreKey:     store.Key,
+		Key:          record.Key,
+		TtlInSeconds: 100,
+	}
+
+	resp, err := client.CreateChunkUrls(ctx, urlsReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.ChunkUrls, 1)
+}

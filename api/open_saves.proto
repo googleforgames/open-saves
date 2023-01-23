@@ -63,6 +63,9 @@ service OpenSaves {
   rpc CreateChunkedBlob(CreateChunkedBlobRequest)
       returns (CreateChunkedBlobResponse) {}
 
+  // CreateChunkUrls returns the TTL signed url for the record blob chunks.
+  rpc CreateChunkUrls(CreateChunkUrlsRequest) returns (CreateChunkUrlsResponse) {}
+
   // UploadChunk uploads and stores each each chunk.
   rpc UploadChunk(stream UploadChunkRequest) returns (ChunkMetadata) {}
 
@@ -551,6 +554,22 @@ message CreateChunkedBlobRequest {
 message CreateChunkedBlobResponse {
   // session_id is a chunked
   string session_id = 1;
+}
+
+message CreateChunkUrlsRequest {
+  // The key of the store that the record belongs to.
+  string store_key = 1;
+
+  // The key of the record to get.
+  string key = 2;
+
+  // TTL
+  int64 ttl_in_seconds = 3;
+}
+
+message CreateChunkUrlsResponse {
+  // Public signed URLs of the chunk objects uploaded against the record ordered according to chunk number
+  repeated string chunk_urls = 1;
 }
 
 // UploadChunkRequest is used by UploadChunk, which is a client-streaming

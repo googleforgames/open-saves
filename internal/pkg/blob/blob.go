@@ -22,7 +22,7 @@ import (
 // BlobStore is a public interface for Blob operations within Open Saves.
 // Use one of the structs defined in the package.
 // Currently available drivers:
-// 	- BlobGCP: Google Cloud Storage
+// - BlobGCP: Google Cloud Storage
 type BlobStore interface {
 	Put(ctx context.Context, path string, data []byte) error
 
@@ -41,4 +41,6 @@ type BlobStore interface {
 	// Make sure to close the reader after all operations to the reader.
 	NewRangeReader(ctx context.Context, path string, offset, length int64) (io.ReadCloser, error)
 	Delete(ctx context.Context, path string) error
+
+	SignUrl(ctx context.Context, key string, ttlInSeconds int64, method string) (string, error)
 }

@@ -16,12 +16,10 @@ package server
 
 import (
 	"bytes"
-	"context"
-	"fmt"
-	"io"
-
 	"cloud.google.com/go/datastore"
+	"context"
 	"contrib.go.opencensus.io/exporter/stackdriver"
+	"fmt"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
@@ -36,9 +34,11 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
 	"go.opencensus.io/trace"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
+	"io"
 )
 
 // TODO(hongalex): make this a configurable field for users.
@@ -544,6 +544,46 @@ func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateC
 	return &pb.CreateChunkedBlobResponse{
 		SessionId: b.Key.String(),
 	}, nil
+}
+
+func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChunkUrlsRequest) (*pb.CreateChunkUrlsResponse, error) {
+
+	blobRef, err := s.metaDB.GetCurrentBlobRef(ctx, req.GetStoreKey(), req.GetKey())
+	if err != nil {
+		return nil, err
+	}
+
+	var urls []string
+	cur := s.metaDB.GetChildChunkRefs(ctx, blobRef.Key)
+	for {
+		chunk, err := cur.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Errorf("cursor.Next() returned error: %v", err)
+			return nil, err
+		}
+
+		// continue in case blob status is not ready.
+		if chunk.Status != blobref.StatusReady {
+			continue
+		}
+
+		url, err := s.blobStore.SignUrl(ctx, chunk.Key.String(), req.GetTtlInSeconds(), "GET")
+		if err != nil {
+			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", chunk.Number, s.ServerConfig.Bucket, chunk.Key, err)
+			return nil, err
+		}
+		urls = append(urls, url)
+	}
+
+	if len(urls) == 0 {
+		log.Errorf("CreateChunkUrls: not found any available chunk blobRef(%s) for record(%s)", blobRef.Key, req.GetKey())
+		return nil, status.Errorf(codes.NotFound, "CreateChunkUrls: not found any available chunk record(%s) on store(%s)", req.GetKey(), req.GetStoreKey())
+	}
+
+	return &pb.CreateChunkUrlsResponse{ChunkUrls: urls}, nil
 }
 
 func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) error {
