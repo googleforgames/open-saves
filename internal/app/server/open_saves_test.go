@@ -2206,7 +2206,7 @@ func TestOpenSaves_LongOpaqueStrings(t *testing.T) {
 }
 
 func TestOpenSaves_SignUrl(t *testing.T) {
-	t.Skip("Skipping this test due CloudBuild confusing 'internal error' while locally and within a GKE tests are passing OK")
+	t.Skip("Skipping this test b/c of Cloud Build runtime errors, tests passing fine when run outside Cloud Build")
 
 	ctx := context.Background()
 	_, listener := getOpenSavesServer(ctx, t, "gcp")
