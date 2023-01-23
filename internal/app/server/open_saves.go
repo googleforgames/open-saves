@@ -564,12 +564,23 @@ func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChu
 			log.Errorf("cursor.Next() returned error: %v", err)
 			return nil, err
 		}
-		url, err := s.blobStore.SignUrl(ctx, chunk.Key.String(), req.GetTtlInSeconds(), req.GetContentType(), "GET")
+
+		// continue in case blob status is not ready.
+		if chunk.Status != blobref.StatusReady {
+			continue
+		}
+
+		url, err := s.blobStore.SignUrl(ctx, chunk.Key.String(), req.GetTtlInSeconds(), "GET")
 		if err != nil {
 			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", chunk.Number, s.ServerConfig.Bucket, chunk.Key, err)
 			return nil, err
 		}
 		urls = append(urls, url)
+	}
+
+	if len(urls) == 0 {
+		log.Errorf("CreateChunkUrls: not found any available chunk blobRef(%s) for record(%s)", blobRef.Key, req.GetKey())
+		return nil, status.Errorf(codes.NotFound, "CreateChunkUrls: not found any available chunk record(%s) on store(%s)", req.GetKey(), req.GetStoreKey())
 	}
 
 	return &pb.CreateChunkUrlsResponse{ChunkUrls: urls}, nil

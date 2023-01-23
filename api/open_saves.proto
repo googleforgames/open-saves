@@ -565,9 +565,6 @@ message CreateChunkUrlsRequest {
 
   // TTL
   int64 ttl_in_seconds = 3;
-
-  // Content type of the chunks, e.g. "image/png"
-  string content_type = 4;
 }
 
 message CreateChunkUrlsResponse {

@@ -91,11 +91,10 @@ func (b *BlobGCP) Close() error {
 }
 
 // SignUrl returns an open accessible signed url for the given blob key
-func (b *BlobGCP) SignUrl(ctx context.Context, key string, ttlInSeconds int64, contentType string, method string) (string, error) {
+func (b *BlobGCP) SignUrl(ctx context.Context, key string, ttlInSeconds int64, method string) (string, error) {
 	opts := &blob.SignedURLOptions{
-		Expiry:      time.Duration(ttlInSeconds) * time.Second,
-		ContentType: contentType,
-		Method:      method,
+		Expiry: time.Duration(ttlInSeconds) * time.Second,
+		Method: method,
 	}
 
 	return b.bucket.SignedURL(ctx, key, opts)

@@ -42,5 +42,5 @@ type BlobStore interface {
 	NewRangeReader(ctx context.Context, path string, offset, length int64) (io.ReadCloser, error)
 	Delete(ctx context.Context, path string) error
 
-	SignUrl(ctx context.Context, key string, ttlInSeconds int64, contentType string, method string) (string, error)
+	SignUrl(ctx context.Context, key string, ttlInSeconds int64, method string) (string, error)
 }

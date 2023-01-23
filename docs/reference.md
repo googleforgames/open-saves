@@ -266,7 +266,6 @@ should contain content.
 | store_key | [string](#string) |  | The key of the store that the record belongs to. |
 | key | [string](#string) |  | The key of the record to get. |
 | ttl_in_seconds | [int64](#int64) |  | TTL |
-| content_type | [string](#string) |  | Content type of the chunks, e.g. &#34;image/png&#34; |
 
 
 
