@@ -934,7 +934,7 @@ func (m *MetaDB) createDatastoreKeys(storeKeys, recordKeys []string) ([]*ds.Key,
 }
 
 func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, storeKey, recordKey string, blobKey uuid.UUID, number int32) ([]*chunkref.ChunkRef, error) {
-	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blobKey)).Filter("Number = ", number)
+	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blobKey)).FilterField("Number", "=", number)
 	iter := m.client.Run(ctx, query)
 
 	chunks := []*chunkref.ChunkRef{}

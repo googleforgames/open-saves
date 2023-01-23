@@ -16,9 +16,10 @@ package blob
 
 import (
 	"context"
-	"io"
-
 	"gocloud.dev/blob"
+	"io"
+	"time"
+
 	// Register the gocloud blob GCS driver
 	_ "gocloud.dev/blob/gcsblob"
 )
@@ -33,6 +34,7 @@ var _ BlobStore = new(BlobGCP)
 
 // NewBlobGCP returns a new BlobGCP instance.
 func NewBlobGCP(ctx context.Context, bucketURL string) (*BlobGCP, error) {
+
 	// blob.OpenBucket creates a *blob.Bucket from url.
 	bucket, err := blob.OpenBucket(ctx, bucketURL)
 	if err != nil {
@@ -40,6 +42,7 @@ func NewBlobGCP(ctx context.Context, bucketURL string) (*BlobGCP, error) {
 	}
 
 	// bucket is guaranteed not to be nil if OpenBucket succeeds.
+	// same for bucketHandle and storage.NewClient
 	gcs := &BlobGCP{
 		bucket: bucket,
 	}
@@ -85,4 +88,14 @@ func (b *BlobGCP) Delete(ctx context.Context, path string) error {
 // Close releases any resources used by the instance.
 func (b *BlobGCP) Close() error {
 	return b.bucket.Close()
+}
+
+// SignUrl returns an open accessible signed url for the given blob key
+func (b *BlobGCP) SignUrl(ctx context.Context, key string, ttlInSeconds int64, method string) (string, error) {
+	opts := &blob.SignedURLOptions{
+		Expiry: time.Duration(ttlInSeconds) * time.Second,
+		Method: method,
+	}
+
+	return b.bucket.SignedURL(ctx, key, opts)
 }
