@@ -99,6 +99,8 @@ func Load(path string) (*ServiceConfig, error) {
 		ShutdownGracePeriod: viper.GetDuration(ShutdownGracePeriod),
 		EnableTrace:         viper.GetBool(EnableTrace),
 		TraceSampleRate:     viper.GetFloat64(TraceSampleRate),
+		EnableGrpcCollector: viper.GetBool(TraceEnableGrpcCollector),
+		EnableHttpCollector: viper.GetBool(TraceEnableHttpCollector),
 	}
 
 	// Cloud Run environment populates the PORT env var, so check for it here.

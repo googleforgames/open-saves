@@ -16,6 +16,8 @@ package blob
 
 import (
 	"context"
+	"github.com/googleforgames/open-saves/internal/pkg/tracing"
+	"go.opentelemetry.io/otel"
 	"gocloud.dev/blob"
 	"io"
 	"time"
@@ -34,6 +36,8 @@ var _ BlobStore = new(BlobGCP)
 
 // NewBlobGCP returns a new BlobGCP instance.
 func NewBlobGCP(ctx context.Context, bucketURL string) (*BlobGCP, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.NewBlobGCP")
+	defer span.End()
 
 	// blob.OpenBucket creates a *blob.Bucket from url.
 	bucket, err := blob.OpenBucket(ctx, bucketURL)
@@ -52,6 +56,9 @@ func NewBlobGCP(ctx context.Context, bucketURL string) (*BlobGCP, error) {
 
 // Put inserts a blob at the given path.
 func (b *BlobGCP) Put(ctx context.Context, path string, data []byte) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.Put")
+	defer span.End()
+
 	return b.bucket.WriteAll(ctx, path, data, nil)
 }
 
@@ -59,17 +66,26 @@ func (b *BlobGCP) Put(ctx context.Context, path string, data []byte) error {
 // instance for the object. The object is not committed and visible until
 // you close the writer.
 func (b *BlobGCP) NewWriter(ctx context.Context, path string) (io.WriteCloser, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.NewWriter")
+	defer span.End()
+
 	return b.bucket.NewWriter(ctx, path, nil)
 }
 
 // Get retrives the data given a blob path.
 func (b *BlobGCP) Get(ctx context.Context, path string) ([]byte, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.Get")
+	defer span.End()
+
 	return b.bucket.ReadAll(ctx, path)
 }
 
 // NewReader is an alias to NewRangeReader(ctx, path, 0, -1), which creates
 // a reader from the beginning of an object to EOF.
 func (b *BlobGCP) NewReader(ctx context.Context, path string) (io.ReadCloser, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.NewReader")
+	defer span.End()
+
 	return b.NewRangeReader(ctx, path, 0, -1)
 }
 
@@ -77,21 +93,31 @@ func (b *BlobGCP) NewReader(ctx context.Context, path string) (io.ReadCloser, er
 // beginning at the offset-th byte and length bytes long. length = -1 means until EOF.
 // Make sure to close the reader after all operations to the reader.
 func (b *BlobGCP) NewRangeReader(ctx context.Context, path string, offset, length int64) (io.ReadCloser, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.NewRangeReader")
+	defer span.End()
+
 	return b.bucket.NewRangeReader(ctx, path, offset, length, nil)
 }
 
 // Delete deletes the blob at the given path.
 func (b *BlobGCP) Delete(ctx context.Context, path string) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.Delete")
+	defer span.End()
+
 	return b.bucket.Delete(ctx, path)
 }
 
 // Close releases any resources used by the instance.
 func (b *BlobGCP) Close() error {
+
 	return b.bucket.Close()
 }
 
 // SignUrl returns an open accessible signed url for the given blob key
 func (b *BlobGCP) SignUrl(ctx context.Context, key string, ttlInSeconds int64, method string) (string, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "BlobGCP.SignUrl")
+	defer span.End()
+
 	opts := &blob.SignedURLOptions{
 		Expiry: time.Duration(ttlInSeconds) * time.Second,
 		Method: method,
