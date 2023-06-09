@@ -42,9 +42,7 @@ const (
 	GRPCKeepAliveTime                  = "grpc_keepalive_time"
 	GRPCKeepAliveTimeout               = "grpc_keepalive_timeout"
 
-	// The following enables OpenCensus Tracing via Cloud Trace
-	// for the Datastore client library.
-	// It is EXPERIMENTAL and subject to change or removal without notice.
+	// The following enables OpenTelemetry Tracing
 	EnableTrace              = "enable_trace"
 	TraceSampleRate          = "trace_sample_rate"
 	TraceEnableGrpcCollector = "trace_enable_grpc_collector"
