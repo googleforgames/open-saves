@@ -16,9 +16,10 @@ package redis
 
 import (
 	"context"
+	"github.com/go-redis/redis/extra/redisotel/v8"
+	"github.com/go-redis/redis/v8"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 )
 
@@ -46,6 +47,7 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	}
 
 	c := redis.NewClient(o)
+	c.AddHook(redisotel.NewTracingHook())
 
 	return &Redis{
 		c: c,
