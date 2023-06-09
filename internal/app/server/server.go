@@ -16,6 +16,9 @@ package server
 
 import (
 	"context"
+	"github.com/googleforgames/open-saves/internal/pkg/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/keepalive"
 	"net"
 	"os"
@@ -58,6 +61,26 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 			Timeout:               cfg.GRPCServerConfig.Timeout,
 		}),
 	}
+
+	var tracer *trace.TracerProvider
+	if cfg.EnableTrace {
+		log.Printf("Enabling CloudTrace exporter with sample rate: %f\n", cfg.ServerConfig.TraceSampleRate)
+
+		grpcOptions = append(grpcOptions,
+			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+			grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()))
+
+		tracer, err = tracing.InitTracer(cfg.ServerConfig.TraceSampleRate, cfg.ServerConfig.EnableGrpcCollector, cfg.ServerConfig.EnableHttpCollector, cfg.Project)
+		if err != nil {
+			return err
+		}
+	}
+
+	defer func() {
+		if err := tracer.Shutdown(context.Background()); err != nil {
+			log.Fatalf("Error shutting down tracer provider: %v", err)
+		}
+	}()
 
 	s := grpc.NewServer(grpcOptions...)
 
