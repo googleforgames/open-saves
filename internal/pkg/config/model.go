@@ -47,8 +47,8 @@ const (
 	// It is EXPERIMENTAL and subject to change or removal without notice.
 	EnableTrace              = "enable_trace"
 	TraceSampleRate          = "trace_sample_rate"
-	TraceEnableGrpcCollector = "trace_enable_grpc_collector"
-	TraceEnableHttpCollector = "trace_enable_http_collector"
+	TraceEnableGRPCCollector = "trace_enable_grpc_collector"
+	TraceEnableHTTPCollector = "trace_enable_http_collector"
 )
 
 type ServiceConfig struct {
@@ -72,8 +72,8 @@ type ServerConfig struct {
 	// See https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/otlp/otlptrace for how to configure the exporters with env variables
 	EnableTrace         bool
 	TraceSampleRate     float64
-	EnableGrpcCollector bool
-	EnableHttpCollector bool
+	EnableGRPCCollector bool
+	EnableHTTPCollector bool
 }
 
 // CacheConfig has configurations for caching control (not Redis specific).

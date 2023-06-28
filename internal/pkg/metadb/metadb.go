@@ -523,7 +523,7 @@ func (m *MetaDB) chunkObjectsSizeSum(ctx context.Context, tx *ds.Transaction, bl
 //   - NotFound: the specified record or the blobref was not found
 //   - Internal: BlobRef status transition error
 func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.BlobRef) (*record.Record, *blobref.BlobRef, error) {
-	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.GetRePromoteBlobRefToCurrentcord")
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.PromoteBlobRefToCurrent")
 	defer span.End()
 
 	record := new(record.Record)

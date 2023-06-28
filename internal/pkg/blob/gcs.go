@@ -109,7 +109,6 @@ func (b *BlobGCP) Delete(ctx context.Context, path string) error {
 
 // Close releases any resources used by the instance.
 func (b *BlobGCP) Close() error {
-
 	return b.bucket.Close()
 }
 
