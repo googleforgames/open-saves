@@ -12,7 +12,7 @@ import (
 
 var ServiceName = "open-saves"
 
-func InitTracer(rate float64, enableGrpcCollector bool, enableHttpCollector bool, serviceName string) (*sdktrace.TracerProvider, error) {
+func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool, serviceName string) (*sdktrace.TracerProvider, error) {
 	if len(serviceName) > 0 {
 		ServiceName = serviceName
 	}
@@ -33,7 +33,7 @@ func InitTracer(rate float64, enableGrpcCollector bool, enableHttpCollector bool
 	options := []sdktrace.TracerProviderOption{sdktrace.WithResource(resource),
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(rate)))}
 
-	if enableGrpcCollector {
+	if enableGRPCCollector {
 		grpcExporter, err := otlptracegrpc.New(context.Background())
 		if err != nil {
 			return nil, err
@@ -41,7 +41,7 @@ func InitTracer(rate float64, enableGrpcCollector bool, enableHttpCollector bool
 		options = append(options, sdktrace.WithBatcher(grpcExporter))
 	}
 
-	if enableHttpCollector {
+	if enableHTTPCollector {
 		httpExporter, err := otlptracehttp.New(context.Background())
 		if err != nil {
 			return nil, err
