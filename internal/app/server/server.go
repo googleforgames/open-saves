@@ -77,8 +77,10 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	}
 
 	defer func() {
-		if err := tracer.Shutdown(context.Background()); err != nil {
-			log.Fatalf("Error shutting down tracer provider: %v", err)
+		if tracer != nil {
+			if err := tracer.Shutdown(context.Background()); err != nil {
+				log.Fatalf("Error shutting down tracer provider: %v", err)
+			}
 		}
 	}()
 
