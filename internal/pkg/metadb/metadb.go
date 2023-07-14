@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/googleforgames/open-saves/internal/pkg/tracing"
+	"go.opentelemetry.io/otel"
 	"strconv"
 
 	ds "cloud.google.com/go/datastore"
@@ -178,6 +180,9 @@ func (m *MetaDB) mutateSingle(ctx context.Context, mut *ds.Mutation) error {
 }
 
 func (m *MetaDB) recordExists(ctx context.Context, tx *ds.Transaction, key *ds.Key) (bool, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.recordExists")
+	defer span.End()
+
 	query := ds.NewQuery(recordKind).Namespace(m.Namespace).
 		KeysOnly().Filter("__key__ = ", key).Limit(1)
 	if tx != nil {
@@ -201,6 +206,9 @@ func (m *MetaDB) Disconnect(ctx context.Context) error {
 
 // CreateStore creates a new store.
 func (m *MetaDB) CreateStore(ctx context.Context, store *store.Store) (*store.Store, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.CreateStore")
+	defer span.End()
+
 	store.Timestamps = timestamps.New()
 	key := m.createStoreKey(store.Key)
 	mut := ds.NewInsert(key, store)
@@ -213,6 +221,9 @@ func (m *MetaDB) CreateStore(ctx context.Context, store *store.Store) (*store.St
 // GetStore fetches a store based on the key provided.
 // Returns error if the key is not found.
 func (m *MetaDB) GetStore(ctx context.Context, key string) (*store.Store, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.GetStore")
+	defer span.End()
+
 	dskey := m.createStoreKey(key)
 	store := new(store.Store)
 	err := m.client.Get(ctx, dskey, store)
@@ -224,6 +235,9 @@ func (m *MetaDB) GetStore(ctx context.Context, key string) (*store.Store, error)
 
 // FindStoreByName finds and fetch a store based on the name (complete match).
 func (m *MetaDB) FindStoreByName(ctx context.Context, name string) (*store.Store, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.FindStoreByName")
+	defer span.End()
+
 	query := m.newQuery(storeKind).Filter("Name =", name)
 	iter := m.client.Run(ctx, query)
 	store := new(store.Store)
@@ -238,6 +252,9 @@ func (m *MetaDB) FindStoreByName(ctx context.Context, name string) (*store.Store
 // DeleteStore deletes the store with specified key.
 // Returns error if the store has any child records.
 func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteStore")
+	defer span.End()
+
 	dskey := m.createStoreKey(key)
 
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -260,6 +277,9 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 // InsertRecord creates a new Record in the store specified with storeKey.
 // Returns error if there is already a record with the same key.
 func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *record.Record) (*record.Record, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.InsertRecord")
+	defer span.End()
+
 	record.Timestamps = timestamps.New()
 	record.StoreKey = storeKey
 	rkey := m.createRecordKey(storeKey, record.Key)
@@ -287,6 +307,9 @@ func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *reco
 // will be protected by a transaction.
 // Returns error if the store doesn't have a record with the key provided.
 func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, updater RecordUpdater) (*record.Record, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.UpdateRecord")
+	defer span.End()
+
 	if updater == nil {
 		return nil, status.Errorf(codes.Internal, "updater cannot be nil")
 	}
@@ -338,6 +361,9 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 // GetRecord fetches and returns a record with key in store storeKey.
 // Returns error if not found.
 func (m *MetaDB) GetRecord(ctx context.Context, storeKey, key string) (*record.Record, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.GetRecord")
+	defer span.End()
+
 	rkey := m.createRecordKey(storeKey, key)
 	record := new(record.Record)
 	if err := m.client.Get(ctx, rkey, record); err != nil {
@@ -349,6 +375,9 @@ func (m *MetaDB) GetRecord(ctx context.Context, storeKey, key string) (*record.R
 // DeleteRecord deletes a record with key in store storeKey.
 // It doesn't return error even if the key is not found in the database.
 func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteRecord")
+	defer span.End()
+
 	rkey := m.createRecordKey(storeKey, key)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		record := new(record.Record)
@@ -377,6 +406,9 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 
 // InsertBlobRef inserts a new BlobRef object to the datastore.
 func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.InsertBlobRef")
+	defer span.End()
+
 	blob.Timestamps = timestamps.New()
 	rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
@@ -397,6 +429,9 @@ func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 // UpdateBlobRef updates a BlobRef object with the new property values.
 // Returns a NotFound error if the key is not found.
 func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.UpdateBlobRef")
+	defer span.End()
+
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		oldBlob, err := m.getBlobRef(ctx, tx, blob.Key)
 		if err != nil {
@@ -418,6 +453,9 @@ func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 // Returns errors:
 //   - NotFound: the object is not found.
 func (m *MetaDB) GetBlobRef(ctx context.Context, key uuid.UUID) (*blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.GetBlobRef")
+	defer span.End()
+
 	return m.getBlobRef(ctx, nil, key)
 }
 
@@ -436,6 +474,9 @@ func (m *MetaDB) getCurrentBlobRef(ctx context.Context, tx *ds.Transaction, stor
 //   - NotFound: the record is not found.
 //   - FailedPrecondition: the record doesn't have a blob.
 func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey string) (*blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.GetCurrentBlobRef")
+	defer span.End()
+
 	var blob *blobref.BlobRef
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		var err error
@@ -482,6 +523,9 @@ func (m *MetaDB) chunkObjectsSizeSum(ctx context.Context, tx *ds.Transaction, bl
 //   - NotFound: the specified record or the blobref was not found
 //   - Internal: BlobRef status transition error
 func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.BlobRef) (*record.Record, *blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.PromoteBlobRefToCurrent")
+	defer span.End()
+
 	record := new(record.Record)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
@@ -551,6 +595,9 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 //   - NotFound: the specified record or the blobref was not found
 //   - Internal: BlobRef status transition error
 func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blobref.BlobRef, updateTo *record.Record, updater RecordUpdater) (*record.Record, *blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.PromoteBlobRefWithRecordUpdater")
+	defer span.End()
+
 	record := new(record.Record)
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
@@ -626,6 +673,9 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 //   - FailedPrecondition: the record doesn't have an external blob
 //   - Internal: BlobRef status transition error
 func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, recordKey string) (*record.Record, *blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.RemoveBlobFromRecord")
+	defer span.End()
+
 	rkey := m.createRecordKey(storeKey, recordKey)
 	blob := new(blobref.BlobRef)
 	record := new(record.Record)
@@ -704,6 +754,9 @@ func (m *MetaDB) deleteChildChunkRefs(ctx context.Context, tx *ds.Transaction, b
 //   - NotFound: the blobref object is not found
 //   - FailedPrecondition: the blobref status is Ready and can't be deleted
 func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteBlobRef")
+	defer span.End()
+
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		blob, err := m.getBlobRef(ctx, tx, key)
 		if err != nil {
@@ -727,6 +780,9 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 //   - NotFound: the chunkref object is not found.
 //   - FailedPrecondition: the chunkref status is Ready and can't be deleted.
 func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteChunkRef")
+	defer span.End()
+
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		var chunk chunkref.ChunkRef
 		if err := tx.Get(m.createChunkRefKey(blobKey, key), &chunk); err != nil {
@@ -743,6 +799,9 @@ func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) err
 // ListBlobRefsByStatus returns a cursor that iterates over BlobRefs
 // where Status = status.
 func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status) (*blobref.BlobRefCursor, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.ListBlobRefsByStatus")
+	defer span.End()
+
 	query := m.newQuery(blobKind).Filter("Status = ", int(status))
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
@@ -751,6 +810,9 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 // ListChunkRefsByStatus returns a cursor that iterates over ChunkRefs
 // where Status = status.
 func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Status) *chunkref.ChunkRefCursor {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.ListChunkRefsByStatus")
+	defer span.End()
+
 	query := m.newQuery(chunkKind).Filter("Status = ", int(status))
 	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
@@ -758,6 +820,9 @@ func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Statu
 // GetChildChunkRefs returns a ChunkRef cursor that iterats over child ChunkRef
 // entries of the BlobRef specified by blobkey.
 func (m *MetaDB) GetChildChunkRefs(ctx context.Context, blobKey uuid.UUID) *chunkref.ChunkRefCursor {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.GetChildChunkRefs")
+	defer span.End()
+
 	query := m.newQuery(chunkKind).Ancestor(m.createBlobKey(blobKey))
 	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
@@ -784,6 +849,9 @@ func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
 
 // QueryRecords returns a list of records that match the given filters.
 func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) ([]*record.Record, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.QueryRecords")
+	defer span.End()
+
 	query := m.newQuery(recordKind)
 	if req.GetStoreKey() != "" {
 		dsKey := m.createStoreKey(req.GetStoreKey())
@@ -887,6 +955,9 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 
 // GetRecords returns records by using the get multi request interface from datastore.
 func (m *MetaDB) GetRecords(ctx context.Context, storeKeys, recordKeys []string) ([]*record.Record, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.GetRecords")
+	defer span.End()
+
 	// Build the key array with parameters
 	keys, err := m.createDatastoreKeys(storeKeys, recordKeys)
 	if err != nil {
@@ -954,6 +1025,9 @@ func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, 
 // FindChunkRefByNumber returns a ChunkRef object for the specified store, record, and number.
 // The ChunkRef must be Ready and the chunk upload session must be committed.
 func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey string, number int32) (*chunkref.ChunkRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.FindChunkRefByNumber")
+	defer span.End()
+
 	chunks := []*chunkref.ChunkRef{}
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		blob, err := m.getCurrentBlobRef(ctx, tx, storeKey, recordKey)
@@ -976,6 +1050,9 @@ func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey s
 
 // ValidateChunkRefPreconditions check if the parent blobref is chunked before attempting to upload any data
 func (m *MetaDB) ValidateChunkRefPreconditions(ctx context.Context, chunk *chunkref.ChunkRef) (*blobref.BlobRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.ValidateChunkRefPreconditions")
+	defer span.End()
+
 	blob, err := m.getBlobRef(ctx, nil, chunk.BlobRef)
 	if err != nil {
 		return nil, err
@@ -990,6 +1067,9 @@ func (m *MetaDB) ValidateChunkRefPreconditions(ctx context.Context, chunk *chunk
 // InsertChunkRef inserts a new ChunkRef object to the datastore. If the current session has another chunk
 // with the same Number, it will be marked for deletion.
 func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.InsertChunkRef")
+	defer span.End()
+
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 
 		mut := ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
@@ -1021,6 +1101,9 @@ func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chun
 // UpdateChunkRef updates a ChunkRef object with the new property values.
 // Returns a NotFound error if the key is not found.
 func (m *MetaDB) UpdateChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.UpdateChunkRef")
+	defer span.End()
+
 	mut := ds.NewUpdate(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
 	return m.mutateSingle(ctx, mut)
 }
@@ -1029,6 +1112,9 @@ func (m *MetaDB) UpdateChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) e
 // if the current status is StatusInitializing.
 // Returns FailedPrecondition is Status is not StatusInitializing.
 func (m *MetaDB) MarkUncommittedBlobForDeletion(ctx context.Context, key uuid.UUID) error {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.MarkUncommittedBlobForDeletion")
+	defer span.End()
+
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		blob, err := m.getBlobRef(ctx, tx, key)
 		if err != nil {
