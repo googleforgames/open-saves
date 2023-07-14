@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"cloud.google.com/go/datastore"
 	"context"
-	"contrib.go.opencensus.io/exporter/stackdriver"
 	"fmt"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
@@ -33,7 +32,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
-	"go.opencensus.io/trace"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -85,22 +83,6 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 			metaDB:        metadb,
 			cacheStore:    cache,
 			ServiceConfig: *cfg,
-		}
-		if cfg.ServerConfig.EnableTrace {
-			rate := cfg.ServerConfig.TraceSampleRate
-			log.Printf("Enabling CloudTrace exporter with sample rate: %f\n", rate)
-			sd, err := stackdriver.NewExporter(stackdriver.Options{
-				ProjectID: cfg.Project,
-			})
-			if err != nil {
-				log.Fatalf("Failed to create the Stackdriver exporter: %v", err)
-			}
-			// It is imperative to invoke flush before your main function exits
-			defer sd.Flush()
-
-			// Register it as a trace exporter
-			trace.RegisterExporter(sd)
-			trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(rate)})
 		}
 		return server, nil
 	default:

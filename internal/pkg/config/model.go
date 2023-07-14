@@ -45,8 +45,10 @@ const (
 	// The following enables OpenCensus Tracing via Cloud Trace
 	// for the Datastore client library.
 	// It is EXPERIMENTAL and subject to change or removal without notice.
-	EnableTrace     = "enable_trace"
-	TraceSampleRate = "trace_sample_rate"
+	EnableTrace              = "enable_trace"
+	TraceSampleRate          = "trace_sample_rate"
+	TraceEnableGRPCCollector = "trace_enable_grpc_collector"
+	TraceEnableHTTPCollector = "trace_enable_http_collector"
 )
 
 type ServiceConfig struct {
@@ -64,11 +66,14 @@ type ServerConfig struct {
 	Bucket              string
 	Project             string
 	ShutdownGracePeriod time.Duration
-	// The following enables OpenCensus Tracing via Cloud Trace
-	// for the Datastore client library.
+
+	// The following enables OpenTelemetry Tracing
 	// It is EXPERIMENTAL and subject to change or removal without notice.
-	EnableTrace     bool
-	TraceSampleRate float64
+	// See https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/otlp/otlptrace for how to configure the exporters with env variables
+	EnableTrace         bool
+	TraceSampleRate     float64
+	EnableGRPCCollector bool
+	EnableHTTPCollector bool
 }
 
 // CacheConfig has configurations for caching control (not Redis specific).
