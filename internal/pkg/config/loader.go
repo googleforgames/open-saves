@@ -122,6 +122,7 @@ func Load(path string) (*ServiceConfig, error) {
 		MaxRetries:      viper.GetInt(RedisMaxRetries),
 		MinRetyBackoff:  viper.GetDuration(RedisMinRetryBackoff),
 		MaxRetryBackoff: viper.GetDuration(RedisMaxRetryBackoff),
+		MaxConnAge:      viper.GetDuration(RedisMaxConnAge),
 		MinIdleConns:    viper.GetInt(RedisMinIdleConns),
 		PoolSize:        viper.GetInt(RedisPoolSize),
 		IdleTimeout:     time.Duration(viper.GetUint(RedisIdleTimeout)) * time.Second,

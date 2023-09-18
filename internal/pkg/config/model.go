@@ -30,6 +30,7 @@ const (
 	RedisMinIdleConns    = "redis_min_idle_conns"
 	RedisPoolSize        = "redis_pool_size"
 	RedisIdleTimeout     = "redis_idle_timeout"
+	RedisMaxConnAge      = "redis_max_conn_age"
 	RedisMaxRetries      = "redis_max_retries"
 	RedisMinRetryBackoff = "redis_min_retry_backoff"
 	RedisMaxRetryBackoff = "redis_max_retry_backoff"
@@ -93,6 +94,7 @@ type RedisConfig struct {
 	MinIdleConns int
 	PoolSize     int
 	IdleTimeout  time.Duration
+	MaxConnAge   time.Duration
 }
 
 // BlobConfig has Open Saves blob related configurations.
