@@ -47,6 +47,7 @@ const (
 	// It is EXPERIMENTAL and subject to change or removal without notice.
 	EnableTrace              = "enable_trace"
 	TraceSampleRate          = "trace_sample_rate"
+	TraceServiceName         = "trace_service_name"
 	TraceEnableGRPCCollector = "trace_enable_grpc_collector"
 	TraceEnableHTTPCollector = "trace_enable_http_collector"
 )
@@ -72,6 +73,7 @@ type ServerConfig struct {
 	// See https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/otlp/otlptrace for how to configure the exporters with env variables
 	EnableTrace         bool
 	TraceSampleRate     float64
+	TraceServiceName    string
 	EnableGRPCCollector bool
 	EnableHTTPCollector bool
 }

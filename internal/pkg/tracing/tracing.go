@@ -8,24 +8,13 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
-	"os"
 )
 
 var ServiceName = "open-saves"
 
-const OTELServiceNameEnvVar = "OTEL_SERVICE_NAME"
-
-func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool, projectName string) (*sdktrace.TracerProvider, error) {
-
-	// if Otel envVar is empty check for project name, otherwise set as default "open-saves"
-	otelServiceName := os.Getenv(OTELServiceNameEnvVar)
-	if otelServiceName == "" {
-		if len(projectName) > 0 {
-			ServiceName = projectName
-		}
-	} else {
-		ServiceName = otelServiceName
+func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool, serviceName string) (*sdktrace.TracerProvider, error) {
+	if len(serviceName) > 0 {
+		ServiceName = serviceName
 	}
 
 	extraResources, _ := sdkresource.New(
@@ -34,7 +23,7 @@ func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool
 		sdkresource.WithProcess(),
 		sdkresource.WithContainer(),
 		sdkresource.WithHost(),
-		sdkresource.WithAttributes(semconv.ServiceName(ServiceName)),
+		sdkresource.WithAttributes(),
 	)
 	resource, _ := sdkresource.Merge(
 		sdkresource.Default(),
