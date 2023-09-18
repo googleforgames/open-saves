@@ -23,5 +23,7 @@ grpc_keepalive_timeout: "20s"
 # The following enables OpenCensus Tracing via Cloud Trace
 # for the Datastore client library.
 # It is EXPERIMENTAL and subject to change or removal without notice.
-enable_trace: false 
+enable_trace: false
+enable_grpc_collector: false
+trace_service_name: "open-saves"
 trace_sample_rate: 0.00
