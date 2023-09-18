@@ -5,16 +5,27 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
+	"os"
 )
 
 var ServiceName = "open-saves"
 
-func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool, serviceName string) (*sdktrace.TracerProvider, error) {
-	if len(serviceName) > 0 {
-		ServiceName = serviceName
+const OTELServiceNameEnvVar = "OTEL_SERVICE_NAME"
+
+func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool, projectName string) (*sdktrace.TracerProvider, error) {
+
+	// if Otel envVar is empty check for project name, otherwise set as default "open-saves"
+	otelServiceName := os.Getenv(OTELServiceNameEnvVar)
+	if otelServiceName == "" {
+		if len(projectName) > 0 {
+			ServiceName = projectName
+		}
+	} else {
+		ServiceName = otelServiceName
 	}
 
 	extraResources, _ := sdkresource.New(
@@ -50,6 +61,8 @@ func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool
 	}
 
 	tp := sdktrace.NewTracerProvider(options...)
+	// enable tracing propagation
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(tp)
 
 	return tp, nil
