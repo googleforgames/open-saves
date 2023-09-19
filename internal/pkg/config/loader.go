@@ -49,6 +49,10 @@ func Load(path string) (*ServiceConfig, error) {
 		log.Warningf("cannot bind env var %s to %s", "OPEN_SAVES_CACHE", RedisAddress)
 	}
 
+	if err := viper.BindEnv(TraceServiceName, "OTEL_SERVICE_NAME"); err != nil {
+		log.Warningf("cannot bind env var %s to %s", "OTEL_SERVICE_NAME", TraceServiceName)
+	}
+
 	// Reads command line arguments, for backward compatibility
 	pflag.Uint("port", 6000, "The port number to run Open Saves on")
 	pflag.String("cloud", "gcp", "The public cloud provider you wish to run Open Saves on")
@@ -99,6 +103,7 @@ func Load(path string) (*ServiceConfig, error) {
 		ShutdownGracePeriod: viper.GetDuration(ShutdownGracePeriod),
 		EnableTrace:         viper.GetBool(EnableTrace),
 		TraceSampleRate:     viper.GetFloat64(TraceSampleRate),
+		TraceServiceName:    viper.GetString(TraceServiceName),
 		EnableGRPCCollector: viper.GetBool(TraceEnableGRPCCollector),
 		EnableHTTPCollector: viper.GetBool(TraceEnableHTTPCollector),
 	}
