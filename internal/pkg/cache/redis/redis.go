@@ -37,13 +37,14 @@ func NewRedis(address string) *Redis {
 	return NewRedisWithConfig(cfg)
 }
 
-// NewRedis creates a new Redis instance.
+// NewRedisWithConfig creates a new Redis instance with configurable options.
 func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	o := &redis.Options{
 		Addr:         cfg.Address,
 		MinIdleConns: cfg.MinIdleConns,
 		PoolSize:     cfg.PoolSize,
 		IdleTimeout:  cfg.IdleTimeout,
+		MaxConnAge:   cfg.MaxConnAge,
 	}
 
 	c := redis.NewClient(o)

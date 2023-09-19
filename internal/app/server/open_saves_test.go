@@ -170,6 +170,7 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 			Address:     r.Addr(),
 			PoolSize:    10000,
 			IdleTimeout: 0,
+			MaxConnAge:  0,
 		},
 	}
 	impl, err := newOpenSavesServer(ctx, cfg)
