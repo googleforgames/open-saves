@@ -5,9 +5,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 )
 
 var ServiceName = "open-saves"
@@ -23,7 +23,7 @@ func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool
 		sdkresource.WithProcess(),
 		sdkresource.WithContainer(),
 		sdkresource.WithHost(),
-		sdkresource.WithAttributes(semconv.ServiceName(ServiceName)),
+		sdkresource.WithAttributes(),
 	)
 	resource, _ := sdkresource.Merge(
 		sdkresource.Default(),
@@ -50,6 +50,8 @@ func InitTracer(rate float64, enableGRPCCollector bool, enableHTTPCollector bool
 	}
 
 	tp := sdktrace.NewTracerProvider(options...)
+	// enable tracing propagation
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(tp)
 
 	return tp, nil
