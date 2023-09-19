@@ -70,7 +70,7 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 			grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()))
 
-		tracer, err = tracing.InitTracer(cfg.ServerConfig.TraceSampleRate, cfg.ServerConfig.EnableGRPCCollector, cfg.ServerConfig.EnableHTTPCollector, cfg.Project)
+		tracer, err = tracing.InitTracer(cfg.ServerConfig.TraceSampleRate, cfg.ServerConfig.EnableGRPCCollector, cfg.ServerConfig.EnableHTTPCollector, cfg.TraceServiceName)
 		if err != nil {
 			return err
 		}
