@@ -6,7 +6,7 @@ shutdown_grace_period: "5s"
 cache_default_ttl: "5m"
 
 redis_address: "localhost:6379"
-redis_max_idle: 500
+redis_min_idle_conns: 500
 redis_pool_size: 10000
 redis_idle_timeout: 0
 redis_max_conn_age: 0
