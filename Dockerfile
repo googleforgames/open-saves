@@ -16,7 +16,7 @@
 # This base builder image will also used by Cloud Build.
 # This is based on Debian and sets the GOPATH to /go.
 # https://hub.docker.com/_/golang
-FROM golang:1.18 AS builder
+FROM golang:1.20 AS builder
 
 ENV PROTOC_VERSION=21.3
 ENV GO111MODULE=on
@@ -60,7 +60,7 @@ RUN apk add --no-cache ca-certificates
 # Copy the binary to the production image from the builder stage.
 COPY --from=amd64 /src/open-saves/build/collector /collector
 
-RUN GRPC_HEALTH_PROBE_VERSION=v0.4.12 && \
+RUN GRPC_HEALTH_PROBE_VERSION=v0.4.22 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
 
@@ -80,7 +80,7 @@ RUN apk add --no-cache ca-certificates
 COPY --from=amd64 /src/open-saves/build/server /server
 COPY --from=amd64 /src/open-saves/configs /configs
 
-RUN GRPC_HEALTH_PROBE_VERSION=v0.4.12 && \
+RUN GRPC_HEALTH_PROBE_VERSION=v0.4.22 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
 
