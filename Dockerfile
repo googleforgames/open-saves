@@ -57,6 +57,7 @@ RUN make
 
 FROM alpine:3 AS collector
 RUN apk add --no-cache ca-certificates
+RUN apk update && apk upgrade
 # Copy the binary to the production image from the builder stage.
 COPY --from=amd64 /src/open-saves/build/collector /collector
 
@@ -75,6 +76,7 @@ CMD ["/collector"]
 
 FROM alpine:3 AS server
 RUN apk add --no-cache ca-certificates
+RUN apk update && apk upgrade
 
 # Copy the binary to the production image from the builder stage.
 COPY --from=amd64 /src/open-saves/build/server /server
