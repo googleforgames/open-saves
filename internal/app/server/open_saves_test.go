@@ -114,7 +114,10 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
 	}
 	// Cancel here to stop the server. This frees up the port for later tests.
+	// Sleep long enough to free up the connection
 	cancel()
+	time.Sleep(serviceConfig.ShutdownGracePeriod)
+
 	ctx2 := context.Background()
 	got, err = hc.Check(ctx2, &healthgrpc.HealthCheckRequest{
 		Service: serviceName,
@@ -125,8 +128,6 @@ func TestOpenSaves_HealthCheck(t *testing.T) {
 	if want := healthgrpc.HealthCheckResponse_NOT_SERVING; got.Status != want {
 		t.Errorf("hc.Check got: %v, want: %v", got.Status, want)
 	}
-	// Sleep long enough to free up the connection
-	time.Sleep(serviceConfig.ShutdownGracePeriod)
 }
 
 func TestOpenSaves_RunServer(t *testing.T) {
