@@ -16,8 +16,10 @@ package store
 
 import (
 	"cloud.google.com/go/datastore"
+	"fmt"
 	pb "github.com/googleforgames/open-saves/api"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Store represents a Open Saves store in the metadata database.
@@ -49,6 +51,12 @@ func (s *Store) ToProto() *pb.Store {
 	}
 }
 
+// CacheKey returns a cache key string to manage cached entries.
+// concatenates "store" + store keys separated by a dash.
+func CacheKey(storeKey string) string {
+	return fmt.Sprintf("store-%s", storeKey)
+}
+
 // These functions need to be implemented here instead of the datastore package because
 // go doesn't permit to define additional receivers in another package.
 // Save and Load replicates the default behaviors, however, they are required
@@ -71,6 +79,29 @@ func (s *Store) LoadKey(k *datastore.Key) error {
 	s.Key = k.Name
 	return nil
 }
+
+// Cacheable implementations
+
+// CacheKey  returns cache formatted key
+func (s *Store) CacheKey() string {
+	return CacheKey(s.Key)
+}
+
+// DecodeBytes deserializes the byte slice given by by.
+func (s *Store) DecodeBytes(by []byte) error {
+	return msgpack.Unmarshal(by, s)
+}
+
+// EncodeBytes returns a serialized byte slice of the object.
+func (s *Store) EncodeBytes() ([]byte, error) {
+	b, err := msgpack.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// Proto
 
 // FromProto creates a new Store instance from a proto.
 // Passing nil returns a zero-initialized Store.

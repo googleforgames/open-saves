@@ -17,6 +17,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"io"
 	"net"
 	"reflect"
@@ -395,6 +396,26 @@ func TestOpenSaves_CreateGetDeleteStore(t *testing.T) {
 	// exact timestamps.
 	assert.Equal(t, store.GetCreatedAt(), store2.GetCreatedAt())
 	assert.Equal(t, store.GetUpdatedAt(), store2.GetUpdatedAt())
+}
+
+func TestOpenSaves_GetCreateStoreFromCache(t *testing.T) {
+	ctx := context.Background()
+	server, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	storeKey := uuid.NewString()
+	str := &pb.Store{
+		Key:     storeKey,
+		Name:    "test-GetCreateStore-store-cache",
+		Tags:    []string{"tag1"},
+		OwnerId: "owner",
+	}
+	setupTestStore(ctx, t, client, str)
+	// should be already cached
+	cacheKey := store.CacheKey(storeKey)
+	storeFromCache := new(store.Store)
+	err := server.cacheStore.Get(ctx, cacheKey, storeFromCache)
+	assert.NoError(t, err, "should have retrieved store from cache after Create")
+
 }
 
 func TestOpenSaves_CreateGetDeleteRecord(t *testing.T) {
