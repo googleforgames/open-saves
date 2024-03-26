@@ -94,7 +94,7 @@ func TestStore_CacheKey(t *testing.T) {
 		Key: "abc",
 	}
 	key := s.CacheKey()
-	assert.Equal(t, "store-abc", key)
+	assert.Equal(t, "store:abc", key)
 }
 
 func TestStore_SerializeRecord(t *testing.T) {
