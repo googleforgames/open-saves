@@ -54,7 +54,7 @@ func (s *Store) ToProto() *pb.Store {
 // CacheKey returns a cache key string to manage cached entries.
 // concatenates "store" + store keys separated by a dash.
 func CacheKey(storeKey string) string {
-	return fmt.Sprintf("store-%s", storeKey)
+	return fmt.Sprintf("store:%s", storeKey)
 }
 
 // These functions need to be implemented here instead of the datastore package because
