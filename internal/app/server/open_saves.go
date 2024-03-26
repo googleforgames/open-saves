@@ -103,6 +103,7 @@ func (s *openSavesServer) CreateStore(ctx context.Context, req *pb.CreateStoreRe
 		return nil, status.Convert(err).Err()
 	}
 	log.Debugf("Created store: %+v", store)
+	s.storeCache(ctx, &store)
 	return newStore.ToProto(), nil
 }
 
@@ -143,12 +144,11 @@ func (s *openSavesServer) DeleteRecord(ctx context.Context, req *pb.DeleteRecord
 }
 
 func (s *openSavesServer) GetStore(ctx context.Context, req *pb.GetStoreRequest) (*pb.Store, error) {
-	store, err := s.metaDB.GetStore(ctx, req.GetKey())
+	str, err := s.getStoreAndCache(ctx, req.GetKey())
 	if err != nil {
-		log.Warnf("GetStore failed for store (%s): %v", req.GetKey(), err)
-		return nil, status.Convert(err).Err()
+		return nil, err
 	}
-	return store.ToProto(), nil
+	return str.ToProto(), nil
 }
 
 func (s *openSavesServer) ListStores(ctx context.Context, req *pb.ListStoresRequest) (*pb.ListStoresResponse, error) {
@@ -1008,6 +1008,33 @@ func (s *openSavesServer) cacheRecord(ctx context.Context, r *record.Record, hin
 			log.Errorf("failed to purge cache for store (%s), record (%s): %v",
 				r.StoreKey, r.Key, err)
 		}
+	}
+	return err
+}
+
+func (s *openSavesServer) getStoreAndCache(ctx context.Context, storeKey string) (*store.Store, error) {
+	st := new(store.Store)
+	if err := s.cacheStore.Get(ctx, store.CacheKey(storeKey), st); err == nil {
+		log.Debug("store cache hit")
+		return st, nil
+	}
+	log.Debug("store cache miss")
+
+	str, err := s.metaDB.GetStore(ctx, storeKey)
+	if err != nil {
+		log.Warnf("GetStore failed for store (%s): %v",
+			storeKey, err)
+		return nil, status.Convert(err).Err()
+	}
+	s.storeCache(ctx, str)
+	log.Tracef("Got store %+v", s)
+	return str, nil
+}
+
+func (s *openSavesServer) storeCache(ctx context.Context, st *store.Store) error {
+	var err error
+	if err = s.cacheStore.Set(ctx, st); err != nil {
+		log.Warnf("failed to encode record for cache for store (%s): %v", st.Key, err)
 	}
 	return err
 }

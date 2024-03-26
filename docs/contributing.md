@@ -23,7 +23,7 @@ use GitHub pull requests for this purpose. Consult
 information on using pull requests.
 
 When opening a pull request, please enter the title with a matching
-[conentional commit](https://www.conventionalcommits.org/en/v1.0.0/) tag.
+[conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) tag.
 For example, a patch to fix a bug should be titles as "fix: server crash with malformed json."
 
 ## Community Guidelines

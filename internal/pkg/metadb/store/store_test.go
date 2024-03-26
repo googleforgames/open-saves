@@ -88,3 +88,49 @@ func TestStore_LoadKey(t *testing.T) {
 	assert.NoError(t, store.LoadKey(key))
 	assert.Equal(t, "testkey", store.Key)
 }
+
+func TestStore_CacheKey(t *testing.T) {
+	s := &Store{
+		Key: "abc",
+	}
+	key := s.CacheKey()
+	assert.Equal(t, "store:abc", key)
+}
+
+func TestStore_SerializeRecord(t *testing.T) {
+	rr := []*Store{
+		{
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+		{
+			Key:     "some-key",
+			Name:    "some-store",
+			Tags:    []string{"tag1", "tag2"},
+			OwnerID: "owner",
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+		{
+			Key:     "some-key",
+			OwnerID: "new-owner",
+			Tags:    []string{"tag1", "tag2"},
+			Timestamps: timestamps.Timestamps{
+				CreatedAt: time.Unix(100, 0),
+				UpdatedAt: time.Unix(110, 0),
+			},
+		},
+	}
+
+	for _, s := range rr {
+		e, err := s.EncodeBytes()
+		assert.NoError(t, err)
+		decoded := new(Store)
+		assert.NoError(t, decoded.DecodeBytes(e))
+		assert.Equal(t, s, decoded)
+	}
+}
