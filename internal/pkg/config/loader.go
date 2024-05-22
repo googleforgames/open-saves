@@ -106,6 +106,9 @@ func Load(path string) (*ServiceConfig, error) {
 		TraceServiceName:    viper.GetString(TraceServiceName),
 		EnableGRPCCollector: viper.GetBool(TraceEnableGRPCCollector),
 		EnableHTTPCollector: viper.GetBool(TraceEnableHTTPCollector),
+		EnableMetrics:       viper.GetBool(EnableMetrics),
+		MetricsPort:         viper.GetInt32(MetricsPort),
+		LogFormat:           viper.GetString(LogFormat),
 	}
 
 	// Cloud Run environment populates the PORT env var, so check for it here.

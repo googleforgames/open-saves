@@ -31,6 +31,13 @@ func main() {
 		panic(fmt.Errorf("error loading config file: %w", err))
 	}
 
+	switch cfg.LogFormat {
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.SetFormatter(&log.TextFormatter{})
+	}
+
 	ll, err := log.ParseLevel(viper.GetString(config.LogLevel))
 	if err != nil {
 		ll = log.InfoLevel

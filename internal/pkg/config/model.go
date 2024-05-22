@@ -22,6 +22,7 @@ const (
 	OpenSavesBucket     = "open_saves_bucket"
 	OpenSavesProject    = "open_saves_project"
 	LogLevel            = "log_level"
+	LogFormat           = "log_format"
 	ShutdownGracePeriod = "shutdown_grace_period"
 
 	CacheDefaultTTL = "cache_default_ttl"
@@ -48,6 +49,9 @@ const (
 	TraceServiceName         = "trace_service_name"
 	TraceEnableGRPCCollector = "trace_enable_grpc_collector"
 	TraceEnableHTTPCollector = "trace_enable_http_collector"
+
+	EnableMetrics = "enable_metrics"
+	MetricsPort   = "metrics_port"
 )
 
 type ServiceConfig struct {
@@ -66,12 +70,18 @@ type ServerConfig struct {
 	Project             string
 	ShutdownGracePeriod time.Duration
 
+	LogFormat string
+
 	// The following enables OpenTelemetry Tracing
 	// It is EXPERIMENTAL and subject to change or removal without notice.
 	// See https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/otlp/otlptrace for how to configure the exporters with env variables
-	EnableTrace         bool
-	TraceSampleRate     float64
-	TraceServiceName    string
+	EnableTrace      bool
+	TraceSampleRate  float64
+	TraceServiceName string
+	// The following enables prometheus metrics
+	// It is EXPERIMENTAL and subject to change or removal without notice.
+	EnableMetrics       bool
+	MetricsPort         int32
 	EnableGRPCCollector bool
 	EnableHTTPCollector bool
 }

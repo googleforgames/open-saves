@@ -26,3 +26,8 @@ enable_trace: false
 enable_grpc_collector: false
 trace_service_name: "open-saves"
 trace_sample_rate: 0.00
+
+enable_metrics: true
+metrics_port: 8081
+
+log_format: "json"

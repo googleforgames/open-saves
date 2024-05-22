@@ -32,7 +32,10 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -71,7 +74,16 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 		if err != nil {
 			return nil, err
 		}
-		metadb, err := metadb.NewMetaDB(ctx, cfg.ServerConfig.Project)
+
+		//enable traces on Metadb ds integration.
+		var o []option.ClientOption
+		if cfg.EnableTrace {
+			o = append(o,
+				option.WithGRPCDialOption(grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor())),
+				option.WithGRPCDialOption(grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor())))
+		}
+
+		metadb, err := metadb.NewMetaDB(ctx, cfg.ServerConfig.Project, o...)
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err

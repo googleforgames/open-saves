@@ -16,7 +16,10 @@ package server
 
 import (
 	"context"
+	"github.com/googleforgames/open-saves/internal/pkg/metrics"
 	"github.com/googleforgames/open-saves/internal/pkg/tracing"
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/keepalive"
@@ -26,9 +29,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/googleforgames/open-saves/internal/pkg/config"
-
 	pb "github.com/googleforgames/open-saves/api"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -52,6 +54,9 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
+	unaryChain := []grpc.UnaryServerInterceptor{}
+	streamChain := []grpc.StreamServerInterceptor{}
+
 	grpcOptions := []grpc.ServerOption{
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			MaxConnectionIdle:     cfg.GRPCServerConfig.MaxConnectionIdle,
@@ -62,13 +67,13 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}),
 	}
 
+	// Tracing
 	var tracer *trace.TracerProvider
 	if cfg.EnableTrace {
 		log.Printf("Enabling CloudTrace exporter with sample rate: %f\n", cfg.ServerConfig.TraceSampleRate)
 
-		grpcOptions = append(grpcOptions,
-			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-			grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()))
+		unaryChain = append(unaryChain, otelgrpc.UnaryServerInterceptor())
+		streamChain = append(streamChain, otelgrpc.StreamServerInterceptor())
 
 		tracer, err = tracing.InitTracer(cfg.ServerConfig.TraceSampleRate, cfg.ServerConfig.EnableGRPCCollector, cfg.ServerConfig.EnableHTTPCollector, cfg.TraceServiceName)
 		if err != nil {
@@ -84,6 +89,23 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}
 	}()
 
+	//Metrics
+	var serverMetrics *grpcprom.ServerMetrics
+	if cfg.EnableMetrics {
+		log.Info("metrics is enabled, enabling Prometheus metrics")
+
+		reg := prometheus.NewRegistry()
+
+		serverMetrics = metrics.Initialize(reg, cfg.MetricsPort)
+
+		unaryChain = append(unaryChain, serverMetrics.UnaryServerInterceptor())
+		streamChain = append(streamChain, serverMetrics.StreamServerInterceptor())
+
+	}
+
+	grpcOptions = append(grpcOptions, grpc.ChainUnaryInterceptor(unaryChain...))
+	grpcOptions = append(grpcOptions, grpc.ChainStreamInterceptor(streamChain...))
+
 	s := grpc.NewServer(grpcOptions...)
 
 	healthcheck := health.NewServer()
@@ -96,12 +118,16 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 	pb.RegisterOpenSavesServer(s, server)
 	reflection.Register(s)
 
+	if cfg.EnableMetrics {
+		serverMetrics.InitializeMetrics(s)
+	}
+
 	go func() {
 		select {
 		case s := <-sigs:
 			log.Infof("received signal: %v\n", s)
 		case <-ctx.Done():
-			log.Infoln("context cancelled")
+			log.Infoln("server: context cancelled")
 		}
 		log.Infoln("set health check to not serving")
 		healthcheck.SetServingStatus(serviceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
