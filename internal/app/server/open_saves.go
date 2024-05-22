@@ -71,7 +71,6 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 		if err != nil {
 			return nil, err
 		}
-
 		metadb, err := metadb.NewMetaDB(ctx, cfg.ServerConfig.Project)
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
