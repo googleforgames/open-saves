@@ -16,16 +16,19 @@ package redis
 
 import (
 	"context"
-	"github.com/go-redis/redis/extra/redisotel/v8"
-	"github.com/go-redis/redis/v8"
+	"log"
+	"strings"
 	"time"
+
+	"github.com/redis/go-redis/extra/redisotel/v9"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 )
 
 // Redis is an implementation of the cache.Cache interface.
 type Redis struct {
-	c *redis.Client
+	c redis.UniversalClient
 }
 
 // NewRedis creates a new Redis instance.
@@ -39,20 +42,40 @@ func NewRedis(address string) *Redis {
 
 // NewRedisWithConfig creates a new Redis instance with configurable options.
 func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
-	o := &redis.Options{
-		Addr:         cfg.Address,
-		MinIdleConns: cfg.MinIdleConns,
-		PoolSize:     cfg.PoolSize,
-		IdleTimeout:  cfg.IdleTimeout,
-		MaxConnAge:   cfg.MaxConnAge,
+	o := &redis.UniversalOptions{
+		Addrs:           parseRedisAddress(cfg.Address),
+		MinIdleConns:    cfg.MinIdleConns,
+		PoolSize:        cfg.PoolSize,
+		ConnMaxIdleTime: cfg.IdleTimeout,
+		ConnMaxLifetime: cfg.MaxConnAge,
 	}
 
-	c := redis.NewClient(o)
-	c.AddHook(redisotel.NewTracingHook())
+	c := redis.NewUniversalClient(o)
+
+	err := redisotel.InstrumentMetrics(c)
+	if err != nil {
+		log.Fatalf("got error adding metric instrumentation to redis client: %v", err)
+	}
+
+	err = redisotel.InstrumentTracing(c)
+	if err != nil {
+		log.Fatalf("got error adding tracing instrumentation to redis client: %v", err)
+	}
 
 	return &Redis{
 		c: c,
 	}
+}
+
+// Parse the input Redis address by splitting the list of addresses separated by commas (,)
+func parseRedisAddress(address string) []string {
+	addresses := []string{}
+
+	for _, foundAddr := range strings.Split(address, ",") {
+		addresses = append(addresses, strings.TrimSpace(foundAddr))
+	}
+
+	return addresses
 }
 
 // Set adds a key-value pair to the redis instance.
