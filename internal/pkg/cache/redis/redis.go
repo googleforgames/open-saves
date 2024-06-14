@@ -16,14 +16,12 @@ package redis
 
 import (
 	"context"
-	"log"
-	"strings"
-	"time"
-
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-
-	"github.com/googleforgames/open-saves/internal/pkg/config"
+	log "github.com/sirupsen/logrus"
+	"strings"
+	"time"
 )
 
 // Redis is an implementation of the cache.Cache interface.
@@ -54,12 +52,12 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 
 	err := redisotel.InstrumentMetrics(c)
 	if err != nil {
-		log.Fatalf("got error adding metric instrumentation to redis client: %v", err)
+		log.Errorf("got error adding metric instrumentation to redis client: %v", err)
 	}
 
 	err = redisotel.InstrumentTracing(c)
 	if err != nil {
-		log.Fatalf("got error adding tracing instrumentation to redis client: %v", err)
+		log.Errorf("got error adding tracing instrumentation to redis client: %v", err)
 	}
 
 	return &Redis{

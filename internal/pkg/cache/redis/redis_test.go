@@ -16,13 +16,12 @@ package redis
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"github.com/alicebob/miniredis/v2"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
 )
 
 func TestRedis_All(t *testing.T) {
