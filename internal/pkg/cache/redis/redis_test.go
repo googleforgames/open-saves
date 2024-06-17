@@ -16,13 +16,12 @@ package redis
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"github.com/alicebob/miniredis/v2"
-	redis "github.com/go-redis/redis/v8"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
 )
 
 func TestRedis_All(t *testing.T) {
@@ -67,4 +66,36 @@ func TestRedis_All(t *testing.T) {
 	keys, err = r.ListKeys(ctx)
 	assert.NoError(t, err)
 	assert.Empty(t, keys)
+}
+
+// Test parsing of Redis addresses works as expected.
+func TestRedisParseRedisAddress(t *testing.T) {
+	type ParseRedisAddressFixture struct {
+		address  string
+		expected []string
+	}
+
+	fixture := []ParseRedisAddressFixture{
+		// Single address.
+		{
+			address:  "redis:6379",
+			expected: []string{"redis:6379"},
+		},
+		// Multiple addresses, no whitespaces.
+		{
+			address:  "redis-1:6379,redis-2:6379",
+			expected: []string{"redis-1:6379", "redis-2:6379"},
+		},
+		// Multiple addresses, with whitespaces.
+		{
+			address:  "   redis-1:6379    ,    redis-2:6379   ",
+			expected: []string{"redis-1:6379", "redis-2:6379"},
+		},
+	}
+
+	for _, test := range fixture {
+		result := parseRedisAddress(test.address)
+
+		require.Equal(t, test.expected, result)
+	}
 }

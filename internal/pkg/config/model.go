@@ -82,7 +82,7 @@ type CacheConfig struct {
 	DefaultTTL time.Duration
 }
 
-// RedisConfig as defined in https://pkg.go.dev/github.com/go-redis/redis/v8#Options
+// RedisConfig as defined in https://pkg.go.dev/github.com/redis/go-redis/v9#Options
 type RedisConfig struct {
 	Address string
 
