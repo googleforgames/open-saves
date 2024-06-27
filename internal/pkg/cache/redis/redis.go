@@ -29,6 +29,11 @@ type Redis struct {
 	c redis.UniversalClient
 }
 
+const (
+	redisClusterPrefix = "cluster/"
+	redisClusterSeparator = ","
+)
+
 // NewRedis creates a new Redis instance.
 func NewRedis(address string) *Redis {
 	cfg := &config.RedisConfig{
@@ -40,15 +45,29 @@ func NewRedis(address string) *Redis {
 
 // NewRedisWithConfig creates a new Redis instance with configurable options.
 func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
-	o := &redis.UniversalOptions{
-		Addrs:           parseRedisAddress(cfg.Address),
-		MinIdleConns:    cfg.MinIdleConns,
-		PoolSize:        cfg.PoolSize,
-		ConnMaxIdleTime: cfg.IdleTimeout,
-		ConnMaxLifetime: cfg.MaxConnAge,
-	}
+	var c redis.UniversalClient
 
-	c := redis.NewUniversalClient(o)
+	if isRedisClusterAddress(cfg.Address) {
+		o := &redis.ClusterOptions{
+			Addrs:           parseRedisClusterMultiAddress(cfg.Address),
+			MinIdleConns:    cfg.MinIdleConns,
+			PoolSize:        cfg.PoolSize,
+			ConnMaxIdleTime: cfg.IdleTimeout,
+			ConnMaxLifetime: cfg.MaxConnAge,
+		}
+
+		c = redis.NewClusterClient(o)
+	} else {
+		o := &redis.Options{
+			Addr:            cfg.Address,
+			MinIdleConns:    cfg.MinIdleConns,
+			PoolSize:        cfg.PoolSize,
+			ConnMaxIdleTime: cfg.IdleTimeout,
+			ConnMaxLifetime: cfg.MaxConnAge,
+		}
+
+		c = redis.NewClient(o)
+	}
 
 	err := redisotel.InstrumentMetrics(c)
 	if err != nil {
@@ -65,11 +84,30 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	}
 }
 
-// Parse the input Redis address by splitting the list of addresses separated by commas (,)
-func parseRedisAddress(address string) []string {
+// isRedisClusterAddress checks if the Address is a Redis Cluster compatible address.
+// A Redis Cluster compatible address could be either:
+// * An string with format cluster/<IP>:<PORT>
+// * A list of <IP>:<PORT> addresses separated by commas
+// * A combination of both the above ones. (e.g. cluster/<IP_1>:<PORT_1>,<IP_2>:<PORT_2>)
+func isRedisClusterAddress(addr string) bool {
+	if strings.HasPrefix(addr, redisClusterPrefix) {
+		return true
+	}
+
+	if strings.Contains(addr, redisClusterSeparator) {
+		 return true
+	}
+
+	return false
+}
+
+// parseRedisClusterMultiAddress Parse the input Redis address by splitting the list of addresses separated by commas (,)
+func parseRedisClusterMultiAddress(address string) []string {
+	address = strings.TrimPrefix(address, redisClusterPrefix)
+
 	addresses := []string{}
 
-	for _, foundAddr := range strings.Split(address, ",") {
+	for _, foundAddr := range strings.Split(address, redisClusterSeparator) {
 		addresses = append(addresses, strings.TrimSpace(foundAddr))
 	}
 

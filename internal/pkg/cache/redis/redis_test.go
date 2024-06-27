@@ -16,6 +16,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -68,6 +69,53 @@ func TestRedis_All(t *testing.T) {
 	assert.Empty(t, keys)
 }
 
+func TestRedis_ClusterAll(t *testing.T) {
+	ctx := context.Background()
+
+	// Use miniredis for tests.
+	s := miniredis.RunT(t)
+	// Configure Redis to use the cluster client.
+	r := NewRedis(fmt.Sprintf("cluster/%s",s.Addr()))
+	require.NotNil(t, r)
+	// Assert that we are getting a ClusterClient.
+	assert.IsType(t, &redis.ClusterClient{}, r.c)
+
+	assert.NoError(t, r.FlushAll(ctx))
+
+	keys, err := r.ListKeys(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, keys)
+
+	_, err = r.Get(ctx, "unknown")
+	assert.Error(t, err)
+
+	by := []byte("byte")
+	assert.NoError(t, r.Set(ctx, "hello", by, 0))
+
+	val, err := r.Get(ctx, "hello")
+	assert.NoError(t, err)
+	assert.Equal(t, by, val)
+
+	// test with TTL. The resolution is one millisecond.
+	assert.NoError(t, r.Set(ctx, "withTTL", by, 1*time.Millisecond))
+	s.FastForward(2 * time.Millisecond)
+	val, err = r.Get(ctx, "withTTL")
+	assert.ErrorIs(t, redis.Nil, err)
+	assert.Nil(t, val)
+
+	keys, err = r.ListKeys(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"hello"}, keys)
+
+	assert.NoError(t, r.Delete(ctx, "hello"))
+
+	assert.NoError(t, r.FlushAll(ctx))
+
+	keys, err = r.ListKeys(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, keys)
+}
+
 // Test parsing of Redis addresses works as expected.
 func TestRedisParseRedisAddress(t *testing.T) {
 	type ParseRedisAddressFixture struct {
@@ -80,6 +128,10 @@ func TestRedisParseRedisAddress(t *testing.T) {
 		{
 			address:  "redis:6379",
 			expected: []string{"redis:6379"},
+		},// Single address with prefix.
+		{
+			address:  "cluster/redis:6379",
+			expected: []string{"redis:6379"},
 		},
 		// Multiple addresses, no whitespaces.
 		{
@@ -91,10 +143,15 @@ func TestRedisParseRedisAddress(t *testing.T) {
 			address:  "   redis-1:6379    ,    redis-2:6379   ",
 			expected: []string{"redis-1:6379", "redis-2:6379"},
 		},
+		// Multiple addresses, with prefix.
+		{
+			address:  "cluster/redis-1:6379,redis-2:6379",
+			expected: []string{"redis-1:6379", "redis-2:6379"},
+		},
 	}
 
 	for _, test := range fixture {
-		result := parseRedisAddress(test.address)
+		result := parseRedisClusterMultiAddress(test.address)
 
 		require.Equal(t, test.expected, result)
 	}
