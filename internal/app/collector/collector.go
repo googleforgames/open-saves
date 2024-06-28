@@ -34,11 +34,12 @@ import (
 
 // Config defines common fields needed to start the garbage collector.
 type Config struct {
-	Cloud   string
-	Bucket  string
-	Cache   string
-	Project string
-	Before  time.Time
+	Cloud     string
+	Bucket    string
+	Cache     string
+	RedisMode string
+	Project   string
+	Before    time.Time
 }
 
 // Collector is a garbage collector of unused resources in Datastore.
@@ -65,7 +66,11 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
 		}
-		cache := cache.New(redis.NewRedis(cfg.Cache), &config.CacheConfig{})
+		redisCfg := config.RedisConfig{
+			Address: cfg.Cache,
+			RedisMode: cfg.RedisMode,
+		}
+		cache := cache.New(redis.NewRedisWithConfig(&redisCfg), &config.CacheConfig{})
 		c := &Collector{
 			blob:   gcs,
 			metaDB: metadb,

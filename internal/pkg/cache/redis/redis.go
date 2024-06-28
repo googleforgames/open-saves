@@ -24,20 +24,26 @@ import (
 	"time"
 )
 
+// Knonw Redis connection modes.
+const (
+	RedisModeSingle = "single"
+	RedisModeCluster = "cluster"
+)
+
+const (
+	redisClusterSeparator = ","
+)
+
 // Redis is an implementation of the cache.Cache interface.
 type Redis struct {
 	c redis.UniversalClient
 }
 
-const (
-	redisClusterPrefix = "cluster/"
-	redisClusterSeparator = ","
-)
-
 // NewRedis creates a new Redis instance.
 func NewRedis(address string) *Redis {
 	cfg := &config.RedisConfig{
 		Address: address,
+		RedisMode: RedisModeSingle,
 	}
 
 	return NewRedisWithConfig(cfg)
@@ -47,7 +53,7 @@ func NewRedis(address string) *Redis {
 func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	var c redis.UniversalClient
 
-	if isRedisClusterAddress(cfg.Address) {
+	if cfg.RedisMode == RedisModeCluster {
 		o := &redis.ClusterOptions{
 			Addrs:           parseRedisClusterMultiAddress(cfg.Address),
 			MinIdleConns:    cfg.MinIdleConns,
@@ -58,6 +64,8 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 
 		c = redis.NewClusterClient(o)
 	} else {
+		// By default, if no RedisMode is supplied, Single mode will be selected.
+		// This is to be retro compatible with previous versions of OpenSaves.
 		o := &redis.Options{
 			Addr:            cfg.Address,
 			MinIdleConns:    cfg.MinIdleConns,
@@ -84,27 +92,8 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	}
 }
 
-// isRedisClusterAddress checks if the Address is a Redis Cluster compatible address.
-// A Redis Cluster compatible address could be either:
-// * An string with format cluster/<IP>:<PORT>
-// * A list of <IP>:<PORT> addresses separated by commas
-// * A combination of both the above ones. (e.g. cluster/<IP_1>:<PORT_1>,<IP_2>:<PORT_2>)
-func isRedisClusterAddress(addr string) bool {
-	if strings.HasPrefix(addr, redisClusterPrefix) {
-		return true
-	}
-
-	if strings.Contains(addr, redisClusterSeparator) {
-		 return true
-	}
-
-	return false
-}
-
 // parseRedisClusterMultiAddress Parse the input Redis address by splitting the list of addresses separated by commas (,)
 func parseRedisClusterMultiAddress(address string) []string {
-	address = strings.TrimPrefix(address, redisClusterPrefix)
-
 	addresses := []string{}
 
 	for _, foundAddr := range strings.Split(address, redisClusterSeparator) {

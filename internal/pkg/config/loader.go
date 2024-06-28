@@ -124,6 +124,7 @@ func Load(path string) (*ServiceConfig, error) {
 	// Redis configuration
 	redisConfig := RedisConfig{
 		Address:         viper.GetString(RedisAddress),
+		RedisMode:       viper.GetString(RedisMode),
 		MaxRetries:      viper.GetInt(RedisMaxRetries),
 		MinRetyBackoff:  viper.GetDuration(RedisMinRetryBackoff),
 		MaxRetryBackoff: viper.GetDuration(RedisMaxRetryBackoff),

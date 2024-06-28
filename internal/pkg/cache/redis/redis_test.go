@@ -16,8 +16,8 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,7 +75,11 @@ func TestRedis_ClusterAll(t *testing.T) {
 	// Use miniredis for tests.
 	s := miniredis.RunT(t)
 	// Configure Redis to use the cluster client.
-	r := NewRedis(fmt.Sprintf("cluster/%s",s.Addr()))
+	cfg := config.RedisConfig {
+		Address: s.Addr(),
+		RedisMode: RedisModeCluster,
+	}
+	r := NewRedisWithConfig(&cfg)
 	require.NotNil(t, r)
 	// Assert that we are getting a ClusterClient.
 	assert.IsType(t, &redis.ClusterClient{}, r.c)
@@ -128,10 +132,6 @@ func TestRedisParseRedisAddress(t *testing.T) {
 		{
 			address:  "redis:6379",
 			expected: []string{"redis:6379"},
-		},// Single address with prefix.
-		{
-			address:  "cluster/redis:6379",
-			expected: []string{"redis:6379"},
 		},
 		// Multiple addresses, no whitespaces.
 		{
@@ -141,11 +141,6 @@ func TestRedisParseRedisAddress(t *testing.T) {
 		// Multiple addresses, with whitespaces.
 		{
 			address:  "   redis-1:6379    ,    redis-2:6379   ",
-			expected: []string{"redis-1:6379", "redis-2:6379"},
-		},
-		// Multiple addresses, with prefix.
-		{
-			address:  "cluster/redis-1:6379,redis-2:6379",
 			expected: []string{"redis-1:6379", "redis-2:6379"},
 		},
 	}

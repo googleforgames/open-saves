@@ -21,6 +21,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
+	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
@@ -36,6 +37,7 @@ const (
 	testProject       = "triton-for-games-dev"
 	testBucket        = "gs://triton-integration"
 	testCacheAddr     = "localhost:6379"
+	testRedisMode     = redis.RedisModeSingle
 	blobKind          = "blob"
 	chunkKind         = "chunk"
 	testTimeThreshold = -1 * time.Hour
@@ -44,11 +46,12 @@ const (
 func newTestCollector(ctx context.Context, t *testing.T) *Collector {
 	t.Helper()
 	cfg := &Config{
-		Cloud:   "gcp",
-		Bucket:  testBucket,
-		Project: testProject,
-		Cache:   testCacheAddr,
-		Before:  time.Now().Add(testTimeThreshold),
+		Cloud:     "gcp",
+		Bucket:    testBucket,
+		Project:   testProject,
+		Cache:     testCacheAddr,
+		RedisMode: testRedisMode,
+		Before:    time.Now().Add(testTimeThreshold),
 	}
 	c, err := newCollector(ctx, cfg)
 	if err != nil {
