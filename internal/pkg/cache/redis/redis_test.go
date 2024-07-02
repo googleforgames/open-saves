@@ -17,6 +17,7 @@ package redis
 import (
 	"context"
 	"github.com/alicebob/miniredis/v2"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,57 @@ func TestRedis_All(t *testing.T) {
 	s := miniredis.RunT(t)
 	r := NewRedis(s.Addr())
 	require.NotNil(t, r)
+
+	assert.NoError(t, r.FlushAll(ctx))
+
+	keys, err := r.ListKeys(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, keys)
+
+	_, err = r.Get(ctx, "unknown")
+	assert.Error(t, err)
+
+	by := []byte("byte")
+	assert.NoError(t, r.Set(ctx, "hello", by, 0))
+
+	val, err := r.Get(ctx, "hello")
+	assert.NoError(t, err)
+	assert.Equal(t, by, val)
+
+	// test with TTL. The resolution is one millisecond.
+	assert.NoError(t, r.Set(ctx, "withTTL", by, 1*time.Millisecond))
+	s.FastForward(2 * time.Millisecond)
+	val, err = r.Get(ctx, "withTTL")
+	assert.ErrorIs(t, redis.Nil, err)
+	assert.Nil(t, val)
+
+	keys, err = r.ListKeys(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"hello"}, keys)
+
+	assert.NoError(t, r.Delete(ctx, "hello"))
+
+	assert.NoError(t, r.FlushAll(ctx))
+
+	keys, err = r.ListKeys(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, keys)
+}
+
+func TestRedis_ClusterAll(t *testing.T) {
+	ctx := context.Background()
+
+	// Use miniredis for tests.
+	s := miniredis.RunT(t)
+	// Configure Redis to use the cluster client.
+	cfg := config.RedisConfig {
+		Address: s.Addr(),
+		RedisMode: RedisModeCluster,
+	}
+	r := NewRedisWithConfig(&cfg)
+	require.NotNil(t, r)
+	// Assert that we are getting a ClusterClient.
+	assert.IsType(t, &redis.ClusterClient{}, r.c)
 
 	assert.NoError(t, r.FlushAll(ctx))
 

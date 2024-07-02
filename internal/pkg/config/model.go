@@ -27,6 +27,7 @@ const (
 	CacheDefaultTTL = "cache_default_ttl"
 
 	RedisAddress         = "redis_address"
+	RedisMode            = "redis_mode"
 	RedisMinIdleConns    = "redis_min_idle_conns"
 	RedisPoolSize        = "redis_pool_size"
 	RedisIdleTimeout     = "redis_idle_timeout"
@@ -85,6 +86,7 @@ type CacheConfig struct {
 // RedisConfig as defined in https://pkg.go.dev/github.com/redis/go-redis/v9#Options
 type RedisConfig struct {
 	Address string
+	RedisMode string
 
 	MaxRetries      int
 	MinRetyBackoff  time.Duration
