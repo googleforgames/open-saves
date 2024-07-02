@@ -57,7 +57,7 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 		o := &redis.ClusterOptions{
 			// When working with a standard Redis Cluster, it is expected the address being a list of addresses separated by commas (,)
 			// When working with CGP MemoryStore Redis Cluster, it is expected the address being a single address - the discovery address.
-			Addrs:           parseRedisCluster(cfg.Address),
+			Addrs:           parseRedisAddress(cfg.Address),
 			MinIdleConns:    cfg.MinIdleConns,
 			PoolSize:        cfg.PoolSize,
 			ConnMaxIdleTime: cfg.IdleTimeout,
@@ -95,8 +95,8 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	}
 }
 
-// parseRedisCluster Parse the input Redis address by splitting the list of addresses separated by commas (,)
-func parseRedisCluster(address string) []string {
+// parseRedisAddress Parse the input Redis address by splitting the list of addresses separated by commas (,)
+func parseRedisAddress(address string) []string {
 	addresses := []string{}
 
 	for _, foundAddr := range strings.Split(address, redisClusterSeparator) {

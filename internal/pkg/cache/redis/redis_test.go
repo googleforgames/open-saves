@@ -146,7 +146,7 @@ func TestRedisParseRedisAddress(t *testing.T) {
 	}
 
 	for _, test := range fixture {
-		result := parseRedisCluster(test.address)
+		result := parseRedisAddress(test.address)
 
 		require.Equal(t, test.expected, result)
 	}
