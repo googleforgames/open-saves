@@ -5,6 +5,10 @@ log_level: "info"
 shutdown_grace_period: "5s"
 cache_default_ttl: "5m"
 
+# When working with a single Redis instance, set redis_mode: "single" and supply a single address.
+# When working with Redis Cluster, set redis_mode: "cluster"
+#  - if it is a standard Redis Cluster, supply a list of IPs separated by (,)
+#  - if it is a GCP MemoryStore Redis Cluster, supply a single address - the discovery address.
 redis_address: "localhost:6379"
 redis_mode: "single"
 redis_min_idle_conns: 500

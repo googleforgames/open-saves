@@ -55,6 +55,8 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 
 	if cfg.RedisMode == RedisModeCluster {
 		o := &redis.ClusterOptions{
+			// When working with a standard Redis Cluster, it is expected the address being a list of addresses separated by commas (,)
+			// When working with CGP MemoryStore Redis Cluster, it is expected the address being a single address - the discovery address.
 			Addrs:           parseRedisClusterMultiAddress(cfg.Address),
 			MinIdleConns:    cfg.MinIdleConns,
 			PoolSize:        cfg.PoolSize,
@@ -66,6 +68,7 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	} else {
 		// By default, if no RedisMode is supplied, Single mode will be selected.
 		// This is to be retro compatible with previous versions of OpenSaves.
+		// In this case the address is expected to be a single address.
 		o := &redis.Options{
 			Addr:            cfg.Address,
 			MinIdleConns:    cfg.MinIdleConns,
