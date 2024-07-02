@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/googleforgames/open-saves/internal/app/collector"
+	"github.com/googleforgames/open-saves/internal/pkg/cache/redis"
 	"github.com/googleforgames/open-saves/internal/pkg/cmd"
 	log "github.com/sirupsen/logrus"
 )
@@ -29,6 +30,7 @@ func main() {
 	defaultBucket := cmd.GetEnvVarString("OPEN_SAVES_BUCKET", "gs://triton-dev-store")
 	defaultProject := cmd.GetEnvVarString("OPEN_SAVES_PROJECT", "triton-for-games-dev")
 	defaultCache := cmd.GetEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
+	defaultRedisMode := cmd.GetEnvVarString("OPEN_SAVES_REDIS_MODE", redis.RedisModeSingle)
 	defaultExpiration := cmd.GetEnvVarDuration("OPEN_SAVES_GARBAGE_EXPIRATION", 24*time.Hour)
 
 	var (
@@ -36,6 +38,7 @@ func main() {
 		bucket     = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
 		project    = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
 		cache      = flag.String("cache", defaultCache, "The address of the cache store instance")
+		redisMode  = flag.String("redis-mode", defaultRedisMode, "The mode the Redis cache is configured, single or cluster")
 		expiration = flag.Duration("garbage-expiration", defaultExpiration, "Collector deletes entries older than this time.Duration value (e.g. \"24h\")")
 	)
 
@@ -52,13 +55,15 @@ func main() {
 	if *cache == "" {
 		log.Fatal("missing -cache argument for cache store")
 	}
+	// RedisMode is considered optional, so we don't need to validate it here.
 
 	cfg := &collector.Config{
-		Cloud:   *cloud,
-		Bucket:  *bucket,
-		Project: *project,
-		Cache:   *cache,
-		Before:  time.Now().Add(-*expiration),
+		Cloud:     *cloud,
+		Bucket:    *bucket,
+		Project:   *project,
+		Cache:     *cache,
+		RedisMode: *redisMode,
+		Before:    time.Now().Add(-*expiration),
 	}
 
 	ctx := context.Background()

@@ -24,6 +24,16 @@ import (
 	"time"
 )
 
+// Knonw Redis connection modes.
+const (
+	RedisModeSingle = "single"
+	RedisModeCluster = "cluster"
+)
+
+const (
+	redisClusterSeparator = ","
+)
+
 // Redis is an implementation of the cache.Cache interface.
 type Redis struct {
 	c redis.UniversalClient
@@ -33,6 +43,7 @@ type Redis struct {
 func NewRedis(address string) *Redis {
 	cfg := &config.RedisConfig{
 		Address: address,
+		RedisMode: RedisModeSingle,
 	}
 
 	return NewRedisWithConfig(cfg)
@@ -40,15 +51,34 @@ func NewRedis(address string) *Redis {
 
 // NewRedisWithConfig creates a new Redis instance with configurable options.
 func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
-	o := &redis.UniversalOptions{
-		Addrs:           parseRedisAddress(cfg.Address),
-		MinIdleConns:    cfg.MinIdleConns,
-		PoolSize:        cfg.PoolSize,
-		ConnMaxIdleTime: cfg.IdleTimeout,
-		ConnMaxLifetime: cfg.MaxConnAge,
-	}
+	var c redis.UniversalClient
 
-	c := redis.NewUniversalClient(o)
+	if cfg.RedisMode == RedisModeCluster {
+		o := &redis.ClusterOptions{
+			// When working with a standard Redis Cluster, it is expected the address being a list of addresses separated by commas (,)
+			// When working with CGP MemoryStore Redis Cluster, it is expected the address being a single address - the discovery address.
+			Addrs:           parseRedisAddress(cfg.Address),
+			MinIdleConns:    cfg.MinIdleConns,
+			PoolSize:        cfg.PoolSize,
+			ConnMaxIdleTime: cfg.IdleTimeout,
+			ConnMaxLifetime: cfg.MaxConnAge,
+		}
+
+		c = redis.NewClusterClient(o)
+	} else {
+		// By default, if no RedisMode is supplied, Single mode will be selected.
+		// This is to be retro compatible with previous versions of OpenSaves.
+		// In this case the address is expected to be a single address.
+		o := &redis.Options{
+			Addr:            cfg.Address,
+			MinIdleConns:    cfg.MinIdleConns,
+			PoolSize:        cfg.PoolSize,
+			ConnMaxIdleTime: cfg.IdleTimeout,
+			ConnMaxLifetime: cfg.MaxConnAge,
+		}
+
+		c = redis.NewClient(o)
+	}
 
 	err := redisotel.InstrumentMetrics(c)
 	if err != nil {
@@ -65,11 +95,11 @@ func NewRedisWithConfig(cfg *config.RedisConfig) *Redis {
 	}
 }
 
-// Parse the input Redis address by splitting the list of addresses separated by commas (,)
+// parseRedisAddress Parse the input Redis address by splitting the list of addresses separated by commas (,)
 func parseRedisAddress(address string) []string {
 	addresses := []string{}
 
-	for _, foundAddr := range strings.Split(address, ",") {
+	for _, foundAddr := range strings.Split(address, redisClusterSeparator) {
 		addresses = append(addresses, strings.TrimSpace(foundAddr))
 	}
 
