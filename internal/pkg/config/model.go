@@ -44,6 +44,10 @@ const (
 	GRPCKeepAliveTime                  = "grpc_keepalive_time"
 	GRPCKeepAliveTimeout               = "grpc_keepalive_timeout"
 
+	EnableMetrics              = "enable_metrics"
+	MetricsEnableGRPCCollector = "metrics_enable_grpc_collector"
+	MetricsEnableHTTPCollector = "metrics_enable_http_collector"
+
 	EnableTrace              = "enable_trace"
 	TraceSampleRate          = "trace_sample_rate"
 	TraceServiceName         = "trace_service_name"
@@ -67,14 +71,20 @@ type ServerConfig struct {
 	Project             string
 	ShutdownGracePeriod time.Duration
 
+	// The following enables OpenTelemetry Metrics
+	// See https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/otlp/otlpmetric for how to configure the exporters with env variables
+	EnableMetrics              bool
+	MetricsEnableGRPCCollector bool
+	MetricsEnableHTTPCollector bool
+
 	// The following enables OpenTelemetry Tracing
 	// It is EXPERIMENTAL and subject to change or removal without notice.
 	// See https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/otlp/otlptrace for how to configure the exporters with env variables
-	EnableTrace         bool
-	TraceSampleRate     float64
-	TraceServiceName    string
-	EnableGRPCCollector bool
-	EnableHTTPCollector bool
+	EnableTrace              bool
+	TraceSampleRate          float64
+	TraceServiceName         string
+	TraceEnableGRPCCollector bool
+	TraceEnableHTTPCollector bool
 }
 
 // CacheConfig has configurations for caching control (not Redis specific).
@@ -85,7 +95,7 @@ type CacheConfig struct {
 
 // RedisConfig as defined in https://pkg.go.dev/github.com/redis/go-redis/v9#Options
 type RedisConfig struct {
-	Address string
+	Address   string
 	RedisMode string
 
 	MaxRetries      int

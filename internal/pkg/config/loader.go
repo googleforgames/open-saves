@@ -96,16 +96,19 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	serverConfig := ServerConfig{
-		Address:             fmt.Sprintf(":%d", viper.GetUint(OpenSavesPort)),
-		Cloud:               viper.GetString(OpenSavesCloud),
-		Bucket:              viper.GetString(OpenSavesBucket),
-		Project:             viper.GetString(OpenSavesProject),
-		ShutdownGracePeriod: viper.GetDuration(ShutdownGracePeriod),
-		EnableTrace:         viper.GetBool(EnableTrace),
-		TraceSampleRate:     viper.GetFloat64(TraceSampleRate),
-		TraceServiceName:    viper.GetString(TraceServiceName),
-		EnableGRPCCollector: viper.GetBool(TraceEnableGRPCCollector),
-		EnableHTTPCollector: viper.GetBool(TraceEnableHTTPCollector),
+		Address:                    fmt.Sprintf(":%d", viper.GetUint(OpenSavesPort)),
+		Cloud:                      viper.GetString(OpenSavesCloud),
+		Bucket:                     viper.GetString(OpenSavesBucket),
+		Project:                    viper.GetString(OpenSavesProject),
+		ShutdownGracePeriod:        viper.GetDuration(ShutdownGracePeriod),
+		EnableMetrics:              viper.GetBool(EnableTrace),
+		MetricsEnableGRPCCollector: viper.GetBool(MetricsEnableGRPCCollector),
+		MetricsEnableHTTPCollector: viper.GetBool(MetricsEnableHTTPCollector),
+		EnableTrace:                viper.GetBool(EnableTrace),
+		TraceSampleRate:            viper.GetFloat64(TraceSampleRate),
+		TraceServiceName:           viper.GetString(TraceServiceName),
+		TraceEnableGRPCCollector:   viper.GetBool(TraceEnableGRPCCollector),
+		TraceEnableHTTPCollector:   viper.GetBool(TraceEnableHTTPCollector),
 	}
 
 	// Cloud Run environment populates the PORT env var, so check for it here.
