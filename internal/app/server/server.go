@@ -16,8 +16,10 @@ package server
 
 import (
 	"context"
+	"github.com/googleforgames/open-saves/internal/pkg/metrics"
 	"github.com/googleforgames/open-saves/internal/pkg/tracing"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/keepalive"
 	"net"
@@ -62,15 +64,28 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 		}),
 	}
 
+	var meterProvider *metric.MeterProvider
+	if cfg.EnableMetrics {
+		log.Println("Enabling Metrics exporter")
+		meterProvider, err = metrics.InitMetrics(cfg.MetricsEnableGRPCCollector, cfg.MetricsEnableHTTPCollector)
+		if err != nil {
+			return err
+		}
+	}
+
+	defer func() {
+		if meterProvider != nil {
+			if err := meterProvider.Shutdown(context.Background()); err != nil {
+				log.Fatalf("Error shutting down meter provider: %v", err)
+			}
+		}
+	}()
+
 	var tracer *trace.TracerProvider
 	if cfg.EnableTrace {
 		log.Printf("Enabling CloudTrace exporter with sample rate: %f\n", cfg.ServerConfig.TraceSampleRate)
 
-		grpcOptions = append(grpcOptions,
-			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-			grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()))
-
-		tracer, err = tracing.InitTracer(cfg.ServerConfig.TraceSampleRate, cfg.ServerConfig.EnableGRPCCollector, cfg.ServerConfig.EnableHTTPCollector, cfg.TraceServiceName)
+		tracer, err = tracing.InitTracer(cfg.ServerConfig.TraceSampleRate, cfg.ServerConfig.TraceEnableGRPCCollector, cfg.ServerConfig.TraceEnableHTTPCollector, cfg.TraceServiceName)
 		if err != nil {
 			return err
 		}
@@ -83,6 +98,11 @@ func Run(ctx context.Context, network string, cfg *config.ServiceConfig) error {
 			}
 		}
 	}()
+
+	// grpc otel support uses the same option for both metrics and traces.
+	if cfg.EnableMetrics || cfg.EnableTrace {
+		grpcOptions = append(grpcOptions, grpc.StatsHandler(otelgrpc.NewServerHandler()))
+	}
 
 	s := grpc.NewServer(grpcOptions...)
 
