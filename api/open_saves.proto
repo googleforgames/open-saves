@@ -241,6 +241,11 @@ message Record {
   // update requests, and the server will check the value against the latest value
   // and abort the request if they don't match.
   bytes signature = 12;
+
+  // expires_at is the point in time in UTC when the Record is marked to be collected
+  // by the TTL feature on the Open Saves server. It is optional and if it is not provided
+  // then the object will never expire.
+  google.protobuf.Timestamp expires_at = 13;
 }
 
 // Performance optimization hints for the server.

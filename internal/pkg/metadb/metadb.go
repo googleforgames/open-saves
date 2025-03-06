@@ -18,9 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+
 	"github.com/googleforgames/open-saves/internal/pkg/tracing"
 	"go.opentelemetry.io/otel"
-	"strconv"
 
 	ds "cloud.google.com/go/datastore"
 	"github.com/google/uuid"
@@ -153,6 +154,8 @@ func (m *MetaDB) markBlobRefForDeletion(tx *ds.Transaction,
 		blob.Fail()
 		return nil, status.Errorf(codes.Internal, "failed to transition the blob state for deletion: current = %v", blob.Status)
 	}
+	// Mark the blob as expired so the TTL takes care of deletion.
+	blob.MarkAsExpired()
 	_, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob))
 	return record, err
 }
@@ -184,7 +187,7 @@ func (m *MetaDB) recordExists(ctx context.Context, tx *ds.Transaction, key *ds.K
 	defer span.End()
 
 	query := ds.NewQuery(recordKind).Namespace(m.Namespace).
-		KeysOnly().Filter("__key__ = ", key).Limit(1)
+		KeysOnly().FilterField("__key__", "=", key).Limit(1)
 	if tx != nil {
 		query = query.Transaction(tx)
 	}
@@ -286,7 +289,7 @@ func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *reco
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
 		dskey := m.createStoreKey(storeKey)
 		query := ds.NewQuery(storeKind).Transaction(tx).Namespace(m.Namespace).
-			KeysOnly().Filter("__key__ = ", dskey).Limit(1)
+			KeysOnly().FilterField("__key__", "=", dskey).Limit(1)
 		iter := m.client.Run(ctx, query)
 		_, err := iter.Next(nil)
 		if err == iterator.Done {
@@ -336,15 +339,24 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 		if oldExternalBlob != toUpdate.ExternalBlob {
 			return status.Error(codes.Internal, "UpdateRecord: ExternalBlob must not be modified in UpdateRecord")
 		}
-		// Deassociate the old blob if an external blob is associated, and a new inline blob is being added.
-		if oldExternalBlob != uuid.Nil && len(toUpdate.Blob) > 0 {
+		if oldExternalBlob != uuid.Nil {
 			oldBlob, err := m.getBlobRef(ctx, tx, toUpdate.ExternalBlob)
 			if err != nil {
 				return err
 			}
-			toUpdate, err = m.markBlobRefForDeletion(tx, toUpdate, oldBlob, uuid.Nil)
-			if err != nil {
-				return err
+			// Deassociate the old blob if an external blob is associated, and a new inline blob is being added.
+			if len(toUpdate.Blob) > 0 {
+				toUpdate, err = m.markBlobRefForDeletion(tx, toUpdate, oldBlob, uuid.Nil)
+				if err != nil {
+					return err
+				}
+			// Update the external blob with the new ExpiresAt coming from the record.
+			} else {
+				oldBlob.ExpiresAt = toUpdate.ExpiresAt
+				err = m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createBlobKey(toUpdate.ExternalBlob), oldBlob))
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -488,7 +500,7 @@ func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey stri
 
 func (m *MetaDB) getReadyChunks(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) ([]*chunkref.ChunkRef, error) {
 	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blob.Key)).
-		Filter("Status =", int(blobref.StatusReady))
+		FilterField("Status", "=", int(blobref.StatusReady))
 	iter := m.client.Run(ctx, query)
 	chunks := []*chunkref.ChunkRef{}
 	for {
@@ -569,6 +581,8 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 			}
 		}
 		blob.Timestamps.Update()
+		// Set the expiration time of the new BlobRef to be the same as the Record
+		blob.ExpiresAt = record.ExpiresAt
 		if _, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob)); err != nil {
 			return err
 		}
@@ -623,6 +637,12 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 			}
 		}
 
+		// Call the custom defined updater method as well to modify the record.
+		record, err := updater(record)
+		if err != nil {
+			return err
+		}
+
 		// Update the blob size for chunked uploads
 		if blob.Chunked {
 			size, count, err := m.chunkObjectsSizeSum(ctx, tx, blob)
@@ -633,10 +653,7 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 				return status.Errorf(codes.FailedPrecondition, "expected chunk count doesn't match: expected (%v), actual (%v)", blob.ChunkCount, count)
 			}
 			blob.ChunkCount = count
-			record.ChunkCount = count
 			blob.Size = size
-		} else {
-			record.ChunkCount = 0
 		}
 		if blob.Status != blobref.StatusReady {
 			if blob.Ready() != nil {
@@ -644,15 +661,16 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 			}
 		}
 		blob.Timestamps.Update()
+
+		// Set the expiration time of the new BlobRef to be the same as the Record
+		blob.ExpiresAt = record.ExpiresAt
 		if _, err := tx.Mutate(ds.NewUpdate(m.createBlobKey(blob.Key), blob)); err != nil {
 			return err
 		}
 
-		// Call the custom defined updater method as well to modify the record.
-		record, err := updater(record)
-		if err != nil {
-			return err
-		}
+		// Update the record with the updated blob info.
+		record.ChunkCount = blob.ChunkCount
+		record.BlobSize = blob.Size
 		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record)); err != nil {
 			return err
 		}
@@ -776,10 +794,11 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 }
 
 // DeleteChunkRef deletes the ChunkRef object from the database.
+//   - force argument allows to bypass the status check on the chunkref.
 // Returned errors:
 //   - NotFound: the chunkref object is not found.
 //   - FailedPrecondition: the chunkref status is Ready and can't be deleted.
-func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) error {
+func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID, force bool) error {
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteChunkRef")
 	defer span.End()
 
@@ -788,7 +807,7 @@ func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) err
 		if err := tx.Get(m.createChunkRefKey(blobKey, key), &chunk); err != nil {
 			return err
 		}
-		if chunk.Status == blobref.StatusReady {
+		if !force && chunk.Status == blobref.StatusReady {
 			return status.Error(codes.FailedPrecondition, "chunk is currently marked as ready. mark it for deletion first")
 		}
 		return tx.Delete(m.createChunkRefKey(blobKey, key))
@@ -802,7 +821,7 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.ListBlobRefsByStatus")
 	defer span.End()
 
-	query := m.newQuery(blobKind).Filter("Status = ", int(status))
+	query := m.newQuery(blobKind).FilterField("Status", "=", int(status))
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
 }
@@ -813,7 +832,7 @@ func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Statu
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.ListChunkRefsByStatus")
 	defer span.End()
 
-	query := m.newQuery(chunkKind).Filter("Status = ", int(status))
+	query := m.newQuery(chunkKind).FilterField("Status", "=", int(status))
 	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
 
@@ -829,22 +848,23 @@ func (m *MetaDB) GetChildChunkRefs(ctx context.Context, blobKey uuid.UUID) *chun
 
 // addPropertyFilter augments a query with the QueryFilter operations.
 func addPropertyFilter(q *ds.Query, f *pb.QueryFilter) (*ds.Query, error) {
-	filter := propertiesField + "." + f.PropertyName
+	fieldName := propertiesField + "." + f.PropertyName
+	var operator string
 	switch f.Operator {
 	case pb.FilterOperator_EQUAL:
-		filter += "="
+		operator = "="
 	case pb.FilterOperator_GREATER:
-		filter += ">"
+		operator = ">"
 	case pb.FilterOperator_LESS:
-		filter += "<"
+		operator = "<"
 	case pb.FilterOperator_GREATER_OR_EQUAL:
-		filter += ">="
+		operator = ">="
 	case pb.FilterOperator_LESS_OR_EQUAL:
-		filter += "<="
+		operator = "<="
 	default:
 		return nil, status.Errorf(codes.Unimplemented, "unknown filter operator detected: %+v", f.Operator)
 	}
-	return q.Filter(filter, record.ExtractValue(f.Value)), nil
+	return q.FilterField(fieldName, operator, record.ExtractValue(f.Value)), nil
 }
 
 // QueryRecords returns a list of records that match the given filters.
@@ -858,7 +878,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 		query = query.Ancestor(dsKey)
 	}
 	if owner := req.GetOwnerId(); owner != "" {
-		query = query.Filter(ownerField+"=", owner)
+		query = query.FilterField(ownerField, "=", owner)
 	}
 	for _, f := range req.GetFilters() {
 		q, err := addPropertyFilter(query, f)
@@ -868,7 +888,7 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 		query = q
 	}
 	for _, t := range req.GetTags() {
-		query = query.Filter(tagsField+"=", t)
+		query = query.FilterField(tagsField, "=", t)
 	}
 	for _, s := range req.GetSortOrders() {
 		var property string
@@ -1004,7 +1024,7 @@ func (m *MetaDB) createDatastoreKeys(storeKeys, recordKeys []string) ([]*ds.Key,
 	return keys, nil
 }
 
-func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, storeKey, recordKey string, blobKey uuid.UUID, number int32) ([]*chunkref.ChunkRef, error) {
+func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, blobKey uuid.UUID, number int32) ([]*chunkref.ChunkRef, error) {
 	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blobKey)).FilterField("Number", "=", number)
 	iter := m.client.Run(ctx, query)
 
@@ -1022,6 +1042,24 @@ func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, 
 	return chunks, nil
 }
 
+// FindBlobChunkRefsByNumber returns the list of ChunkRef objects associated to a BlobRef sharing the same number.
+func (m *MetaDB) FindBlobChunkRefsByNumber(ctx context.Context, blobKey uuid.UUID, number int32) ([]*chunkref.ChunkRef, error) {
+	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.FindBlobChunkRefsByNumber")
+	defer span.End()
+
+	var chunks []*chunkref.ChunkRef
+	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+		foundChunks, err := m.findChunkRefsByNumber(ctx, tx, blobKey, number)
+		chunks = foundChunks
+		return err
+	}, ds.ReadOnly)
+	if err != nil {
+		return nil, datastoreErrToGRPCStatus(err)
+	}
+
+	return chunks, nil
+}
+
 // FindChunkRefByNumber returns a ChunkRef object for the specified store, record, and number.
 // The ChunkRef must be Ready and the chunk upload session must be committed.
 func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey string, number int32) (*chunkref.ChunkRef, error) {
@@ -1034,7 +1072,7 @@ func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey s
 		if err != nil {
 			return err
 		}
-		chunks, err = m.findChunkRefsByNumber(ctx, tx, storeKey, recordKey, blob.Key, number)
+		chunks, err = m.findChunkRefsByNumber(ctx, tx, blob.Key, number)
 		return err
 	}, ds.ReadOnly)
 	if err != nil {
@@ -1077,22 +1115,6 @@ func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chun
 			return err
 		}
 
-		// Mark any other (should be at most one though) Ready chunks for deletion.
-		otherChunks, err := m.findChunkRefsByNumber(ctx, tx, blob.StoreKey, blob.RecordKey, chunk.BlobRef, chunk.Number)
-		if err != nil {
-			return err
-		}
-		for _, o := range otherChunks {
-			if o.Status == blobref.StatusReady {
-				if err := o.MarkForDeletion(); err != nil {
-					return err
-				}
-				o.Timestamps.Update()
-				if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createChunkRefKey(blob.Key, o.Key), o)); err != nil {
-					return err
-				}
-			}
-		}
 		return nil
 	})
 	return err
@@ -1126,6 +1148,8 @@ func (m *MetaDB) MarkUncommittedBlobForDeletion(ctx context.Context, key uuid.UU
 		if err := blob.MarkForDeletion(); err != nil {
 			return err
 		}
+		// Mark the blob as expired so the TTL can handle deletion.
+		blob.MarkAsExpired()
 		blob.Timestamps.Update()
 		return m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createBlobKey(key), blob))
 	})

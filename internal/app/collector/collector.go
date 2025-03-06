@@ -215,7 +215,7 @@ func (c *Collector) deleteMatchingChunkRefs(ctx context.Context, status blobref.
 				log.Errorf("deleteChunk failed for chunk (%v): %v", chunk.Key, err)
 				continue
 			}
-			if err := c.metaDB.DeleteChunkRef(ctx, chunk.BlobRef, chunk.Key); err != nil {
+			if err := c.metaDB.DeleteChunkRef(ctx, chunk.BlobRef, chunk.Key, false); err != nil {
 				log.Errorf("DeleteChunkRef failed for chunk (%v): %v", chunk.Key, err)
 			}
 		}

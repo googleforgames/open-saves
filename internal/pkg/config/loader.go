@@ -101,7 +101,7 @@ func Load(path string) (*ServiceConfig, error) {
 		Bucket:                     viper.GetString(OpenSavesBucket),
 		Project:                    viper.GetString(OpenSavesProject),
 		ShutdownGracePeriod:        viper.GetDuration(ShutdownGracePeriod),
-		EnableMetrics:              viper.GetBool(EnableTrace),
+		EnableMetrics:              viper.GetBool(EnableMetrics),
 		MetricsEnableGRPCCollector: viper.GetBool(MetricsEnableGRPCCollector),
 		MetricsEnableHTTPCollector: viper.GetBool(MetricsEnableHTTPCollector),
 		EnableTrace:                viper.GetBool(EnableTrace),
@@ -138,6 +138,7 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	blobConfig := BlobConfig{
+		DefaultExpireAtHours: viper.GetInt(BlobDefaultExpireAtDays),
 		MaxInlineSize: viper.GetInt(BlobMaxInlineSize),
 	}
 

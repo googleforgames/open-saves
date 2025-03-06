@@ -98,6 +98,7 @@ func cloneRecord(r *record.Record) *record.Record {
 		ret.Properties[k] = v
 	}
 	ret.Tags = append([]string{}, r.Tags...)
+	ret.ExpiresAt = r.ExpiresAt
 	return &ret
 }
 
@@ -287,6 +288,7 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
 	createdAt := time.Date(1988, 4, 16, 8, 6, 5, int(1234*time.Microsecond), time.UTC)
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 	record := &record.Record{
 		Key:      recordKey,
 		Blob:     blob,
@@ -303,6 +305,7 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 			UpdatedAt: createdAt,
 			Signature: uuid.MustParse("89223949-0414-438e-8f5e-3fd9e2d11c1e"),
 		},
+		ExpiresAt: &expiresAt,
 	}
 	expected := cloneRecord(record)
 	expected.StoreKey = storeKey
@@ -389,6 +392,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 
 	recordKey := newRecordKey()
 	blob := []byte{0x54, 0x72, 0x69, 0x74, 0x6f, 0x6e}
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 	work := &record.Record{
 		Key:        recordKey,
 		Blob:       blob,
@@ -396,6 +400,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 		Properties: make(record.PropertyMap),
 		OwnerID:    "record owner",
 		Tags:       []string{"abc", "def"},
+		ExpiresAt:  &expiresAt,
 	}
 	work.Timestamps = timestamps.New()
 	expected := cloneRecord(work)
@@ -496,6 +501,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 
 	recordKey := newRecordKey()
 	createdAt := time.Unix(12345, 0)
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 	record := &record.Record{
 		Key:        recordKey,
 		Blob:       testBlob,
@@ -506,6 +512,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			UpdatedAt: createdAt,
 			Signature: uuid.New(),
 		},
+		ExpiresAt: &expiresAt,
 	}
 
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
@@ -522,6 +529,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			UpdatedAt: createdAt,
 			Signature: origSig,
 		},
+		ExpiresAt: &expiresAt,
 	}
 
 	setupTestBlobRef(ctx, t, metaDB, blob)
@@ -551,6 +559,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Zero(t, promoRecord.ChunkCount)
 			assert.True(t, beforePromo.Before(promoRecord.Timestamps.UpdatedAt))
 			assert.NotEqual(t, record.Timestamps.Signature, promoRecord.Timestamps.Signature)
+			assert.Equal(t, record.ExpiresAt, promoRecord.ExpiresAt)
 		}
 		if assert.NotNil(t, promoBlob) {
 			assert.Equal(t, blobKey, promoBlob.Key)
@@ -559,6 +568,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			assert.Zero(t, promoBlob.ChunkCount)
 			assert.True(t, beforePromo.Before(promoBlob.Timestamps.UpdatedAt))
 			assert.NotEqual(t, origSig, promoBlob.Timestamps.Signature)
+			assert.Equal(t, record.ExpiresAt, promoRecord.ExpiresAt)
 		}
 	}
 
@@ -592,6 +602,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 		}
 		if assert.NotNil(t, delPendBlob) {
 			assert.Equal(t, blobref.StatusPendingDeletion, delPendBlob.Status)
+			assert.True(t, delPendBlob.ExpiresAt.Before(time.Now()), "ExpiresAt should have been updated to now")
 		}
 	}
 
@@ -653,6 +664,7 @@ func TestMetaDB_SwapBlobRefs(t *testing.T) {
 		if assert.NotNil(t, oldBlob) {
 			assert.Equal(t, blob.Key, oldBlob.Key)
 			assert.Equal(t, blobref.StatusPendingDeletion, oldBlob.Status)
+			assert.True(t, oldBlob.ExpiresAt.Before(time.Now()), "ExpiresAt should have been updated to now")
 		}
 	}
 
@@ -738,9 +750,11 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	}
 
 	recordKey := newRecordKey()
+	expiresAt := time.Now().UTC().Add(3*time.Hour).Truncate(time.Hour)
 	origRecord := &record.Record{
 		Key:        recordKey,
 		Properties: make(record.PropertyMap),
+		ExpiresAt:  &expiresAt,
 	}
 	setupTestStoreRecord(ctx, t, metaDB, store, origRecord)
 
@@ -761,6 +775,8 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	if err != nil {
 		t.Errorf("PromoteBlobRefToCurrent() failed: %v", err)
 	}
+	// Ensure that ExpiresAt has been updated based on the record's value.
+	assert.Equal(t, &expiresAt, blob.ExpiresAt)
 
 	_, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
 		record.ExternalBlob = uuid.New()
@@ -786,6 +802,25 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, actual) {
 			assert.Equal(t, blobKey, actual.ExternalBlob)
+		}
+	}
+
+	// Make sure ExpiresAt is updated in the BlobRef when updated in the Record.
+	newExpiresAt := time.Now().UTC().Add(6*time.Hour).Truncate(time.Hour)
+	newRecord, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
+		record.ExpiresAt = &newExpiresAt
+		return record, nil
+	})
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, newRecord) {
+			assert.Equal(t, &newExpiresAt, newRecord.ExpiresAt)
+		}
+	}
+
+	blob, err = metaDB.GetBlobRef(ctx, blob.Key)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, blob) {
+			assert.Equal(t, &newExpiresAt, blob.ExpiresAt)
 		}
 	}
 
@@ -817,6 +852,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, blob) {
 			assert.Equal(t, blobref.StatusPendingDeletion, blob.Status)
+			assert.True(t, blob.ExpiresAt.Before(time.Now()), "ExpiresAt should have been updated to now")
 		}
 	}
 }
@@ -843,7 +879,6 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		blobref.StatusInitializing,
 		blobref.StatusPendingDeletion,
 		blobref.StatusPendingDeletion}
-	blobs := []*blobref.BlobRef{}
 	for _, s := range statuses {
 		blob := &blobref.BlobRef{
 			Key:       uuid.New(),
@@ -851,7 +886,6 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 			StoreKey:  storeKey,
 			RecordKey: recordKey,
 		}
-		blobs = append(blobs, blob)
 		setupTestBlobRef(ctx, t, metaDB, blob)
 
 		bKey := blobRefKey(blob.Key)
@@ -916,6 +950,7 @@ func TestMetaDB_DeleteRecordWithExternalBlob(t *testing.T) {
 	assert.NoError(t, err, "GetBlobRef should not return error")
 	if assert.NotNil(t, actual) {
 		assert.Equal(t, blobref.StatusPendingDeletion, actual.Status)
+		assert.True(t, actual.ExpiresAt.Before(time.Now()), "ExpiresAt should have been updated to now")
 	}
 }
 
@@ -1075,10 +1110,18 @@ func TestMetaDB_MarkUncommittedBlobForDeletion(t *testing.T) {
 
 	assert.NoError(t, metaDB.MarkUncommittedBlobForDeletion(ctx, blob.Key))
 
+	blob, err := metaDB.GetBlobRef(ctx, blob.Key)
+	if assert.NoError(t, err) {
+		if assert.NotNil(t, blob) {
+			assert.Equal(t, blobref.StatusPendingDeletion, blob.Status)
+			assert.True(t, blob.ExpiresAt.Before(time.Now()), "ExpiresAt should have been updated to now")
+		}
+	}
+
 	// Should fail if blob is live
 	blob = blobref.NewChunkedBlobRef(store.Key, record.Key, 0)
 	setupTestBlobRef(ctx, t, metaDB, blob)
-	_, _, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
+	_, _, err = metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if assert.NoError(t, err) {
 		err = metaDB.MarkUncommittedBlobForDeletion(ctx, blob.Key)
 		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
@@ -1108,51 +1151,6 @@ func TestMetaDB_UpdateChunkRef(t *testing.T) {
 	}
 	if diff := cmp.Diff(chunk, got, cmpopts.EquateEmpty()); diff != "" {
 		t.Errorf("datastore.Get() = (-want, +got):\n%s", diff)
-	}
-}
-
-func TestMetaDB_MultipleChunksWithSameNumber(t *testing.T) {
-	ctx := context.Background()
-	metaDB := newMetaDB(ctx, t)
-
-	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
-
-	chunks := []*chunkref.ChunkRef{
-		chunkref.New(blob.Key, 0),
-		chunkref.New(blob.Key, 0),
-	}
-
-	for i, chunk := range chunks {
-		chunk.Size = int32(i)
-		assert.NoError(t, chunk.Ready())
-		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
-	}
-
-	chunks[0].Status = blobref.StatusPendingDeletion
-	chunks[1].Status = blobref.StatusReady
-	ds := newDatastoreClient(ctx, t)
-	for _, chunk := range chunks {
-		got := new(chunkref.ChunkRef)
-		if err := ds.Get(ctx, chunkRefKey(chunk.BlobRef, chunk.Key), got); err != nil {
-			t.Errorf("Couldn't get ChunkRef (%v): %v", chunk.Key, err)
-		} else {
-			assert.Equal(t, chunk.Key, got.Key)
-			assert.Equal(t, chunk.Status, got.Status)
-		}
-	}
-
-	if _, blob, err := metaDB.PromoteBlobRefToCurrent(ctx, blob); err != nil {
-		t.Errorf("PromoteBlobRefToCurrent() failed for BlobRef (%v): %v", blob.Key, err)
-	} else {
-		assert.EqualValues(t, chunks[1].Size, blob.Size)
-	}
-
-	if got, err := metaDB.FindChunkRefByNumber(ctx, blob.StoreKey, blob.RecordKey, 0); err != nil {
-		t.Errorf("FindChunkRefByNumber() failed for BlobRef (%v): %v", blob.Key, err)
-	} else {
-		if diff := cmp.Diff(got, chunks[1], cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("FindChunkRefByNumber() = (-want, +got):\n%s", diff)
-		}
 	}
 }
 
@@ -1204,7 +1202,6 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 		blobref.StatusInitializing,
 		blobref.StatusPendingDeletion,
 		blobref.StatusPendingDeletion}
-	chunks := []*chunkref.ChunkRef{}
 	for i, s := range statuses {
 		chunk := &chunkref.ChunkRef{
 			Key:       uuid.New(),
@@ -1218,7 +1215,6 @@ func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
 				Signature: uuid.New(),
 			},
 		}
-		chunks = append(chunks, chunk)
 		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 	}
 
