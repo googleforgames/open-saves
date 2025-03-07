@@ -57,7 +57,7 @@ type BlobRef struct {
 	// ExpiresAt is the timestamp when the TTL feature of Datastore will delete the BlobRef.
 	// If it is not present, the BlobRef is considered to live forever.
 	// ExpiresAt is NOT managed by MetaDB, hence it cannot be part of `timestamps.Timestamps`.
-	ExpiresAt time.Time `datastore:",noindex"`
+	ExpiresAt time.Time `datastore:",noindex,omitempty"`
 }
 
 // Assert Blob implements both PropertyLoadSave and KeyLoader.
