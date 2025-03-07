@@ -200,11 +200,10 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 			r.Properties = updateTo.Properties
 			r.Tags = updateTo.Tags
 			r.OpaqueString = updateTo.OpaqueString
-			// Only update expiration timestamp if present in the request.
-			// Once expiration is set it cannot be removed via updates.
-			if updateTo.ExpiresAt != nil {
-				r.ExpiresAt = updateTo.ExpiresAt
-			}
+			// If the update request does not include a new ExpiresAt value
+			// then here it will be time's zero value and thus it will be ignored when saving.
+			// In other words, once expiration is set it cannot be removed via updates.
+			r.ExpiresAt = updateTo.ExpiresAt
 			return r, nil
 		})
 	if err != nil {
@@ -528,8 +527,8 @@ func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateC
 
 	b := blobref.NewChunkedBlobRef(req.GetStoreKey(), req.GetRecordKey(), req.GetChunkCount())
 	// Set the temporary ExpiresAt to allow clean up of incomplete uploads.
-	expiresAt := time.Now().Add(time.Duration(s.BlobConfig.DefaultExpireAtHours) * time.Hour)
-	b.ExpiresAt = &expiresAt
+	expiresAt := time.Now().Add(s.BlobConfig.DefaultGarbageCollectionTTL)
+	b.ExpiresAt = expiresAt
 
 	b, err := s.metaDB.InsertBlobRef(ctx, b)
 	if err != nil {
@@ -751,11 +750,10 @@ func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.Commi
 			r.Properties = updateTo.Properties
 			r.Tags = updateTo.Tags
 			r.OpaqueString = updateTo.OpaqueString
-			// Only update expiration timestamp if present in the request.
-			// Once expiration is set it cannot be removed via updates.
-			if updateTo.ExpiresAt != nil {
-				r.ExpiresAt = updateTo.ExpiresAt
-			}
+			// If the update request does not include a new ExpiresAt value
+			// then here it will be time's zero value and thus it will be ignored when saving.
+			// In other words, once expiration is set it cannot be removed via updates.
+			r.ExpiresAt = updateTo.ExpiresAt
 			return r, nil
 		})
 		if err != nil {

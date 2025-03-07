@@ -305,7 +305,7 @@ func TestMetaDB_SimpleCreateGetDeleteRecord(t *testing.T) {
 			UpdatedAt: createdAt,
 			Signature: uuid.MustParse("89223949-0414-438e-8f5e-3fd9e2d11c1e"),
 		},
-		ExpiresAt: &expiresAt,
+		ExpiresAt: expiresAt,
 	}
 	expected := cloneRecord(record)
 	expected.StoreKey = storeKey
@@ -400,7 +400,7 @@ func TestMetaDB_UpdateRecord(t *testing.T) {
 		Properties: make(record.PropertyMap),
 		OwnerID:    "record owner",
 		Tags:       []string{"abc", "def"},
-		ExpiresAt:  &expiresAt,
+		ExpiresAt:  expiresAt,
 	}
 	work.Timestamps = timestamps.New()
 	expected := cloneRecord(work)
@@ -512,7 +512,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			UpdatedAt: createdAt,
 			Signature: uuid.New(),
 		},
-		ExpiresAt: &expiresAt,
+		ExpiresAt: expiresAt,
 	}
 
 	setupTestStoreRecord(ctx, t, metaDB, store, record)
@@ -529,7 +529,7 @@ func TestMetaDB_SimpleCreateGetDeleteBlobRef(t *testing.T) {
 			UpdatedAt: createdAt,
 			Signature: origSig,
 		},
-		ExpiresAt: &expiresAt,
+		ExpiresAt: expiresAt,
 	}
 
 	setupTestBlobRef(ctx, t, metaDB, blob)
@@ -754,7 +754,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	origRecord := &record.Record{
 		Key:        recordKey,
 		Properties: make(record.PropertyMap),
-		ExpiresAt:  &expiresAt,
+		ExpiresAt:  expiresAt,
 	}
 	setupTestStoreRecord(ctx, t, metaDB, store, origRecord)
 
@@ -808,7 +808,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	// Make sure ExpiresAt is updated in the BlobRef when updated in the Record.
 	newExpiresAt := time.Now().UTC().Add(6*time.Hour).Truncate(time.Hour)
 	newRecord, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
-		record.ExpiresAt = &newExpiresAt
+		record.ExpiresAt = newExpiresAt
 		return record, nil
 	})
 	if assert.NoError(t, err) {

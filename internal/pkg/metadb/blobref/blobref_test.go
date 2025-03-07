@@ -109,7 +109,7 @@ func TestBlobRef_Save(t *testing.T) {
 			UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 			Signature: uuid.MustParse("397f94f5-f851-4969-8bd8-7828abc473a6"),
 		},
-		ExpiresAt: &expiresAt,
+		ExpiresAt: expiresAt,
 	}
 
 	want := []datastore.Property{
@@ -282,7 +282,7 @@ func TestBlobRef_Load(t *testing.T) {
 					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 					Signature: uuid.MustParse("397f94f5-f851-4969-8bd8-7828abc473a6"),
 				},
-				ExpiresAt: &expiresAt,
+				ExpiresAt: expiresAt,
 			},
 		},
 	}

@@ -57,7 +57,7 @@ func TestRecord_Save(t *testing.T) {
 			UpdatedAt: updatedAt,
 			Signature: signature,
 		},
-		ExpiresAt: &expiresAt,
+		ExpiresAt: expiresAt,
 	}
 	properties, err := record.Save()
 	if err != nil {
@@ -248,7 +248,7 @@ func TestRecord_Load(t *testing.T) {
 					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 					Signature: uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6"),
 				},
-				ExpiresAt: &expiresAt,
+				ExpiresAt: expiresAt,
 			},
 		},
 		{
@@ -348,7 +348,7 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 					Signature: signature,
 				},
-				ExpiresAt: &expiresAt,
+				ExpiresAt: expiresAt,
 			},
 			want: &pb.Record{
 				Key:        "key",
@@ -436,7 +436,7 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 			Signature: signature,
 		},
 		StoreKey:  "test store key",
-		ExpiresAt: &expiresAt,
+		ExpiresAt: expiresAt,
 	}
 	actual, err := FromProto("test store key", proto)
 	assert.Equal(t, expected, actual)
@@ -501,6 +501,7 @@ func TestRecord_SerializeRecord(t *testing.T) {
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
+			ExpiresAt: expiresAt,
 		},
 		{
 			Key: "some-key",
@@ -522,6 +523,7 @@ func TestRecord_SerializeRecord(t *testing.T) {
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
+			ExpiresAt: expiresAt,
 		},
 		{
 			Key:       "some-key",
@@ -534,7 +536,7 @@ func TestRecord_SerializeRecord(t *testing.T) {
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
-			ExpiresAt: &expiresAt,
+			ExpiresAt: expiresAt,
 		},
 	}
 

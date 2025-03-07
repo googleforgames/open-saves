@@ -92,7 +92,7 @@ func (m *PropertyMap) Save() ([]datastore.Property, error) {
 // Load implements the Datastore PropertyLoadSaver interface and converts
 // individual properties to PropertyMap.
 func (m *PropertyMap) Load(ps []datastore.Property) error {
-	if ps == nil || len(ps) == 0 {
+	if len(ps) == 0 {
 		// No custom properties
 		return nil
 	}

@@ -36,8 +36,8 @@ const (
 	RedisMinRetryBackoff = "redis_min_retry_backoff"
 	RedisMaxRetryBackoff = "redis_max_retry_backoff"
 
-	BlobDefaultExpireAtDays = "blob_default_expire_at_hours"
-	BlobMaxInlineSize       = "blob_max_inline_size"
+	DefaultGarbageCollectionTTL = "blob_default_garbage_collection_ttl"
+	BlobMaxInlineSize           = "blob_max_inline_size"
 
 	GRPCKeepAliveMaxConnectionIdle     = "grpc_keepalive_max_connection_idle"
 	GRPCKeepAliveMaxConnectionAge      = "grpc_keepalive_max_connection_age"
@@ -111,8 +111,8 @@ type RedisConfig struct {
 
 // BlobConfig has Open Saves blob related configurations.
 type BlobConfig struct {
-	DefaultExpireAtHours int
-	MaxInlineSize int
+	DefaultGarbageCollectionTTL time.Duration
+	MaxInlineSize               int
 }
 
 // GRPCServerConfig has the configurations for grpc server, for now keepAlive parameters

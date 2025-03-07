@@ -24,7 +24,6 @@ import (
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
 	"github.com/vmihailenco/msgpack/v5"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Assert PropertyMap implements PropertyLoadSave.
@@ -60,7 +59,7 @@ type Record struct {
 	// ExpiresAt is the timestamp when the TTL feature of Datastore will delete the record.
 	// If it is not present, the record is considered to live forever.
 	// ExpiresAt is NOT managed by MetaDB, hence it cannot be part of `timestamps.Timestamps`.
-	ExpiresAt *time.Time `datastore:",noindex"`
+	ExpiresAt time.Time `datastore:",noindex,omitempty"`
 }
 
 // Assert Record implements both PropertyLoadSave and KeyLoader.
@@ -133,11 +132,6 @@ func (r *Record) ToProto() *pb.Record {
 		return nil
 	}
 
-	var expiresAtProto *timestamppb.Timestamp
-	if r.ExpiresAt != nil {
-		expiresAtProto = timestamps.TimeToProto(*r.ExpiresAt)
-	}
-
 	ret := &pb.Record{
 		Key:          r.Key,
 		BlobSize:     r.BlobSize,
@@ -150,7 +144,7 @@ func (r *Record) ToProto() *pb.Record {
 		CreatedAt:    timestamps.TimeToProto(r.Timestamps.CreatedAt),
 		UpdatedAt:    timestamps.TimeToProto(r.Timestamps.UpdatedAt),
 		Signature:    r.Timestamps.Signature[:],
-		ExpiresAt:    expiresAtProto,
+		ExpiresAt:    timestamps.TimeToProto(r.ExpiresAt),
 	}
 	return ret
 }
@@ -169,10 +163,9 @@ func FromProto(storeKey string, p *pb.Record) (*Record, error) {
 		}
 	}
 
-	var expiresAt *time.Time
+	var expiresAt time.Time
 	if p.GetExpiresAt() != nil {
-		tmpExpiresAt := p.GetExpiresAt().AsTime()
-		expiresAt = &tmpExpiresAt
+		expiresAt = p.GetExpiresAt().AsTime()
 	}
 
 	return &Record{

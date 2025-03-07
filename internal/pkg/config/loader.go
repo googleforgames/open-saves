@@ -138,8 +138,8 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	blobConfig := BlobConfig{
-		DefaultExpireAtHours: viper.GetInt(BlobDefaultExpireAtDays),
-		MaxInlineSize: viper.GetInt(BlobMaxInlineSize),
+		DefaultGarbageCollectionTTL: viper.GetDuration(DefaultGarbageCollectionTTL),
+		MaxInlineSize:               viper.GetInt(BlobMaxInlineSize),
 	}
 
 	grpcServerConfig := GRPCServerConfig{

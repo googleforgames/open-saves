@@ -19,7 +19,7 @@ redis_max_retries: 3
 redis_min_retry_backoff: "8ms"
 redis_max_retry_backoff: "512ms"
 
-blob_default_expire_at_hours: 24
+blob_default_garbage_collection_ttl: "24h"
 blob_max_inline_size: 65536
 
 grpc_keepalive_max_connection_idle: "5m"
