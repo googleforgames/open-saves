@@ -30,7 +30,6 @@ import (
 	m "github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/record"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -776,7 +775,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 		t.Errorf("PromoteBlobRefToCurrent() failed: %v", err)
 	}
 	// Ensure that ExpiresAt has been updated based on the record's value.
-	assert.Equal(t, &expiresAt, blob.ExpiresAt)
+	assert.Equal(t, expiresAt, blob.ExpiresAt)
 
 	_, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
 		record.ExternalBlob = uuid.New()
@@ -813,14 +812,14 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	})
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, newRecord) {
-			assert.Equal(t, &newExpiresAt, newRecord.ExpiresAt)
+			assert.Equal(t, newExpiresAt, newRecord.ExpiresAt)
 		}
 	}
 
 	blob, err = metaDB.GetBlobRef(ctx, blob.Key)
 	if assert.NoError(t, err) {
 		if assert.NotNil(t, blob) {
-			assert.Equal(t, &newExpiresAt, blob.ExpiresAt)
+			assert.Equal(t, newExpiresAt, blob.ExpiresAt)
 		}
 	}
 
@@ -1007,28 +1006,15 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 
 	store, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
 
-	// Create Chunks with Initializing state
+	// Create Chunks
 	chunks := []*chunkref.ChunkRef{}
 	for i := 0; i < testChunkCount; i++ {
 		chunk := chunkref.New(blob.Key, int32(i))
 		chunk.Size = testChunkSize
-		if err := chunk.Ready(); err != nil {
-			t.Fatalf("Ready() failed for chunk (%v): %v", chunk.Key, err)
-		}
 		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
 		chunks = append(chunks, chunk)
 	}
 
-	// Mark the chunks ready
-	for _, chunk := range chunks {
-		dsKey := chunkRefKey(chunk.BlobRef, chunk.Key)
-		got := new(chunkref.ChunkRef)
-		if err := ds.Get(ctx, dsKey, got); err != nil {
-			t.Errorf("Failed to get updated ChunkRef (%v): %v", dsKey, err)
-		} else {
-			assert.Equal(t, blobref.StatusReady, got.Status)
-		}
-	}
 	record, blobRetrieved, err := metaDB.PromoteBlobRefToCurrent(ctx, blob)
 	if err != nil {
 		t.Fatalf("PromoteBlobRefToCurrent() failed: %v", err)
@@ -1071,18 +1057,6 @@ func TestMetaDB_SimpleCreateGetDeleteChunkedBlob(t *testing.T) {
 			assert.Zero(t, record.BlobSize)
 			assert.False(t, record.Chunked)
 			assert.Zero(t, record.ChunkCount)
-		}
-	}
-
-	// Check if child chunks are marked as well
-	for _, chunk := range chunks {
-		got := new(chunkref.ChunkRef)
-		if err := ds.Get(ctx, chunkRefKey(chunk.BlobRef, chunk.Key), got); err != nil {
-			t.Errorf("Couldn't get chunk (%v) after RemoveBlobFromRecord: %v", chunk.Key, err)
-		} else {
-			assert.Equal(t, chunk.Key, got.Key)
-			assert.True(t, got.Timestamps.UpdatedAt.After(chunk.Timestamps.UpdatedAt))
-			assert.Equal(t, blobref.StatusPendingDeletion, got.Status)
 		}
 	}
 
@@ -1132,28 +1106,6 @@ func TestMetaDB_MarkUncommittedBlobForDeletion(t *testing.T) {
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
 
-func TestMetaDB_UpdateChunkRef(t *testing.T) {
-	ctx := context.Background()
-	metaDB := newMetaDB(ctx, t)
-
-	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
-
-	chunk := chunkref.New(blob.Key, 0)
-	setupTestChunkRef(ctx, t, metaDB, blob, chunk)
-
-	chunk.Fail()
-	assert.NoError(t, metaDB.UpdateChunkRef(ctx, chunk))
-
-	ds := newDatastoreClient(ctx, t)
-	got := new(chunkref.ChunkRef)
-	if err := ds.Get(ctx, chunkRefKey(chunk.BlobRef, chunk.Key), got); err != nil {
-		t.Errorf("datastore.Get() failed: %v", err)
-	}
-	if diff := cmp.Diff(chunk, got, cmpopts.EquateEmpty()); diff != "" {
-		t.Errorf("datastore.Get() = (-want, +got):\n%s", diff)
-	}
-}
-
 func TestMetaDB_GetChildChunkRefs(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDB(ctx, t)
@@ -1165,8 +1117,6 @@ func TestMetaDB_GetChildChunkRefs(t *testing.T) {
 		chunkref.New(blob.Key, 1),
 		chunkref.New(blob.Key, 2),
 	}
-	chunks[1].Status = blobref.StatusError
-	chunks[2].Status = blobref.StatusPendingDeletion
 
 	for _, chunk := range chunks {
 		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
@@ -1188,69 +1138,6 @@ func TestMetaDB_GetChildChunkRefs(t *testing.T) {
 	}
 	if _, err := cur.Next(); !errors.Is(err, iterator.Done) {
 		t.Errorf("Next() = %v, want = iterator.Done", err)
-	}
-}
-
-func TestMetaDB_ListChunkRefsByStatus(t *testing.T) {
-	ctx := context.Background()
-	metaDB := newMetaDB(ctx, t)
-
-	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
-
-	statuses := []blobref.Status{
-		blobref.StatusError,
-		blobref.StatusInitializing,
-		blobref.StatusPendingDeletion,
-		blobref.StatusPendingDeletion}
-	for i, s := range statuses {
-		chunk := &chunkref.ChunkRef{
-			Key:       uuid.New(),
-			BlobRef:   blob.Key,
-			Status:    s,
-			Number:    int32(i),
-			Checksums: checksumstest.RandomChecksums(t),
-			Timestamps: timestamps.Timestamps{
-				CreatedAt: time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC),
-				UpdatedAt: time.Date(2000, 1, i, 0, 0, 0, 0, time.UTC),
-				Signature: uuid.New(),
-			},
-		}
-		setupTestChunkRef(ctx, t, metaDB, blob, chunk)
-	}
-
-	testCase := []struct {
-		name   string
-		status blobref.Status
-	}{
-		{
-			"not found",
-			blobref.StatusUnknown,
-		},
-		{
-			"PendingDeletion",
-			blobref.StatusPendingDeletion,
-		},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			iter := metaDB.ListChunkRefsByStatus(ctx, tc.status)
-			if iter == nil {
-				t.Fatalf("ListChunkRefsByStatus() = %v, want non-nil", iter)
-			}
-			c, err := iter.Next()
-			for err == nil {
-				if c.Status != tc.status {
-					t.Fatalf("got status %v, want %v", c.Status, tc.status)
-				}
-				c, err = iter.Next()
-			}
-			if !errors.Is(err, iterator.Done) {
-				t.Errorf("Next() = %v, want = iterator.Done", err)
-			}
-			if c != nil {
-				t.Errorf("Next() = %v, want = nil", iter)
-			}
-		})
 	}
 }
 

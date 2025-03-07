@@ -498,9 +498,8 @@ func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey stri
 	return blob, datastoreErrToGRPCStatus(err)
 }
 
-func (m *MetaDB) getReadyChunks(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) ([]*chunkref.ChunkRef, error) {
-	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blob.Key)).
-		FilterField("Status", "=", int(blobref.StatusReady))
+func (m *MetaDB) getChildChunks(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) ([]*chunkref.ChunkRef, error) {
+	query := m.newQuery(chunkKind).Transaction(tx).Ancestor(m.createBlobKey(blob.Key))
 	iter := m.client.Run(ctx, query)
 	chunks := []*chunkref.ChunkRef{}
 	for {
@@ -518,7 +517,7 @@ func (m *MetaDB) getReadyChunks(ctx context.Context, tx *ds.Transaction, blob *b
 
 // return size, chunk count, error
 func (m *MetaDB) chunkObjectsSizeSum(ctx context.Context, tx *ds.Transaction, blob *blobref.BlobRef) (int64, int64, error) {
-	chunks, err := m.getReadyChunks(ctx, tx, blob)
+	chunks, err := m.getChildChunks(ctx, tx, blob)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -569,11 +568,8 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 			if blob.ChunkCount != 0 && blob.ChunkCount != count {
 				return status.Errorf(codes.FailedPrecondition, "expected chunk count doesn't match: expected (%v), actual (%v)", blob.ChunkCount, count)
 			}
-			blob.ChunkCount = count
-			record.ChunkCount = count
 			blob.Size = size
-		} else {
-			record.ChunkCount = 0
+			blob.ChunkCount = count
 		}
 		if blob.Status != blobref.StatusReady {
 			if blob.Ready() != nil {
@@ -590,6 +586,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 		record.BlobSize = blob.Size
 		record.ExternalBlob = blob.Key
 		record.Chunked = blob.Chunked
+		record.ChunkCount = blob.ChunkCount
 		record.Timestamps.Update()
 		if err := m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record)); err != nil {
 			return err
@@ -718,25 +715,6 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 			return err
 		}
 
-		if blob.Chunked {
-			// Mark child chunks as well
-			chunks, err := m.getReadyChunks(ctx, tx, blob)
-			if err != nil {
-				return err
-			}
-			muts := []*ds.Mutation{}
-			for _, chunk := range chunks {
-				if err := chunk.MarkForDeletion(); err != nil {
-					return err
-				}
-				chunk.Timestamps.Update()
-				muts = append(muts, ds.NewUpdate(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk))
-			}
-			if _, err := tx.Mutate(muts...); err != nil {
-				return err
-			}
-		}
-
 		record, err = m.markBlobRefForDeletion(tx, record, blob, uuid.Nil)
 		if err != nil {
 			return err
@@ -794,11 +772,9 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 }
 
 // DeleteChunkRef deletes the ChunkRef object from the database.
-//   - force argument allows to bypass the status check on the chunkref.
 // Returned errors:
 //   - NotFound: the chunkref object is not found.
-//   - FailedPrecondition: the chunkref status is Ready and can't be deleted.
-func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID, force bool) error {
+func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) error {
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteChunkRef")
 	defer span.End()
 
@@ -806,9 +782,6 @@ func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID, for
 		var chunk chunkref.ChunkRef
 		if err := tx.Get(m.createChunkRefKey(blobKey, key), &chunk); err != nil {
 			return err
-		}
-		if !force && chunk.Status == blobref.StatusReady {
-			return status.Error(codes.FailedPrecondition, "chunk is currently marked as ready. mark it for deletion first")
 		}
 		return tx.Delete(m.createChunkRefKey(blobKey, key))
 	})
@@ -824,16 +797,6 @@ func (m *MetaDB) ListBlobRefsByStatus(ctx context.Context, status blobref.Status
 	query := m.newQuery(blobKind).FilterField("Status", "=", int(status))
 	iter := blobref.NewCursor(m.client.Run(ctx, query))
 	return iter, nil
-}
-
-// ListChunkRefsByStatus returns a cursor that iterates over ChunkRefs
-// where Status = status.
-func (m *MetaDB) ListChunkRefsByStatus(ctx context.Context, status blobref.Status) *chunkref.ChunkRefCursor {
-	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.ListChunkRefsByStatus")
-	defer span.End()
-
-	query := m.newQuery(chunkKind).FilterField("Status", "=", int(status))
-	return chunkref.NewCursor(m.client.Run(ctx, query))
 }
 
 // GetChildChunkRefs returns a ChunkRef cursor that iterats over child ChunkRef
@@ -1061,7 +1024,7 @@ func (m *MetaDB) FindBlobChunkRefsByNumber(ctx context.Context, blobKey uuid.UUI
 }
 
 // FindChunkRefByNumber returns a ChunkRef object for the specified store, record, and number.
-// The ChunkRef must be Ready and the chunk upload session must be committed.
+// The Chunk upload session must be committed.
 func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey string, number int32) (*chunkref.ChunkRef, error) {
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.FindChunkRefByNumber")
 	defer span.End()
@@ -1078,12 +1041,14 @@ func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey s
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
-	for _, c := range chunks {
-		if c.Status == blobref.StatusReady {
-			return c, nil
-		}
+
+	if len(chunks) == 0 {
+		return nil, status.Errorf(codes.NotFound, "chunk number (%v) was not found for record (%v)", number, recordKey)
+	} else if len(chunks) > 1 { // This should never happen, nonetheless, we verify it.
+		return nil, status.Errorf(codes.FailedPrecondition, "found multiple chunks with number (%v) found for record (%v)", number, recordKey)
 	}
-	return nil, status.Errorf(codes.NotFound, "chunk number (%v) was not found for record (%v)", number, recordKey)
+
+	return chunks[0], nil
 }
 
 // ValidateChunkRefPreconditions check if the parent blobref is chunked before attempting to upload any data
@@ -1118,16 +1083,6 @@ func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chun
 		return nil
 	})
 	return err
-}
-
-// UpdateChunkRef updates a ChunkRef object with the new property values.
-// Returns a NotFound error if the key is not found.
-func (m *MetaDB) UpdateChunkRef(ctx context.Context, chunk *chunkref.ChunkRef) error {
-	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.UpdateChunkRef")
-	defer span.End()
-
-	mut := ds.NewUpdate(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
-	return m.mutateSingle(ctx, mut)
 }
 
 // MarkUncommittedBlobForDeletion marks the BlobRef specified by key for deletion

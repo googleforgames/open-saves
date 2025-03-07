@@ -246,12 +246,6 @@ func TestCollector_DeletesChunkedBlobs(t *testing.T) {
 		chunk.Timestamps.UpdatedAt = time.Now()
 		chunks = append(chunks, chunk)
 	}
-	chunks[0].MarkForDeletion()
-	chunks[0].Timestamps.UpdatedAt = collector.cfg.Before.Add(-1 * time.Microsecond)
-	chunks[1].MarkForDeletion()
-	chunks[2].Fail()
-	chunks[2].Timestamps.UpdatedAt = collector.cfg.Before.Add(-1 * time.Microsecond)
-	chunks[3].Fail()
 
 	for _, c := range chunks {
 		setupTestChunkRef(ctx, t, collector, ds, blob, c)

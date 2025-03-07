@@ -101,7 +101,6 @@ func (c *Collector) run(ctx context.Context) {
 	}
 	for _, s := range statuses {
 		c.deleteMatchingBlobRefs(ctx, s, c.cfg.Before)
-		c.deleteMatchingChunkRefs(ctx, s, c.cfg.Before)
 	}
 }
 
@@ -109,12 +108,6 @@ func (c *Collector) deleteChunk(ctx context.Context, chunk *chunkref.ChunkRef) e
 	if err := c.blob.Delete(ctx, chunk.ObjectPath()); err != nil {
 		if gcerrors.Code(err) != gcerrors.NotFound {
 			log.Errorf("Blob.Delete failed for chunkref key(%v): %v", chunk.Key, err)
-			if chunk.Status != blobref.StatusError {
-				chunk.Fail()
-				if err := c.metaDB.UpdateChunkRef(ctx, chunk); err != nil {
-					log.Errorf("MetaDB.UpdateChunkRef failed for key(%v): %v", chunk.Key, err)
-				}
-			}
 			return err
 		} else {
 			log.Warnf("Blob (%v) was not found.", chunk.ObjectPath())
@@ -193,31 +186,6 @@ func (c *Collector) deleteMatchingBlobRefs(ctx context.Context, status blobref.S
 		}
 		if blob.Timestamps.UpdatedAt.Before(olderThan) {
 			c.deleteBlob(ctx, blob)
-		}
-	}
-	return nil
-}
-
-func (c *Collector) deleteMatchingChunkRefs(ctx context.Context, status blobref.Status, olderThan time.Time) error {
-	log.Infof("Garbage collecting ChunkRef objects with status = %v, and older than %v", status, olderThan)
-	cursor := c.metaDB.ListChunkRefsByStatus(ctx, status)
-	for {
-		chunk, err := cursor.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Errorf("cursor.Next() return error: %v", err)
-			return err
-		}
-		if chunk.Timestamps.UpdatedAt.Before(olderThan) {
-			if err := c.deleteChunk(ctx, chunk); err != nil {
-				log.Errorf("deleteChunk failed for chunk (%v): %v", chunk.Key, err)
-				continue
-			}
-			if err := c.metaDB.DeleteChunkRef(ctx, chunk.BlobRef, chunk.Key, false); err != nil {
-				log.Errorf("DeleteChunkRef failed for chunk (%v): %v", chunk.Key, err)
-			}
 		}
 	}
 	return nil

@@ -558,11 +558,6 @@ func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChu
 			return nil, err
 		}
 
-		// continue in case blob status is not ready.
-		if chunk.Status != blobref.StatusReady {
-			continue
-		}
-
 		url, err := s.blobStore.SignUrl(ctx, chunk.Key.String(), req.GetTtlInSeconds(), "GET")
 		if err != nil {
 			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", chunk.Number, s.ServerConfig.Bucket, chunk.Key, err)
@@ -601,7 +596,7 @@ func (s *openSavesServer) deleteSameNumberChunks(ctx context.Context, chunk *chu
 		if err != nil {
 			return err
 		}
-		err = s.metaDB.DeleteChunkRef(ctx, o.BlobRef, o.Key, true)
+		err = s.metaDB.DeleteChunkRef(ctx, o.BlobRef, o.Key)
 		if err != nil {
 			return err
 		}
@@ -688,12 +683,6 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	// Update the chunk size based on the actual bytes written
 	chunk.Size = int32(written)
 	chunk.Checksums = digest.Checksums()
-
-	if err := chunk.Ready(); err != nil {
-		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
-		log.Error(err)
-		return err
-	}
 	chunk.Timestamps.Update()
 
 	if err := chunk.ValidateIfPresent(meta); err != nil {
