@@ -38,4 +38,9 @@ You can also use blob hints to force data to be stored in Cloud Storage or force
 Records support automatic deletion handled by Datastore using the TTL feature (https://cloud.google.com/datastore/docs/ttl).
 Records have the `ExpiresAt` field at the top level to represent the moment it can be collected, though it must be manually set in the Datastore instance.
 
-Blobs inherit the `ExpiresAt` value from the records owing them, ensuring both are collected at the same time, though the TTL rule must be configured in the Datastore instance too.
+Blobs inherit the `ExpiresAt` value from the records owning them, ensuring both are collected at the same time, though the TTL rule must be configured in the Datastore instance too.
+
+#### Async Collector
+When Blobs expire we need to collect the associated GCS Objects or the dangling Chunks, to handle this clean up we offer the Async Collector, a CloudRun based deployment
+that listens to events produced by Datastore.
+
