@@ -203,7 +203,9 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 			// If the update request does not include a new ExpiresAt value
 			// then here it will be time's zero value and thus it will be ignored when saving.
 			// In other words, once expiration is set it cannot be removed via updates.
-			r.ExpiresAt = updateTo.ExpiresAt
+			if !updateTo.ExpiresAt.IsZero() {
+				r.ExpiresAt = updateTo.ExpiresAt
+			}
 			return r, nil
 		})
 	if err != nil {
@@ -742,7 +744,9 @@ func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.Commi
 			// If the update request does not include a new ExpiresAt value
 			// then here it will be time's zero value and thus it will be ignored when saving.
 			// In other words, once expiration is set it cannot be removed via updates.
-			r.ExpiresAt = updateTo.ExpiresAt
+			if !updateTo.ExpiresAt.IsZero() {
+				r.ExpiresAt = updateTo.ExpiresAt
+			}
 			return r, nil
 		})
 		if err != nil {

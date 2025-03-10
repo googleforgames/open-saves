@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/cloudevents/sdk-go/v2/event"
+	_ "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	"github.com/google/uuid"
 	"github.com/googleapis/google-cloudevents-go/cloud/datastoredata"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
@@ -80,7 +81,7 @@ func (s *collector) deleteBlobDependencies(ctx context.Context, e event.Event) e
 
 	blobRef, err := fromEventToBlobRef(&data)
 	if err != nil {
-		return fmt.Errorf("could not parse the event into a blobref: %w", err)
+		return fmt.Errorf("could not parse the event data=%v into a blobref: %w",&data,  err)
 	}
 
 	if blobRef.Chunked {
@@ -92,7 +93,7 @@ func (s *collector) deleteBlobDependencies(ctx context.Context, e event.Event) e
 				break
 			}
 			if err != nil {
-				log.Errorf("cursor.Next() returned error: %v", err)
+				log.Errorf("cursor.Next() returned error for blob=%s: %v", blobRef.Key, err)
 				return err
 			}
 			if err := s.deleteChunk(ctx, chunk); err != nil {
