@@ -23,19 +23,22 @@ MOCKS_GENERATED = ${CACHE_MOCK}
 
 SERVER_BIN = ${BIN_DIR}/server
 COLLECTOR_BIN = ${BIN_DIR}/collector
+ASYNC_COLLECTOR_BIN = ${BIN_DIR}/async-collector
 OPENSAVES_GO_PROTOS = ${API_DIR}/open_saves.pb.go \
 	${API_DIR}/open_saves_grpc.pb.go
 REFERENCE_DOC = ${DOC_DIR}/reference.md
-ALL_TARGETS = ${SERVER_BIN} ${COLLECTOR_BIN} ${OPENSAVES_GO_PROTOS} \
+ALL_TARGETS = ${SERVER_BIN} ${COLLECTOR_BIN} ${ASYNC_COLLECTOR_BIN} ${OPENSAVES_GO_PROTOS} \
 	${MOCKS_GENERATED} ${REFERENCE_DOC}
 
-.PHONY: all clean test server protos mocks docs install-tools FORCE
+.PHONY: all clean test server collector async-collector protos mocks docs install-tools FORCE
 
-all: server collector mocks docs
+all: server collector async-collector mocks docs
 
 server: ${SERVER_BIN}
 
 collector: ${COLLECTOR_BIN}
+
+async-collector: ${ASYNC_COLLECTOR_BIN}
 
 mocks: ${MOCKS_GENERATED}
 
@@ -48,6 +51,9 @@ ${SERVER_BIN}: cmd/server/main.go protos FORCE
 	go build -o $@ $<
 
 ${COLLECTOR_BIN}: cmd/collector/main.go protos FORCE
+	go build -o $@ $<
+
+${ASYNC_COLLECTOR_BIN}: cmd/collector/async/main.go protos FORCE
 	go build -o $@ $<
 
 ${CACHE_MOCK}: internal/pkg/cache/cache.go

@@ -351,7 +351,8 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 					return err
 				}
 			// Update the external blob with the new ExpiresAt coming from the record.
-			} else {
+			// Will update only if the incoming update changes the expiresAt value and it differs from the oldBlob one.
+			} else if !toUpdate.ExpiresAt.IsZero() && oldBlob.ExpiresAt != toUpdate.ExpiresAt {
 				oldBlob.ExpiresAt = toUpdate.ExpiresAt
 				err = m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createBlobKey(toUpdate.ExternalBlob), oldBlob))
 				if err != nil {

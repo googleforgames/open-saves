@@ -67,6 +67,19 @@ RUN GRPC_HEALTH_PROBE_VERSION=v0.4.22 && \
 
 CMD ["/collector"]
 
+# Build the async garbage collector image.
+#
+# You can build the async collector image by running
+# docker build -t <tag> --target async-collector .
+
+FROM alpine:3 AS async-collector
+RUN apk add --no-cache ca-certificates
+RUN apk update && apk upgrade
+# Copy the binary to the production image from the builder stage.
+COPY --from=amd64 /src/open-saves/build/async-collector /async-collector
+
+CMD ["/async-collector"]
+
 # Build the server image.
 # This needs to be the last stage to be the default target.
 #
