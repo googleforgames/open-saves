@@ -47,7 +47,7 @@ type collector struct {
 
 func newCollector(ctx context.Context, cfg *Config) (*collector, error) {
 	log.Infof("Creating a new Open Saves garbage async collector: cloud = %v, project = %v, bucket = %v",
-		cfg.Cloud, cfg.Bucket, cfg.Bucket)
+		cfg.Cloud, cfg.Project, cfg.Bucket)
 
 	switch cfg.Cloud {
 	case "gcp":
@@ -105,7 +105,7 @@ func (s *collector) deleteBlobDependencies(ctx context.Context, e event.Event) e
 	}
 
 	err = s.blob.Delete(ctx, blobRef.ObjectPath())
-	if gcerrors.Code(err) != gcerrors.NotFound {
+	if gcerrors.Code(err) == gcerrors.NotFound {
 	    log.Warnf("couldn't find blob's object with objectPath=%s: %v", blobRef.ObjectPath(), err)
 	} else if err != nil {
 		return fmt.Errorf("couldn't delete the blob's object with objectPath=%s: %w", blobRef.ObjectPath(), err)
@@ -117,8 +117,8 @@ func (s *collector) deleteBlobDependencies(ctx context.Context, e event.Event) e
 func (s *collector) deleteChunk(ctx context.Context, chunk *chunkref.ChunkRef) error {
 	err := s.blob.Delete(ctx, chunk.ObjectPath())
 
-	if gcerrors.Code(err) != gcerrors.NotFound {
-	    log.Warnf("couldn't find chunk's object with objectPath=%s: %v", chunk.ObjectPath(), err)
+	if gcerrors.Code(err) == gcerrors.NotFound {
+	    log.Warnf("couldn't find chunk's object with objectPath=%s", chunk.ObjectPath())
 	} else if err != nil {
 		return fmt.Errorf("couldn't delete chunk's object with objectPath=%s: %w", chunk.ObjectPath(), err)
 	}
@@ -127,6 +127,8 @@ func (s *collector) deleteChunk(ctx context.Context, chunk *chunkref.ChunkRef) e
 	if err != nil {
 		return fmt.Errorf("couldn't delete chunk from metadata DB with key=%s: %w", chunk.Key, err)
 	}
+
+	log.Debugf("Chunk with key=%s deleted", chunk.Key)
 
 	return nil
 }
