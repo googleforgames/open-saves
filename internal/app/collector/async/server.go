@@ -8,6 +8,7 @@ import (
 )
 
 func Run(ctx context.Context, cfg *Config) {
+
 	c, err := newCollector(ctx, cfg)
 	if err != nil {
 		log.Fatalf("Failed to create a new Async Collector instance: %v", err)

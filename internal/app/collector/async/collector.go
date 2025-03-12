@@ -36,6 +36,7 @@ type Config struct {
 	Cloud     string
 	Bucket    string
 	Project   string
+	LogLevel  string
 }
 
 // AsyncCollector represents the instance
@@ -48,6 +49,14 @@ type collector struct {
 func newCollector(ctx context.Context, cfg *Config) (*collector, error) {
 	log.Infof("Creating a new Open Saves garbage async collector: cloud = %v, project = %v, bucket = %v",
 		cfg.Cloud, cfg.Project, cfg.Bucket)
+
+	ll, err := log.ParseLevel(cfg.LogLevel)
+	if err != nil {
+		log.Warnf("Couldn't parse the log level %s using info as default", cfg.LogLevel)
+		ll = log.InfoLevel
+	}
+	log.SetLevel(ll)
+	log.Infof("Log level is: %s", ll)
 
 	switch cfg.Cloud {
 	case "gcp":

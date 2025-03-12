@@ -247,7 +247,6 @@ func TestCollector_DeletesChunkedBlobs(t *testing.T) {
 		chunks = append(chunks, chunk)
 	}
 
-
 	for _, c := range chunks {
 		setupTestChunkRef(ctx, t, collector, ds, blob, c)
 		setupExternalBlob(ctx, t, collector, c.ObjectPath())
