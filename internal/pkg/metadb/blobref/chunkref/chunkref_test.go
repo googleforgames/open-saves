@@ -49,7 +49,7 @@ func TestChunkRef_SaveLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save returned error: %v", err)
 	}
-	assert.Len(t, ps, 6)
+	assert.Len(t, ps, 7)
 	loaded := new(chunkref.ChunkRef)
 	if err := loaded.Load(ps); err != nil {
 		t.Fatalf("Load returned error: %v", err)
