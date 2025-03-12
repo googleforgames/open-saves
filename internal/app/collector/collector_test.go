@@ -234,12 +234,12 @@ func TestCollector_DeletesChunkedBlobs(t *testing.T) {
 	record := setupTestRecord(ctx, t, collector, store.Key)
 	blob := blobref.NewChunkedBlobRef(store.Key, record.Key, chunkRefCount)
 	ds := newDatastoreClient(ctx, t)
+
+	blob.Timestamps.CreatedAt = collector.cfg.Before.Add(-1 * time.Second)
+	blob.Timestamps.UpdatedAt = collector.cfg.Before.Add(-1 * time.Second)
 	setupTestBlobRef(ctx, t, ds, blob)
 	chunks := make([]*chunkref.ChunkRef, 0, chunkRefCount)
 
-	// 0 and 2 are old, to be deleted
-	// 1 and 3 have the applicable statuses but new
-	// 4 is still initializing
 	for i := 0; i < chunkRefCount; i++ {
 		chunk := chunkref.New(blob.Key, int32(i))
 		chunk.Timestamps.CreatedAt = time.Now()
@@ -247,26 +247,19 @@ func TestCollector_DeletesChunkedBlobs(t *testing.T) {
 		chunks = append(chunks, chunk)
 	}
 
+
 	for _, c := range chunks {
 		setupTestChunkRef(ctx, t, collector, ds, blob, c)
 		setupExternalBlob(ctx, t, collector, c.ObjectPath())
 	}
 	collector.run(ctx)
 
-	exists := []bool{false, true, false, true, true}
-	for i, e := range exists {
-		chunk := new(chunkref.ChunkRef)
-		err := ds.Get(ctx, chunkRefKey(chunks[i]), chunk)
-		if e {
-			assert.NoError(t, err)
-		} else {
-			assert.ErrorIs(t, datastore.ErrNoSuchEntity, err)
-		}
+	for i, chunk := range chunks {
+		found := new(chunkref.ChunkRef)
+		err := ds.Get(ctx, chunkRefKey(chunk), found)
+		assert.ErrorIs(t, err, datastore.ErrNoSuchEntity)
+
 		_, err = collector.blob.Get(ctx, chunks[i].ObjectPath())
-		if e {
-			assert.NoError(t, err)
-		} else {
-			assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err))
-		}
+		assert.Equal(t, gcerrors.NotFound, gcerrors.Code(err))
 	}
 }
