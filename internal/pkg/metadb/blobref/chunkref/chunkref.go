@@ -39,7 +39,7 @@ type ChunkRef struct {
 
 	// Deprecated, present for backwards compatibility.
 	// Status is the current status of the chunk.
-	blobref.Status
+	blobref.Status `datastore:",omitempty"`
 
 	// Checksums contains checksums for the chunk object.
 	checksums.Checksums `datastore:",flatten"`
