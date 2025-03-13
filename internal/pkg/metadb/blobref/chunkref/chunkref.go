@@ -36,8 +36,10 @@ type ChunkRef struct {
 	Number int32
 	// Size is the byte size of the chunk.
 	Size int32
+
+	// Deprecated, present for backwards compatibility.
 	// Status is the current status of the chunk.
-	blobref.Status
+	blobref.Status `datastore:",omitempty"`
 
 	// Checksums contains checksums for the chunk object.
 	checksums.Checksums `datastore:",flatten"`
@@ -95,7 +97,6 @@ func New(blobRef uuid.UUID, number int32) *ChunkRef {
 		Key:        uuid.New(),
 		BlobRef:    blobRef,
 		Number:     number,
-		Status:     blobref.StatusInitializing,
 		Timestamps: timestamps.New(),
 	}
 }

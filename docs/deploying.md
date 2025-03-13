@@ -1,20 +1,22 @@
 # Deployment Guide
 
-- [Before you begin](#before-you-begin)
-- [Setting up backend services on Google Cloud](#setting-up-backend-services-on-google-cloud)
-  - [Starting the cache store](#starting-the-cache-store)
-  - [Set up Serverless VPC access](#set-up-serverless-vpc-access)
-  - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
-  - [Cloud Storage](#cloud-storage)
-  - [Deploying your application](#deploying-your-application)
-    - [Deploying to Cloud Run](#deploying-to-cloud-run-recommended) (recommended)
-    - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
-- [Check to see everything worked](#check-to-see-everything-worked)
-  - [Check Datastore](#check-datastore)
-  - [Check Memorystore](#check-memorystore)
-  - [Check Cloud Storage](#check-cloud-storage)
-- [Set up the garbage collector](#set-up-the-garbage-collector)
-- [Next steps](#next-steps)
+- [Deployment Guide](#deployment-guide)
+  - [Before you begin](#before-you-begin)
+  - [Setting up backend services on Google Cloud](#setting-up-backend-services-on-google-cloud)
+    - [Starting the cache store](#starting-the-cache-store)
+    - [Set up Serverless VPC access](#set-up-serverless-vpc-access)
+    - [Cloud Firestore in Datastore mode](#cloud-firestore-in-datastore-mode)
+    - [Cloud Storage](#cloud-storage)
+    - [Deploying your application](#deploying-your-application)
+      - [Deploying to Cloud Run (recommended)](#deploying-to-cloud-run-recommended)
+      - [Deploying to Google Kubernetes Engine (GKE)](#deploying-to-google-kubernetes-engine-gke)
+  - [Check to see everything worked](#check-to-see-everything-worked)
+    - [Check Datastore](#check-datastore)
+    - [Check Memorystore](#check-memorystore)
+    - [Check Cloud Storage](#check-cloud-storage)
+  - [Set up the synchronous garbage collector](#set-up-the-synchronous-garbage-collector)
+  - [Set up the asynchronous garbage collector](#set-up-the-asynchronous-garbage-collector)
+  - [Next steps](#next-steps)
 
 <!-- /TOC -->
 
@@ -41,7 +43,7 @@ install and configure the following:
 1. Create a service account using the [Google Cloud Console](https://console.cloud.google.com/) or the Google Cloud SDK. See [Creating a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) for more information.
 
     Save the service account name to an environment variable:
-    
+
     ```bash
     export OPEN_SAVES_GSA=<your service account name here>
     ```
@@ -263,7 +265,9 @@ Alternatively, you can use `gsutil` to list the object via command line.
 gsutil ls $BUCKET_PATH
 ```
 
-## Set up the garbage collector
+## Set up the synchronous garbage collector
+
+**Important**: If you plan to use the TTL feature, use the Async Collector instead.
 
 Open Saves doesn't delete blob objects immediately when the `DeleteBlob` or `DeleteRecord` methods are invoked. Instead, it marks associated objects for future deletion.
 You need to run the garbage collector program periodically to remove unused records and objects in Datastore and Cloud Storage.
@@ -324,6 +328,38 @@ You can check the current status by running `systemctl status`, for example:
 ```bash
 sudo systemctl status open-saves-gc.service
 sudo systemctl status open-saves-gc.timer
+```
+
+## Set up the asynchronous garbage collector
+
+Open Saves doesn't delete blob objects immediately when the `DeleteBlob` or `DeleteRecord` methods are invoked. Instead, it marks associated objects as Expired so they are handled by Datastore clean up process. But we still need to take care of the associated GCS objects.
+
+To ensure no elements are left behind, deploy the Asyn Collector and configure it to consume deletion events from Datastore. We use the same region for CloudRun and Eventarc as the Datastore instance is running.
+
+Run the following commands to enable Async Collector and configure Eventarc for eventing.
+
+```bash
+gcloud run deploy async-collector \
+  --region=us-central1 \
+  --image gcr.io/triton-for-games-dev/open-saves-async-collector:testing \
+  --no-allow-unauthenticated \
+  --no-cpu-boost \
+  --execution-environment gen1 \
+  --ingress internal \
+  --service-account $OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com
+```
+
+```bash
+gcloud eventarc triggers create async-collector \
+    --location=nam5 \
+    --destination-run-service async-collector \
+    --destination-run-region us-central1 \
+    --destination-run-path "/" \
+    --event-filters "type=google.cloud.datastore.entity.v1.deleted" \
+    --event-filters "database=(default)" \
+    --event-filters-path-pattern "entity=blob/*" \
+    --event-data-content-type "application/protobuf" \
+    --service-account $OPEN_SAVES_GSA@$GCP_PROJECT.iam.gserviceaccount.com
 ```
 
 ## Next steps

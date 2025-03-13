@@ -35,6 +35,7 @@ func TestRecord_Save(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 	signature := uuid.MustParse("34E1A605-C0FD-4A3D-A9ED-9BA42CAFAF6E")
 	record := &Record{
 		Key:          "key",
@@ -56,12 +57,13 @@ func TestRecord_Save(t *testing.T) {
 			UpdatedAt: updatedAt,
 			Signature: signature,
 		},
+		ExpiresAt: expiresAt,
 	}
 	properties, err := record.Save()
 	if err != nil {
 		t.Fatalf("Save should not return err: %v", err)
 	}
-	if assert.Len(t, properties, 13, "Save didn't return the expected number of elements.") {
+	if assert.Len(t, properties, 14, "Save didn't return the expected number of elements.") {
 		idx := 4
 		assert.Equal(t, []datastore.Property{
 			{
@@ -143,6 +145,11 @@ func TestRecord_Save(t *testing.T) {
 				},
 			},
 			{
+				Name:    "ExpiresAt",
+				Value:   expiresAt,
+				NoIndex: true,
+			},
+			{
 				Name:  "ExternalBlob",
 				Value: "",
 			},
@@ -151,6 +158,8 @@ func TestRecord_Save(t *testing.T) {
 }
 
 func TestRecord_Load(t *testing.T) {
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
+
 	testCases := []struct {
 		name string
 		ps   []datastore.Property
@@ -217,6 +226,10 @@ func TestRecord_Load(t *testing.T) {
 						},
 					},
 				},
+				{
+					Name:  "ExpiresAt",
+					Value: expiresAt,
+				},
 			},
 			want: &Record{
 				Key:          "",
@@ -235,6 +248,7 @@ func TestRecord_Load(t *testing.T) {
 					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 					Signature: uuid.MustParse("397F94F5-F851-4969-8BD8-7828ABC473A6"),
 				},
+				ExpiresAt: expiresAt,
 			},
 		},
 		{
@@ -306,6 +320,7 @@ func TestRecord_Load(t *testing.T) {
 func TestRecord_ToProtoSimple(t *testing.T) {
 	t.Parallel()
 	signature := uuid.MustParse("70E894AE-1020-42E8-9710-3E2D408BC356")
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 
 	testCases := []struct {
 		name string
@@ -333,6 +348,7 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 					Signature: signature,
 				},
+				ExpiresAt: expiresAt,
 			},
 			want: &pb.Record{
 				Key:        "key",
@@ -354,6 +370,7 @@ func TestRecord_ToProtoSimple(t *testing.T) {
 				OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 				CreatedAt:    timestamppb.New(time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)),
 				UpdatedAt:    timestamppb.New(time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)),
+				ExpiresAt:    timestamppb.New(expiresAt),
 				Signature:    signature[:],
 			},
 		},
@@ -377,6 +394,7 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 	testBlob := []byte{0x24, 0x42, 0x11}
 	createdAt := time.Date(1992, 1, 15, 3, 15, 55, 0, time.UTC)
 	updatedAt := time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC)
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 	signature := uuid.MustParse("076D7253-9AA0-48DE-B4AF-965E87B0A1C6")
 	proto := &pb.Record{
 		Key:        "key",
@@ -398,6 +416,7 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
 		CreatedAt:    timestamppb.New(createdAt),
 		UpdatedAt:    timestamppb.New(updatedAt),
+		ExpiresAt:    timestamppb.New(expiresAt),
 		Signature:    signature[:],
 	}
 	expected := &Record{
@@ -416,7 +435,8 @@ func TestRecord_NewRecordFromProto(t *testing.T) {
 			UpdatedAt: updatedAt,
 			Signature: signature,
 		},
-		StoreKey: "test store key",
+		StoreKey:  "test store key",
+		ExpiresAt: expiresAt,
 	}
 	actual, err := FromProto("test store key", proto)
 	assert.Equal(t, expected, actual)
@@ -474,12 +494,14 @@ func TestRecord_CacheKey(t *testing.T) {
 
 func TestRecord_SerializeRecord(t *testing.T) {
 	testBlob := []byte("some-bytes")
+	expiresAt := time.Unix(120, 0)
 	rr := []*Record{
 		{
 			Timestamps: timestamps.Timestamps{
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
+			ExpiresAt: expiresAt,
 		},
 		{
 			Key: "some-key",
@@ -501,6 +523,7 @@ func TestRecord_SerializeRecord(t *testing.T) {
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
+			ExpiresAt: expiresAt,
 		},
 		{
 			Key:       "some-key",
@@ -513,6 +536,7 @@ func TestRecord_SerializeRecord(t *testing.T) {
 				CreatedAt: time.Unix(100, 0),
 				UpdatedAt: time.Unix(110, 0),
 			},
+			ExpiresAt: expiresAt,
 		},
 	}
 
