@@ -15,6 +15,8 @@
 package blobref
 
 import (
+	"time"
+
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
@@ -51,6 +53,11 @@ type BlobRef struct {
 	// Timestamps keeps track of creation and modification times and stores a randomly
 	// generated UUID to maintain consistency.
 	Timestamps timestamps.Timestamps
+
+	// ExpiresAt is the timestamp when the TTL feature of Datastore will delete the BlobRef.
+	// If it is not present, the BlobRef is considered to live forever.
+	// ExpiresAt is NOT managed by MetaDB, hence it cannot be part of `timestamps.Timestamps`.
+	ExpiresAt time.Time `datastore:",noindex,omitempty"`
 }
 
 // Assert Blob implements both PropertyLoadSave and KeyLoader.
@@ -126,4 +133,8 @@ func (b *BlobRef) ToProto() *pb.BlobMetadata {
 		Crc32C:     b.GetCRC32C(),
 		HasCrc32C:  b.HasCRC32C,
 	}
+}
+
+func (b *BlobRef) MarkAsExpired() {
+	b.ExpiresAt = time.Now()
 }

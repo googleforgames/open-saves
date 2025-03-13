@@ -3,12 +3,12 @@ kind: CronJob
 metadata:
   name: collector
   namespace: open-saves-namespace
-spec: 
+spec:
   schedule: "10 0 * * *"
   jobTemplate:
-    spec: 
+    spec:
       template:
-        spec: 
+        spec:
           serviceAccountName: open-saves-ksa
           containers:
           - name: collector
@@ -19,4 +19,3 @@ spec:
             - name: OPEN_SAVES_CACHE
               value: "redis:6379"
           restartPolicy: OnFailure
-

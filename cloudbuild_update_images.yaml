@@ -17,6 +17,9 @@ steps:
   args: ['build', '-t', 'gcr.io/$PROJECT_ID/open-saves-server:$TAG_NAME', '.']
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'gcr.io/$PROJECT_ID/open-saves-collector:$TAG_NAME', '--target', 'collector', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/open-saves-async-collector:$TAG_NAME', '--target', 'async-collector', '.']
 images:
   - 'gcr.io/$PROJECT_ID/open-saves-server:$TAG_NAME'
   - 'gcr.io/$PROJECT_ID/open-saves-collector:$TAG_NAME'
+  - 'gcr.io/$PROJECT_ID/open-saves-async-collector:$TAG_NAME'

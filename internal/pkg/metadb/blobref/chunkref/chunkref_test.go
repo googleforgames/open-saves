@@ -20,7 +20,6 @@ import (
 	"cloud.google.com/go/datastore"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums/checksumstest"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/timestamps"
@@ -34,7 +33,6 @@ func TestChunkRef_New(t *testing.T) {
 	assert.Equal(t, blobuuid, c.BlobRef)
 	assert.Equal(t, int32(42), c.Number)
 	assert.Equal(t, int32(0), c.Size)
-	assert.Equal(t, blobref.StatusInitializing, c.Status)
 	assert.NotEqual(t, uuid.Nil, c.Timestamps.Signature)
 }
 
@@ -51,7 +49,7 @@ func TestChunkRef_SaveLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save returned error: %v", err)
 	}
-	assert.Len(t, ps, 7)
+	assert.Len(t, ps, 6)
 	loaded := new(chunkref.ChunkRef)
 	if err := loaded.Load(ps); err != nil {
 		t.Fatalf("Load returned error: %v", err)

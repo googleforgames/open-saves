@@ -15,6 +15,8 @@
 package record
 
 import (
+	"time"
+
 	"cloud.google.com/go/datastore"
 	"github.com/google/uuid"
 	pb "github.com/googleforgames/open-saves/api"
@@ -53,6 +55,11 @@ type Record struct {
 	// before calling the CacheKey function.
 	// It is automatically set when read from Datastore.
 	StoreKey string `datastore:"-"`
+
+	// ExpiresAt is the timestamp when the TTL feature of Datastore will delete the record.
+	// If it is not present, the record is considered to live forever.
+	// ExpiresAt is NOT managed by MetaDB, hence it cannot be part of `timestamps.Timestamps`.
+	ExpiresAt time.Time `datastore:",noindex,omitempty"`
 }
 
 // Assert Record implements both PropertyLoadSave and KeyLoader.
@@ -124,6 +131,7 @@ func (r *Record) ToProto() *pb.Record {
 	if r == nil {
 		return nil
 	}
+
 	ret := &pb.Record{
 		Key:          r.Key,
 		BlobSize:     r.BlobSize,
@@ -136,6 +144,7 @@ func (r *Record) ToProto() *pb.Record {
 		CreatedAt:    timestamps.TimeToProto(r.Timestamps.CreatedAt),
 		UpdatedAt:    timestamps.TimeToProto(r.Timestamps.UpdatedAt),
 		Signature:    r.Timestamps.Signature[:],
+		ExpiresAt:    timestamps.TimeToProto(r.ExpiresAt),
 	}
 	return ret
 }
@@ -153,6 +162,12 @@ func FromProto(storeKey string, p *pb.Record) (*Record, error) {
 			return nil, err
 		}
 	}
+
+	var expiresAt time.Time
+	if p.GetExpiresAt() != nil {
+		expiresAt = p.GetExpiresAt().AsTime()
+	}
+
 	return &Record{
 		Key:          p.GetKey(),
 		BlobSize:     p.GetBlobSize(),
@@ -165,7 +180,8 @@ func FromProto(storeKey string, p *pb.Record) (*Record, error) {
 			UpdatedAt: p.GetUpdatedAt().AsTime(),
 			Signature: signature,
 		},
-		StoreKey: storeKey,
+		StoreKey:  storeKey,
+		ExpiresAt: expiresAt,
 	}, nil
 }
 

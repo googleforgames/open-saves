@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	"io"
+	"time"
 )
 
 // TODO(hongalex): make this a configurable field for users.
@@ -199,6 +200,12 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 			r.Properties = updateTo.Properties
 			r.Tags = updateTo.Tags
 			r.OpaqueString = updateTo.OpaqueString
+			// If the update request does not include a new ExpiresAt value
+			// then here it will be time's zero value and thus it will be ignored when saving.
+			// In other words, once expiration is set it cannot be removed via updates.
+			if !updateTo.ExpiresAt.IsZero() {
+				r.ExpiresAt = updateTo.ExpiresAt
+			}
 			return r, nil
 		})
 	if err != nil {
@@ -325,6 +332,7 @@ func (s *openSavesServer) insertInlineBlob(ctx context.Context, stream pb.OpenSa
 
 func (s *openSavesServer) blobRefFail(ctx context.Context, blobref *blobref.BlobRef) {
 	blobref.Fail()
+	blobref.MarkAsExpired()
 	_, err := s.metaDB.UpdateBlobRef(ctx, blobref)
 	if err != nil {
 		log.Errorf("Failed to mark the blobref (%v) as Failed: %v", blobref.Key, err)
@@ -430,7 +438,7 @@ func (s *openSavesServer) CreateBlob(stream pb.OpenSaves_CreateBlobServer) error
 	return s.insertExternalBlob(ctx, stream, meta)
 }
 
-func (s *openSavesServer) getExternalBlob(ctx context.Context, req *pb.GetBlobRequest, stream pb.OpenSaves_GetBlobServer, record *record.Record) error {
+func (s *openSavesServer) getExternalBlob(ctx context.Context, stream pb.OpenSaves_GetBlobServer, record *record.Record) error {
 	log.Debugf("Reading external blob %v", record.ExternalBlob)
 	blobref, err := s.metaDB.GetBlobRef(ctx, record.ExternalBlob)
 	if err != nil {
@@ -486,7 +494,7 @@ func (s *openSavesServer) GetBlob(req *pb.GetBlobRequest, stream pb.OpenSaves_Ge
 	}
 
 	if rr.ExternalBlob != uuid.Nil {
-		return s.getExternalBlob(ctx, req, stream, rr)
+		return s.getExternalBlob(ctx, stream, rr)
 	}
 
 	// Handle the inline blob here.
@@ -517,7 +525,13 @@ func (s *openSavesServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.Pi
 }
 
 func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateChunkedBlobRequest) (*pb.CreateChunkedBlobResponse, error) {
+	// Initialize the Blob with a temporary expire time as 1 week from now.
+
 	b := blobref.NewChunkedBlobRef(req.GetStoreKey(), req.GetRecordKey(), req.GetChunkCount())
+	// Set the temporary ExpiresAt to allow clean up of incomplete uploads.
+	expiresAt := time.Now().Add(s.BlobConfig.DefaultGarbageCollectionTTL)
+	b.ExpiresAt = expiresAt
+
 	b, err := s.metaDB.InsertBlobRef(ctx, b)
 	if err != nil {
 		log.Errorf("CreateChunkedBlob failed for store (%v), record (%v): %v", req.GetStoreKey(), req.GetRecordKey(), err)
@@ -529,7 +543,6 @@ func (s *openSavesServer) CreateChunkedBlob(ctx context.Context, req *pb.CreateC
 }
 
 func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChunkUrlsRequest) (*pb.CreateChunkUrlsResponse, error) {
-
 	blobRef, err := s.metaDB.GetCurrentBlobRef(ctx, req.GetStoreKey(), req.GetKey())
 	if err != nil {
 		return nil, err
@@ -547,11 +560,6 @@ func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChu
 			return nil, err
 		}
 
-		// continue in case blob status is not ready.
-		if chunk.Status != blobref.StatusReady {
-			continue
-		}
-
 		url, err := s.blobStore.SignUrl(ctx, chunk.Key.String(), req.GetTtlInSeconds(), "GET")
 		if err != nil {
 			log.Errorf("CreateChunkUrls failed to get sign url for chunkNumber(%v), Bucket(%v), ChunkKey(%v) :%v", chunk.Number, s.ServerConfig.Bucket, chunk.Key, err)
@@ -566,6 +574,37 @@ func (s *openSavesServer) CreateChunkUrls(ctx context.Context, req *pb.CreateChu
 	}
 
 	return &pb.CreateChunkUrlsResponse{ChunkUrls: urls}, nil
+}
+
+// deleteObjectOnExit deletes the object from GS if there are errors uploading the data or inserting a chunkref
+func (s *openSavesServer) deleteObjectOnExit(ctx context.Context, path string) error {
+	err := s.blobStore.Delete(ctx, path)
+	if err != nil {
+		log.Errorf("Delete chunk failed after writer.Close() error: %v", err)
+	}
+	return err
+}
+
+func (s *openSavesServer) deleteSameNumberChunks(ctx context.Context, chunk *chunkref.ChunkRef) error {
+	otherChunks, err := s.metaDB.FindBlobChunkRefsByNumber(ctx, chunk.BlobRef, chunk.Number)
+	if err != nil {
+		return err
+	}
+	log.Debugf("Found (%d) matches for chunkref (%s), blobref (%s) with same number (%d)",
+		len(otherChunks), chunk.Key, chunk.BlobRef, chunk.Number)
+	for _, o := range otherChunks {
+		log.Debugf("Deleting chunkref (%s) for blobref (%s) with same number (%d)", chunk.Key, chunk.BlobRef, chunk.Number)
+		err := s.deleteObjectOnExit(ctx, o.ObjectPath())
+		if err != nil {
+			return err
+		}
+		err = s.metaDB.DeleteChunkRef(ctx, o.BlobRef, o.Key)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) error {
@@ -646,15 +685,16 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 	// Update the chunk size based on the actual bytes written
 	chunk.Size = int32(written)
 	chunk.Checksums = digest.Checksums()
+	chunk.Timestamps.Update()
 
-	if err := chunk.Ready(); err != nil {
+	if err := chunk.ValidateIfPresent(meta); err != nil {
 		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Error(err)
 		return err
 	}
-	chunk.Timestamps.Update()
 
-	if err := chunk.ValidateIfPresent(meta); err != nil {
+	// Delete all the related chunks with the same number, if any
+	if err := s.deleteSameNumberChunks(ctx, chunk); err != nil {
 		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Error(err)
 		return err
@@ -666,15 +706,6 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 		return err
 	}
 	return stream.SendAndClose(chunk.ToProto())
-}
-
-// deleteObjectOnExit deletes the object from GS if there are errors uploading the data or inserting a chunkref
-func (s *openSavesServer) deleteObjectOnExit(ctx context.Context, path string) error {
-	err := s.blobStore.Delete(ctx, path)
-	if err != nil {
-		log.Errorf("Delete chunk failed after writer.Close() error: %v", err)
-	}
-	return err
 }
 
 func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.CommitChunkedUploadRequest) (*pb.BlobMetadata, error) {
@@ -710,6 +741,12 @@ func (s *openSavesServer) CommitChunkedUpload(ctx context.Context, req *pb.Commi
 			r.Properties = updateTo.Properties
 			r.Tags = updateTo.Tags
 			r.OpaqueString = updateTo.OpaqueString
+			// If the update request does not include a new ExpiresAt value
+			// then here it will be time's zero value and thus it will be ignored when saving.
+			// In other words, once expiration is set it cannot be removed via updates.
+			if !updateTo.ExpiresAt.IsZero() {
+				r.ExpiresAt = updateTo.ExpiresAt
+			}
 			return r, nil
 		})
 		if err != nil {

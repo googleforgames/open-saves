@@ -92,6 +92,7 @@ func TestBlobRef_LoadKey(t *testing.T) {
 func TestBlobRef_Save(t *testing.T) {
 	t.Parallel()
 
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 	blob := BlobRef{
 		Size:       123,
 		Status:     StatusInitializing,
@@ -108,6 +109,7 @@ func TestBlobRef_Save(t *testing.T) {
 			UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 			Signature: uuid.MustParse("397f94f5-f851-4969-8bd8-7828abc473a6"),
 		},
+		ExpiresAt: expiresAt,
 	}
 
 	want := []datastore.Property{
@@ -172,6 +174,11 @@ func TestBlobRef_Save(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name:    "ExpiresAt",
+			Value:   expiresAt,
+			NoIndex: true,
+		},
 	}
 	got, err := blob.Save()
 	if err != nil {
@@ -185,6 +192,7 @@ func TestBlobRef_Save(t *testing.T) {
 func TestBlobRef_Load(t *testing.T) {
 	t.Parallel()
 
+	expiresAt := time.Date(1992, 11, 40, 7, 21, 16, 0, time.UTC)
 	testCases := []struct {
 		name string
 		ps   []datastore.Property
@@ -252,6 +260,10 @@ func TestBlobRef_Load(t *testing.T) {
 						},
 					},
 				},
+				{
+					Name:  "ExpiresAt",
+					Value: expiresAt,
+				},
 			},
 			want: &BlobRef{
 				Size:       123,
@@ -270,6 +282,7 @@ func TestBlobRef_Load(t *testing.T) {
 					UpdatedAt: time.Date(1992, 11, 27, 1, 3, 11, 0, time.UTC),
 					Signature: uuid.MustParse("397f94f5-f851-4969-8bd8-7828abc473a6"),
 				},
+				ExpiresAt: expiresAt,
 			},
 		},
 	}

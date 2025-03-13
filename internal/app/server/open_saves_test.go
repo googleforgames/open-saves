@@ -17,7 +17,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 	"io"
 	"net"
 	"reflect"
@@ -26,6 +25,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/store"
 
 	"cloud.google.com/go/datastore"
 	"github.com/alicebob/miniredis/v2"
@@ -158,6 +159,9 @@ func TestOpenSaves_RunServer(t *testing.T) {
 
 func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openSavesServer, *bufconn.Listener) {
 	t.Helper()
+	// Enable debug logs for testing.
+	log.SetLevel(log.DebugLevel)
+
 	r := miniredis.RunT(t)
 
 	cfg := &config.ServiceConfig{
@@ -299,7 +303,8 @@ func cleanupBlobs(ctx context.Context, t *testing.T, storeKey, recordkey string)
 		t.Errorf("NewBlobGCP returned error: %v", err)
 		blobClient = nil
 	}
-	query := datastore.NewQuery(blobKind).Filter("StoreKey =", storeKey).Filter("RecordKey =", recordkey)
+	query := datastore.NewQuery(blobKind).FilterField("StoreKey", "=", storeKey).
+		FilterField("RecordKey", "=", recordkey)
 	iter := client.Run(ctx, query)
 
 	for {
@@ -468,12 +473,14 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 		OwnerId: "owner",
 	})
 
+	expiresAt := timestamppb.New(time.Now().UTC().Add(1 * time.Hour))
 	updateReq := &pb.UpdateRecordRequest{
 		StoreKey: storeKey,
 		Record: &pb.Record{
 			Key:          recordKey,
 			BlobSize:     123,
 			OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
+			ExpiresAt:    expiresAt,
 		},
 	}
 	beforeUpdate := time.Now()
@@ -487,6 +494,7 @@ func TestOpenSaves_UpdateRecordSimple(t *testing.T) {
 		OpaqueString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit,",
 		CreatedAt:    created.GetCreatedAt(),
 		UpdatedAt:    timestamppb.Now(),
+		ExpiresAt:    expiresAt,
 	}
 	assertEqualRecord(t, expected, record)
 	assert.True(t, created.GetCreatedAt().AsTime().Equal(record.GetCreatedAt().AsTime()))
@@ -2147,6 +2155,86 @@ func TestOpenSaves_UploadChunkedBlobWithUpdateRecord(t *testing.T) {
 	for i := 0; i < chunkCount; i++ {
 		verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, int64(i), testChunk)
 	}
+
+	// Deletion test
+	if _, err := client.DeleteBlob(ctx, &pb.DeleteBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+	}); err != nil {
+		t.Errorf("DeleteBlob failed: %v", err)
+	}
+	verifyBlob(ctx, t, client, store.Key, record.Key, make([]byte, 0))
+}
+
+func TestOpenSaves_UploadChunkedBlobWithDuplicateChunk(t *testing.T) {
+	ctx := context.Background()
+	_, listener := getOpenSavesServer(ctx, t, "gcp")
+	_, client := getTestClient(ctx, t, listener)
+	store := &pb.Store{Key: uuid.NewString()}
+	setupTestStore(ctx, t, client, store)
+	record := &pb.Record{Key: uuid.NewString()}
+	record = setupTestRecord(ctx, t, client, store.Key, record)
+
+	const chunkSize = 1*1024*1024 + 13 // 1 Mi + 13 B
+	testChunk := make([]byte, chunkSize)
+	for i := 0; i < chunkSize; i++ {
+		testChunk[i] = byte(i % 256)
+	}
+
+	beforeCreateChunk := time.Now()
+	var sessionId string
+	if res, err := client.CreateChunkedBlob(ctx, &pb.CreateChunkedBlobRequest{
+		StoreKey:  store.Key,
+		RecordKey: record.Key,
+		ChunkSize: chunkSize,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, res) {
+			_, err := uuid.Parse(res.SessionId)
+			assert.NoError(t, err)
+			sessionId = res.SessionId
+		}
+	}
+	t.Cleanup(func() {
+		client.DeleteBlob(ctx, &pb.DeleteBlobRequest{StoreKey: store.Key, RecordKey: record.Key})
+	})
+
+	// Upload the chunk once.
+	uploadChunk(ctx, t, client, sessionId, 1, testChunk)
+	// Then upload the same chunk again, it should replace the previous one.
+	uploadChunk(ctx, t, client, sessionId, 1, testChunk)
+
+	// UploadChunk shouldn't update Signature.
+	if actual, err := client.GetRecord(ctx, &pb.GetRecordRequest{StoreKey: store.Key, Key: record.Key}); assert.NoError(t, err) {
+		assert.Equal(t, record.Signature, actual.Signature)
+	}
+
+	if meta, err := client.CommitChunkedUpload(ctx, &pb.CommitChunkedUploadRequest{
+		SessionId: sessionId,
+	}); assert.NoError(t, err) {
+		assert.Equal(t, int64(len(testChunk)), meta.Size)
+		assert.True(t, meta.Chunked)
+		assert.Equal(t, int64(1), meta.ChunkCount)
+		assert.False(t, meta.HasCrc32C)
+		assert.Empty(t, meta.Md5)
+		assert.Equal(t, store.Key, meta.StoreKey)
+		assert.Equal(t, record.Key, meta.RecordKey)
+	}
+
+	// Check if the metadata is reflected to the record as well.
+	if updatedRecord, err := client.GetRecord(ctx, &pb.GetRecordRequest{
+		StoreKey: store.Key, Key: record.Key,
+	}); assert.NoError(t, err) {
+		if assert.NotNil(t, updatedRecord) {
+			assert.Equal(t, int64(len(testChunk)), updatedRecord.BlobSize)
+			assert.Equal(t, int64(1), updatedRecord.ChunkCount)
+			assert.True(t, updatedRecord.Chunked)
+			assert.True(t, record.GetCreatedAt().AsTime().Equal(updatedRecord.GetCreatedAt().AsTime()))
+			assert.True(t, beforeCreateChunk.Before(updatedRecord.GetUpdatedAt().AsTime()))
+			assert.NotEqual(t, record.Signature, updatedRecord.Signature)
+		}
+	}
+
+	verifyChunk(ctx, t, client, store.Key, record.Key, sessionId, 1, testChunk)
 
 	// Deletion test
 	if _, err := client.DeleteBlob(ctx, &pb.DeleteBlobRequest{

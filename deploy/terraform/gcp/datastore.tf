@@ -14,49 +14,53 @@
  * limitations under the License.
  */
 
-resource "google_datastore_index" "blob_status_updated_at" {
-  kind = "blob"
-  properties {
-    name      = "Status"
-    direction = "ASCENDING"
+resource "google_firestore_index" "blob_status_updated_at" {
+  collection  = "blob"
+  query_scope = "COLLECTION_GROUP"
+  api_scope   = "DATASTORE_MODE_API"
+  fields {
+    field_path = "Status"
+    order      = "ASCENDING"
   }
-  properties {
-    name      = "Timestamps.UpdatedAt"
-    direction = "ASCENDING"
-  }
-}
-
-resource "google_datastore_index" "chunk_status_updated_at" {
-  kind = "chunk"
-  properties {
-    name      = "Status"
-    direction = "ASCENDING"
-  }
-  properties {
-    name      = "Timestamps.UpdatedAt"
-    direction = "ASCENDING"
+  fields {
+    field_path = "Timestamps.UpdatedAt"
+    order      = "ASCENDING"
   }
 }
 
-resource "google_datastore_index" "default_indexed_properties" {
-  kind     = "record"
-  ancestor = "ALL_ANCESTORS"
-  properties {
-    name      = "Properties.prop1"
-    direction = "ASCENDING"
+resource "google_firestore_index" "default_indexed_properties" {
+  collection  = "record"
+  # ancestor = "ALL_ANCESTORS"
+  query_scope = "COLLECTION_GROUP"
+  api_scope   = "DATASTORE_MODE_API"
+  fields {
+    field_path = "Properties.prop1"
+    order      = "ASCENDING"
   }
-  properties {
-    name      = "Properties.prop1"
-    direction = "DESCENDING"
-  }
-
-  properties {
-    name      = "Timestamps.CreatedAt"
-    direction = "ASCENDING"
+  fields {
+    field_path = "Properties.prop1"
+    order      = "DESCENDING"
   }
 
-  properties {
-    name      = "Timestamps.UpdatedAt"
-    direction = "ASCENDING"
+  fields {
+    field_path = "Timestamps.CreatedAt"
+    order      = "ASCENDING"
   }
+
+  fields {
+    field_path = "Timestamps.UpdatedAt"
+    order      = "ASCENDING"
+  }
+}
+
+resource "google_firestore_field" "blob_ttl" {
+  collection = "blob"
+  field = "ExpiresAt"
+  ttl_config {} // Just being present will configure this field as TTL.
+}
+
+resource "google_firestore_field" "record_ttl" {
+  collection = "record"
+  field = "ExpiresAt"
+  ttl_config {} // Just being present will configure this field as TTL.
 }
