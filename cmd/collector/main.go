@@ -32,6 +32,8 @@ func main() {
 	defaultCache := cmd.GetEnvVarString("OPEN_SAVES_CACHE", "localhost:6379")
 	defaultRedisMode := cmd.GetEnvVarString("OPEN_SAVES_REDIS_MODE", redis.RedisModeSingle)
 	defaultExpiration := cmd.GetEnvVarDuration("OPEN_SAVES_GARBAGE_EXPIRATION", 24*time.Hour)
+	defaultLogLevel := cmd.GetEnvVarString("OPEN_SAVES_LOG_LEVEL", "info")
+	defaultLogFormat := cmd.GetEnvVarString("OPEN_SAVES_LOG_FORMAT", "json")
 
 	var (
 		cloud      = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
@@ -40,6 +42,8 @@ func main() {
 		cache      = flag.String("cache", defaultCache, "The address of the cache store instance")
 		redisMode  = flag.String("redis-mode", defaultRedisMode, "The mode the Redis cache is configured, single or cluster")
 		expiration = flag.Duration("garbage-expiration", defaultExpiration, "Collector deletes entries older than this time.Duration value (e.g. \"24h\")")
+		logLevel  = flag.String("log-level", defaultLogLevel, "Minimum Log level")
+		logFormat = flag.String("log-format", defaultLogFormat, "Minimum Log format")
 	)
 
 	flag.Parse()
@@ -64,6 +68,17 @@ func main() {
 		Cache:     *cache,
 		RedisMode: *redisMode,
 		Before:    time.Now().Add(-*expiration),
+		LogLevel:  *logLevel,
+	}
+
+	// Configure the log format.
+	switch *logFormat {
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	case "text":
+		log.SetFormatter(&log.TextFormatter{})
+	default:
+		log.Warnf("Unknown log format %s", *logFormat)
 	}
 
 	ctx := context.Background()

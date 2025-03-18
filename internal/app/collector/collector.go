@@ -40,6 +40,7 @@ type Config struct {
 	RedisMode string
 	Project   string
 	Before    time.Time
+	LogLevel  string
 }
 
 // Collector is a garbage collector of unused resources in Datastore.
@@ -53,6 +54,13 @@ type Collector struct {
 func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 	log.Infof("Creating a new Open Saves garbage collector: cloud = %v, project = %v, bucket = %v, cache address = %v",
 		cfg.Cloud, cfg.Project, cfg.Bucket, cfg.Cache)
+
+	ll, err := log.ParseLevel(cfg.LogLevel)
+	if err != nil {
+		log.Warnf("Couldn't parse the log level %s using info as default", cfg.LogLevel)
+		ll = log.InfoLevel
+	}
+	log.SetLevel(ll)
 
 	switch cfg.Cloud {
 	case "gcp":
