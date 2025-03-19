@@ -2,6 +2,7 @@ open_saves_cloud: "gcp"
 open_saves_bucket: ""
 open_saves_project: ""
 log_level: "info"
+log_format: "json"
 shutdown_grace_period: "5s"
 cache_default_ttl: "5m"
 

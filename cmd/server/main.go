@@ -38,6 +38,20 @@ func main() {
 	log.SetLevel(ll)
 	log.Infof("Log level is: %s", ll.String())
 
+	// Configure the log format.
+	logFormat := viper.GetString(config.LogFormat)
+	if logFormat == "" {
+		logFormat = "json"
+	}
+	switch logFormat {
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	case "text":
+		log.SetFormatter(&log.TextFormatter{})
+	default:
+		log.Warnf("Unknown log format %s", logFormat)
+	}
+
 	ctx := context.Background()
 	if err := server.Run(ctx, "tcp", cfg); err != nil {
 		log.Fatalf("got error starting server: %v", err)
