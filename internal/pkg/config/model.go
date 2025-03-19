@@ -22,6 +22,7 @@ const (
 	OpenSavesBucket     = "open_saves_bucket"
 	OpenSavesProject    = "open_saves_project"
 	LogLevel            = "log_level"
+	LogFormat           = "log_format"
 	ShutdownGracePeriod = "shutdown_grace_period"
 
 	CacheDefaultTTL = "cache_default_ttl"
