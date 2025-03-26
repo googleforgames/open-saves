@@ -851,8 +851,17 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 		}
 		query = q
 	}
-	for _, t := range req.GetTags() {
-		query = query.FilterField(tagsField, "=", t)
+	if len(req.GetTags()) > 0 {
+		switch req.TagComparisonOperator {
+		case pb.ArrayComparisonOperator_ANY:
+			query = query.FilterField(tagsField, "in", convertToSliceOfInterfaces(req.GetTags()))
+		case pb.ArrayComparisonOperator_AND:
+			fallthrough
+		default:
+			for _, t := range req.GetTags() {
+				query = query.FilterField(tagsField, "=", t)
+			}
+		}
 	}
 	for _, s := range req.GetSortOrders() {
 		var property string
@@ -935,6 +944,14 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 	}
 
 	return match, m.toGRPCStatus(err)
+}
+
+func convertToSliceOfInterfaces(a []string) []interface{} {
+	result := []interface{}{}
+	for _, s := range a {
+		result = append(result, s)
+	}
+	return result
 }
 
 // GetRecords returns records by using the get multi request interface from datastore.

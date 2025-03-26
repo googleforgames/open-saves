@@ -392,6 +392,9 @@ message QueryRecordsRequest {
 
   // Number of records to skip when performing queries.
   int32 offset = 8;
+
+  // optional -If tags array should be queried using AND or ANY method
+  ArrayComparisonOperator tagComparisonOperator = 9;
 }
 
 // FilterOperator has a list of comperators.
@@ -408,6 +411,13 @@ enum FilterOperator {
   LESS_OR_EQUAL = 4;
 }
 
+// ArrayComparisonOperator has a list of comperators for arrays.
+enum ArrayComparisonOperator {
+  // AND
+  AND = 0;
+  // ANY
+  ANY = 1;
+}
 
 // QueryFilter is a filtering condition when querying records.
 message QueryFilter {

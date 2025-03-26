@@ -1204,12 +1204,21 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			[]*record.Record{records[0]}, codes.OK,
 		},
 		{
-			"Tags No Result",
+			"Tags AND No Result",
 			&pb.QueryRecordsRequest{
 				StoreKey: stores[1].Key,
 				Tags:     []string{tag1, tag4},
 			},
 			nil, codes.OK,
+		},
+		{
+			"Tags ANY",
+			&pb.QueryRecordsRequest{
+				StoreKey:              stores[1].Key,
+				Tags:                  []string{tag1, tag4},
+				TagComparisonOperator: pb.ArrayComparisonOperator_ANY,
+			},
+			[]*record.Record{records[2]}, codes.OK,
 		},
 		{
 			"Tags Multiple Records",
