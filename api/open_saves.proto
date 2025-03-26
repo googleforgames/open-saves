@@ -394,7 +394,7 @@ message QueryRecordsRequest {
   int32 offset = 8;
 
   // optional -If tags array should be queried using AND or ANY method
-  ArrayComparisonOperator tagComparisonOperator = 9;
+  TagFilterMode tagFilterMode = 9;
 }
 
 // FilterOperator has a list of comperators.
@@ -411,12 +411,12 @@ enum FilterOperator {
   LESS_OR_EQUAL = 4;
 }
 
-// ArrayComparisonOperator has a list of comperators for arrays.
-enum ArrayComparisonOperator {
+// TagFilterMode is a mode selector for tag filtering.
+enum TagFilterMode {
   // AND
   AND = 0;
-  // ANY
-  ANY = 1;
+  // OR
+  OR = 1;
 }
 
 // QueryFilter is a filtering condition when querying records.

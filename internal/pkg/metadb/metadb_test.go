@@ -1212,11 +1212,11 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			nil, codes.OK,
 		},
 		{
-			"Tags ANY",
+			"Tags OR",
 			&pb.QueryRecordsRequest{
 				StoreKey:              stores[1].Key,
 				Tags:                  []string{tag1, tag4},
-				TagComparisonOperator: pb.ArrayComparisonOperator_ANY,
+				TagFilterMode: pb.TagFilterMode_OR,
 			},
 			[]*record.Record{records[2]}, codes.OK,
 		},

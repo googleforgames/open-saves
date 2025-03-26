@@ -852,10 +852,10 @@ func (m *MetaDB) QueryRecords(ctx context.Context, req *pb.QueryRecordsRequest) 
 		query = q
 	}
 	if len(req.GetTags()) > 0 {
-		switch req.TagComparisonOperator {
-		case pb.ArrayComparisonOperator_ANY:
+		switch req.TagFilterMode {
+		case pb.TagFilterMode_OR:
 			query = query.FilterField(tagsField, "in", convertToSliceOfInterfaces(req.GetTags()))
-		case pb.ArrayComparisonOperator_AND:
+		case pb.TagFilterMode_AND:
 			fallthrough
 		default:
 			for _, t := range req.GetTags() {
