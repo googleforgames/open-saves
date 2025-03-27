@@ -1212,6 +1212,15 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 			nil, codes.OK,
 		},
 		{
+			"Tags OR No Result",
+			&pb.QueryRecordsRequest{
+				StoreKey:              stores[1].Key,
+				Tags:                  []string{"non-existing-tag-1", "non-existing-tag-2"},
+				TagFilterMode: pb.TagFilterMode_OR,
+			},
+			nil, codes.OK,
+		},
+		{
 			"Tags OR",
 			&pb.QueryRecordsRequest{
 				StoreKey:              stores[1].Key,
