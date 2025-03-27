@@ -392,6 +392,9 @@ message QueryRecordsRequest {
 
   // Number of records to skip when performing queries.
   int32 offset = 8;
+
+  // optional -If tags array should be queried using AND or ANY method
+  TagFilterMode tagFilterMode = 9;
 }
 
 // FilterOperator has a list of comperators.
@@ -408,6 +411,13 @@ enum FilterOperator {
   LESS_OR_EQUAL = 4;
 }
 
+// TagFilterMode is a mode selector for tag filtering.
+enum TagFilterMode {
+  // AND
+  AND = 0;
+  // OR
+  OR = 1;
+}
 
 // QueryFilter is a filtering condition when querying records.
 message QueryFilter {
