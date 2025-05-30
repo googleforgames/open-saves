@@ -53,8 +53,10 @@ import (
 )
 
 const (
-	testProject             = "triton-for-games-dev"
-	testBucket              = "gs://triton-integration"
+	// testProject       = "triton-for-games-dev"
+	testProject   = "dev-triton"
+	// testBucket        = "gs://triton-integration"
+	testBucket        = "gs://dev-triton-triton-storage-us-central1"
 	testPort                = "8000"
 	testBufferSize          = 1024 * 1024
 	testShutdownGracePeriod = "1s"

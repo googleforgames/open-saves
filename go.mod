@@ -1,7 +1,6 @@
 module github.com/googleforgames/open-saves
 
-go 1.21
-toolchain go1.24.1
+go 1.23.0
 
 require (
 	cloud.google.com/go/datastore v1.20.0

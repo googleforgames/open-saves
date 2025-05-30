@@ -17,10 +17,12 @@ package metadb_test
 import (
 	"context"
 	"errors"
-	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/googleforgames/open-saves/internal/pkg/config"
+	"github.com/googleforgames/open-saves/internal/pkg/metadb/checksums"
 
 	"cloud.google.com/go/datastore"
 	"github.com/google/go-cmp/cmp"
@@ -43,13 +45,16 @@ import (
 const (
 	blobKind      = "blob"
 	chunkKind     = "chunk"
-	testProject   = "triton-for-games-dev"
+	// testProject   = "triton-for-games-dev"
+	testProject   = "dev-triton"
 	testNamespace = "datastore-unittests"
 )
 
+var defaultDatastoreConfig = config.DatastoreConfig{TXMaxRetries: 1}
+
 func TestMetaDB_NewMetaDB(t *testing.T) {
 	ctx := context.Background()
-	metaDB, err := m.NewMetaDB(ctx, testProject)
+	metaDB, err := m.NewMetaDB(ctx, testProject, defaultDatastoreConfig)
 	assert.NotNil(t, metaDB, "NewMetaDB() should return a non-nil instance.")
 	assert.NoError(t, err, "NewMetaDB should succeed.")
 }
@@ -69,7 +74,7 @@ func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
 
 func newMetaDB(ctx context.Context, t *testing.T) *m.MetaDB {
 	t.Helper()
-	metaDB, err := m.NewMetaDB(ctx, testProject)
+	metaDB, err := m.NewMetaDB(ctx, testProject, defaultDatastoreConfig)
 	if err != nil {
 		t.Fatalf("Initializing MetaDB: %v", err)
 	}

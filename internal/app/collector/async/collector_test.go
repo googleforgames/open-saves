@@ -19,8 +19,10 @@ import (
 )
 
 const (
-	testProject       = "triton-for-games-dev"
-	testBucket        = "gs://triton-integration"
+	// testProject       = "triton-for-games-dev"
+	testProject   = "dev-triton"
+	// testBucket        = "gs://triton-integration"
+	testBucket        = "gs://dev-triton-triton-storage-us-central1"
 	testCacheAddr     = "localhost:6379"
 	blobKind          = "blob"
 	chunkKind         = "chunk"

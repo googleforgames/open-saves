@@ -55,6 +55,8 @@ const (
 	TraceServiceName         = "trace_service_name"
 	TraceEnableGRPCCollector = "trace_enable_grpc_collector"
 	TraceEnableHTTPCollector = "trace_enable_http_collector"
+
+	DatastoreTXMaxRetries = "datastore_tx_max_retries"
 )
 
 type ServiceConfig struct {
@@ -63,6 +65,7 @@ type ServiceConfig struct {
 	RedisConfig
 	BlobConfig
 	GRPCServerConfig
+	DatastoreConfig
 }
 
 // ServerConfig defines common fields needed to start Open Saves.
@@ -124,4 +127,8 @@ type GRPCServerConfig struct {
 	MaxConnectionAgeGrace time.Duration
 	Time                  time.Duration
 	Timeout               time.Duration
+}
+
+type DatastoreConfig struct {
+	TXMaxRetries uint
 }

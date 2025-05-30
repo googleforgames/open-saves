@@ -150,11 +150,16 @@ func Load(path string) (*ServiceConfig, error) {
 		Timeout:               viper.GetDuration(GRPCKeepAliveTimeout),
 	}
 
+	datastoreConfig := DatastoreConfig{
+		TXMaxRetries: viper.GetUint(DatastoreTXMaxRetries),
+	}
+
 	return &ServiceConfig{
 		ServerConfig:     serverConfig,
 		CacheConfig:      cacheConfig,
 		RedisConfig:      redisConfig,
 		BlobConfig:       blobConfig,
 		GRPCServerConfig: grpcServerConfig,
+		DatastoreConfig:  datastoreConfig,
 	}, nil
 }
