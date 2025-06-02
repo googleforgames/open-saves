@@ -34,10 +34,8 @@ import (
 
 const (
 	// TODO(yuryu): Make these configurable
-	// testProject       = "triton-for-games-dev"
-	testProject   = "dev-triton"
-	// testBucket        = "gs://triton-integration"
-	testBucket        = "gs://dev-triton-triton-storage-us-central1"
+	testProject       = "triton-for-games-dev"
+	testBucket        = "gs://triton-integration"
 	testCacheAddr     = "localhost:6379"
 	testRedisMode     = redis.RedisModeSingle
 	blobKind          = "blob"

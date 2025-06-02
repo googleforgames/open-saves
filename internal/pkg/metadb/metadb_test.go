@@ -45,8 +45,7 @@ import (
 const (
 	blobKind      = "blob"
 	chunkKind     = "chunk"
-	// testProject   = "triton-for-games-dev"
-	testProject   = "dev-triton"
+	testProject   = "triton-for-games-dev"
 	testNamespace = "datastore-unittests"
 )
 
