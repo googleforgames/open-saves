@@ -41,7 +41,7 @@ type Config struct {
 	Project               string
 	Before                time.Time
 	LogLevel              string
-	DatastoreTXMaxRetries uint
+	DatastoreTXMaxRetries int
 }
 
 // Collector is a garbage collector of unused resources in Datastore.

@@ -45,7 +45,7 @@ func main() {
 		expiration            = flag.Duration("garbage-expiration", defaultExpiration, "Collector deletes entries older than this time.Duration value (e.g. \"24h\")")
 		logLevel              = flag.String("log-level", defaultLogLevel, "Minimum Log level")
 		logFormat             = flag.String("log-format", defaultLogFormat, "Minimum Log format")
-		datastoreTXMaxRetries = flag.Uint("datastore-tx-max-retries", uint(defaultDatastoreTXMaxRetries), "Max retries attempt when using Datastore TX")
+		datastoreTXMaxRetries = flag.Int("datastore-tx-max-retries", int(defaultDatastoreTXMaxRetries), "Max retries attempt when using Datastore TX")
 	)
 
 	flag.Parse()

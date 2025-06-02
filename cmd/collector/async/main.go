@@ -29,7 +29,7 @@ func main() {
 		logLevel              = flag.String("log-level", defaultLogLevel, "Minimum Log level")
 		logFormat             = flag.String("log-format", defaultLogFormat, "Minimum Log format")
 		logFile               = flag.String("log-file", defaultLogFile, "Log file to write the logs, if missing then it will write into stderr")
-		datastoreTXMaxRetries = flag.Uint("datastore-tx-max-retries", uint(defaultDatastoreTXMaxRetries), "Max retries attempt when using Datastore TX")
+		datastoreTXMaxRetries = flag.Int("datastore-tx-max-retries", int(defaultDatastoreTXMaxRetries), "Max retries attempt when using Datastore TX")
 	)
 
 	flag.Parse()

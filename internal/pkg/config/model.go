@@ -130,5 +130,5 @@ type GRPCServerConfig struct {
 }
 
 type DatastoreConfig struct {
-	TXMaxRetries uint
+	TXMaxRetries int
 }

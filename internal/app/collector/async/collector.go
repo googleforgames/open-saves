@@ -38,7 +38,7 @@ type Config struct {
 	Bucket                string
 	Project               string
 	LogLevel              string
-	DatastoreTXMaxRetries uint
+	DatastoreTXMaxRetries int
 }
 
 // AsyncCollector represents the instance
