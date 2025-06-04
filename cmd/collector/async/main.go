@@ -19,25 +19,28 @@ func main() {
 	defaultLogLevel := cmd.GetEnvVarString("OPEN_SAVES_LOG_LEVEL", "info")
 	defaultLogFormat := cmd.GetEnvVarString("OPEN_SAVES_LOG_FORMAT", "json")
 	defaultLogFile := cmd.GetEnvVarString("OPEN_SAVES_LOG_FILE", "")
+	defaultDatastoreTXMaxRetries := cmd.GetEnvVarUInt("OPEN_SAVES_DATASTORE_TX_MAX_RETRIES", 1)
 
 	var (
-		port      = flag.String("port", defaultPort, "Port where new events will be listened for")
-		cloud     = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
-		bucket    = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
-		project   = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
-		logLevel  = flag.String("log-level", defaultLogLevel, "Minimum Log level")
-		logFormat = flag.String("log-format", defaultLogFormat, "Minimum Log format")
-		logFile   = flag.String("log-file", defaultLogFile, "Log file to write the logs, if missing then it will write into stderr")
+		port                  = flag.String("port", defaultPort, "Port where new events will be listened for")
+		cloud                 = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
+		bucket                = flag.String("bucket", defaultBucket, "The bucket which will hold Open Saves blobs")
+		project               = flag.String("project", defaultProject, "The GCP project ID to use for Datastore")
+		logLevel              = flag.String("log-level", defaultLogLevel, "Minimum Log level")
+		logFormat             = flag.String("log-format", defaultLogFormat, "Minimum Log format")
+		logFile               = flag.String("log-file", defaultLogFile, "Log file to write the logs, if missing then it will write into stderr")
+		datastoreTXMaxRetries = flag.Int("datastore-tx-max-retries", int(defaultDatastoreTXMaxRetries), "Max retries attempt when using Datastore TX")
 	)
 
 	flag.Parse()
 
 	cfg := &asynccollector.Config{
-		Port:     *port,
-		Cloud:    *cloud,
-		Bucket:   *bucket,
-		Project:  *project,
-		LogLevel: *logLevel,
+		Port:                  *port,
+		Cloud:                 *cloud,
+		Bucket:                *bucket,
+		Project:               *project,
+		LogLevel:              *logLevel,
+		DatastoreTXMaxRetries: *datastoreTXMaxRetries,
 	}
 
 	// Initialize writing the logs into a file.

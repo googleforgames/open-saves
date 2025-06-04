@@ -52,6 +52,7 @@
     - [Property.Type](#opensaves-Property-Type)
     - [SortOrder.Direction](#opensaves-SortOrder-Direction)
     - [SortOrder.Property](#opensaves-SortOrder-Property)
+    - [TagFilterMode](#opensaves-TagFilterMode)
   
     - [OpenSaves](#opensaves-OpenSaves)
   
@@ -687,6 +688,7 @@ Multiple conditions are AND&#39;ed together.
 | limit | [int32](#int32) |  | the limit of the number of records to return. |
 | keys_only | [bool](#bool) |  | If keys_only is set to true, the server will only return records.key and store_keys in the QueryRecordsResponse message. |
 | offset | [int32](#int32) |  | Number of records to skip when performing queries. |
+| tagFilterMode | [TagFilterMode](#opensaves-TagFilterMode) |  | optional -If tags array should be queried using AND or ANY method |
 
 
 
@@ -877,6 +879,18 @@ or a user property.
 | UPDATED_AT | 0 |  |
 | CREATED_AT | 1 |  |
 | USER_PROPERTY | 2 |  |
+
+
+
+<a name="opensaves-TagFilterMode"></a>
+
+### TagFilterMode
+TagFilterMode is a mode selector for tag filtering.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| AND | 0 | AND |
+| OR | 1 | OR |
 
 
  
