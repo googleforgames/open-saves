@@ -56,7 +56,7 @@ const (
 	TraceEnableGRPCCollector = "trace_enable_grpc_collector"
 	TraceEnableHTTPCollector = "trace_enable_http_collector"
 
-	DatastoreTXMaxRetries = "datastore_tx_max_retries"
+	DatastoreTXMaxAttempts = "datastore_tx_max_attempts"
 )
 
 type ServiceConfig struct {
@@ -130,5 +130,5 @@ type GRPCServerConfig struct {
 }
 
 type DatastoreConfig struct {
-	TXMaxRetries int
+	TXMaxAttempts int
 }

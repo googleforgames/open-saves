@@ -41,7 +41,7 @@ type Config struct {
 	Project               string
 	Before                time.Time
 	LogLevel              string
-	DatastoreTXMaxRetries int
+	DatastoreTXMaxAttempts int
 }
 
 // Collector is a garbage collector of unused resources in Datastore.
@@ -70,7 +70,7 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 		if err != nil {
 			return nil, err
 		}
-		metadb, err := metadb.NewMetaDB(ctx, cfg.Project, config.DatastoreConfig{ TXMaxRetries: cfg.DatastoreTXMaxRetries})
+		metadb, err := metadb.NewMetaDB(ctx, cfg.Project, config.DatastoreConfig{ TXMaxAttempts: cfg.DatastoreTXMaxAttempts})
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
