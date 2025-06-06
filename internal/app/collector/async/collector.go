@@ -38,7 +38,7 @@ type Config struct {
 	Bucket                string
 	Project               string
 	LogLevel              string
-	DatastoreTXMaxRetries int
+	DatastoreTXMaxAttempts int
 }
 
 // AsyncCollector represents the instance
@@ -67,7 +67,7 @@ func newCollector(ctx context.Context, cfg *Config) (*collector, error) {
 		if err != nil {
 			return nil, err
 		}
-		metadb, err := metadb.NewMetaDB(ctx, cfg.Project, config.DatastoreConfig{ TXMaxRetries: cfg.DatastoreTXMaxRetries})
+		metadb, err := metadb.NewMetaDB(ctx, cfg.Project, config.DatastoreConfig{ TXMaxAttempts: cfg.DatastoreTXMaxAttempts})
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err

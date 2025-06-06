@@ -274,7 +274,7 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 				"DeleteStore was called for a non-empty store (%s)", key)
 		}
 		return tx.Delete(dskey)
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return datastoreErrToGRPCStatus(err)
 	}
@@ -302,7 +302,7 @@ func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *reco
 		}
 		mut := ds.NewInsert(rkey, record)
 		return m.mutateSingleInTransaction(tx, mut)
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
@@ -367,7 +367,7 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 
 		toUpdate.Timestamps.Update()
 		return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, toUpdate))
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	// ErrNoUpdate is expected and not treated as an error.
 	if err != nil && err != ErrNoUpdate {
 		return nil, datastoreErrToGRPCStatus(err)
@@ -417,7 +417,7 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 			}
 		}
 		return m.mutateSingleInTransaction(tx, ds.NewDelete(rkey))
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	return datastoreErrToGRPCStatus(err)
 }
 
@@ -436,7 +436,7 @@ func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 		}
 		_, err := tx.Mutate(ds.NewInsert(m.createBlobKey(blob.Key), blob))
 		return err
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
@@ -458,7 +458,7 @@ func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 		mut := ds.NewUpdate(m.createBlobKey(blob.Key), blob)
 		_, err = tx.Mutate(mut)
 		return err
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
@@ -499,7 +499,7 @@ func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey stri
 		var err error
 		blob, err = m.getCurrentBlobRef(ctx, tx, storeKey, recordKey)
 		return err
-	}, ds.ReadOnly, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, ds.ReadOnly, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	return blob, datastoreErrToGRPCStatus(err)
 }
 
@@ -598,7 +598,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 		}
 
 		return nil
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return nil, nil, datastoreErrToGRPCStatus(err)
 	}
@@ -678,7 +678,7 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 		}
 
 		return nil
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return nil, nil, datastoreErrToGRPCStatus(err)
 	}
@@ -725,7 +725,7 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 			return err
 		}
 		return m.mutateSingleInTransaction(tx, ds.NewUpdate(rkey, record))
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return nil, nil, datastoreErrToGRPCStatus(err)
 	}
@@ -772,7 +772,7 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 			}
 		}
 		return tx.Delete(m.createBlobKey(key))
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	return datastoreErrToGRPCStatus(err)
 }
 
@@ -789,7 +789,7 @@ func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) err
 			return err
 		}
 		return tx.Delete(m.createChunkRefKey(blobKey, key))
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	return datastoreErrToGRPCStatus(err)
 }
 
@@ -1037,7 +1037,7 @@ func (m *MetaDB) FindBlobChunkRefsByNumber(ctx context.Context, blobKey uuid.UUI
 		foundChunks, err := m.findChunkRefsByNumber(ctx, tx, blobKey, number)
 		chunks = foundChunks
 		return err
-	}, ds.ReadOnly, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, ds.ReadOnly, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
@@ -1059,7 +1059,7 @@ func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey s
 		}
 		chunks, err = m.findChunkRefsByNumber(ctx, tx, blob.Key, number)
 		return err
-	}, ds.ReadOnly, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, ds.ReadOnly, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
@@ -1103,7 +1103,7 @@ func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chun
 		}
 
 		return nil
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	return err
 }
 
@@ -1129,6 +1129,6 @@ func (m *MetaDB) MarkUncommittedBlobForDeletion(ctx context.Context, key uuid.UU
 		blob.MarkAsExpired()
 		blob.Timestamps.Update()
 		return m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createBlobKey(key), blob))
-	}, datastore.MaxAttempts(m.config.TXMaxRetries))
+	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
 	return err
 }

@@ -34,7 +34,7 @@ func main() {
 	defaultExpiration := cmd.GetEnvVarDuration("OPEN_SAVES_GARBAGE_EXPIRATION", 24*time.Hour)
 	defaultLogLevel := cmd.GetEnvVarString("OPEN_SAVES_LOG_LEVEL", "info")
 	defaultLogFormat := cmd.GetEnvVarString("OPEN_SAVES_LOG_FORMAT", "json")
-	defaultDatastoreTXMaxRetries := cmd.GetEnvVarUInt("OPEN_SAVES_DATASTORE_TX_MAX_RETRIES", 1)
+	defaultDatastoreTXMaxAttempts := cmd.GetEnvVarUInt("OPEN_SAVES_DATASTORE_TX_MAX_ATTEMPTS", 2)
 
 	var (
 		cloud                 = flag.String("cloud", defaultCloud, "The public cloud provider you wish to run Open Saves on")
@@ -45,7 +45,7 @@ func main() {
 		expiration            = flag.Duration("garbage-expiration", defaultExpiration, "Collector deletes entries older than this time.Duration value (e.g. \"24h\")")
 		logLevel              = flag.String("log-level", defaultLogLevel, "Minimum Log level")
 		logFormat             = flag.String("log-format", defaultLogFormat, "Minimum Log format")
-		datastoreTXMaxRetries = flag.Int("datastore-tx-max-retries", int(defaultDatastoreTXMaxRetries), "Max retries attempt when using Datastore TX")
+		datastoreTXMaxAttempts = flag.Int("datastore-tx-max-attempts", int(defaultDatastoreTXMaxAttempts), "Max attempts when using Datastore TX")
 	)
 
 	flag.Parse()
@@ -71,7 +71,7 @@ func main() {
 		RedisMode:             *redisMode,
 		Before:                time.Now().Add(-*expiration),
 		LogLevel:              *logLevel,
-		DatastoreTXMaxRetries: *datastoreTXMaxRetries,
+		DatastoreTXMaxAttempts: *datastoreTXMaxAttempts,
 	}
 
 	// Configure the log format.

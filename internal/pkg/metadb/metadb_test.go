@@ -49,7 +49,7 @@ const (
 	testNamespace = "datastore-unittests"
 )
 
-var defaultDatastoreConfig = config.DatastoreConfig{TXMaxRetries: 1}
+var defaultDatastoreConfig = config.DatastoreConfig{TXMaxAttempts: 1}
 
 func TestMetaDB_NewMetaDB(t *testing.T) {
 	ctx := context.Background()
