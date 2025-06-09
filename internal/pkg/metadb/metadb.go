@@ -621,7 +621,7 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 			return err
 		}
 		if updateTo.Timestamps.Signature != uuid.Nil && record.Timestamps.Signature != updateTo.Timestamps.Signature {
-			return status.Errorf(codes.Aborted, "Signature mismatch: expected (%v), actual (%v)",
+			return status.Errorf(codes.FailedPrecondition, "Signature mismatch: expected (%v), actual (%v)",
 				updateTo.Timestamps.Signature.String(), record.Timestamps.Signature.String())
 		}
 		if record.ExternalBlob == uuid.Nil {
