@@ -17,6 +17,7 @@ package metadb_test
 import (
 	"context"
 	"errors"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -43,17 +44,25 @@ import (
 )
 
 const (
-	blobKind      = "blob"
-	chunkKind     = "chunk"
-	testProject   = "triton-for-games-dev"
-	testNamespace = "datastore-unittests"
+	blobKind           = "blob"
+	chunkKind          = "chunk"
+	defaultTestProject = "triton-for-games-dev"
+	testNamespace      = "datastore-unittests"
 )
 
 var defaultDatastoreConfig = config.DatastoreConfig{TXMaxAttempts: 1}
 
+func getTestProject() string {
+	if testProject, ok := os.LookupEnv("TEST_PROJECT_ID"); ok {
+		return testProject
+	}
+
+	return defaultTestProject
+}
+
 func TestMetaDB_NewMetaDB(t *testing.T) {
 	ctx := context.Background()
-	metaDB, err := m.NewMetaDB(ctx, testProject, defaultDatastoreConfig)
+	metaDB, err := m.NewMetaDB(ctx, getTestProject(), defaultDatastoreConfig)
 	assert.NotNil(t, metaDB, "NewMetaDB() should return a non-nil instance.")
 	assert.NoError(t, err, "NewMetaDB should succeed.")
 }
@@ -61,7 +70,7 @@ func TestMetaDB_NewMetaDB(t *testing.T) {
 const testTimestampThreshold = 30 * time.Second
 
 func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
-	client, err := datastore.NewClient(ctx, testProject)
+	client, err := datastore.NewClient(ctx, getTestProject())
 	if err != nil {
 		t.Fatalf("datastore.NewClient() failed: %v", err)
 	}
@@ -73,7 +82,7 @@ func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
 
 func newMetaDB(ctx context.Context, t *testing.T) *m.MetaDB {
 	t.Helper()
-	metaDB, err := m.NewMetaDB(ctx, testProject, defaultDatastoreConfig)
+	metaDB, err := m.NewMetaDB(ctx, getTestProject(), defaultDatastoreConfig)
 	if err != nil {
 		t.Fatalf("Initializing MetaDB: %v", err)
 	}
