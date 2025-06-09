@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -52,9 +53,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+
 const (
-	testProject             = "triton-for-games-dev"
-	testBucket              = "gs://triton-integration"
+	defaultTestProject      = "triton-for-games-dev"
+	defaultTestBucket       = "gs://triton-integration"
 	testPort                = "8000"
 	testBufferSize          = 1024 * 1024
 	testShutdownGracePeriod = "1s"
@@ -69,13 +71,29 @@ var (
 	serviceConfig *config.ServiceConfig
 )
 
+func getTestProject() string {
+	if testProject, ok := os.LookupEnv("TEST_PROJECT_ID"); ok {
+		return testProject
+	}
+
+	return defaultTestProject
+}
+
+func getTestBucket() string {
+	if testBucket, ok := os.LookupEnv("TEST_BUCKET"); ok {
+		return testBucket
+	}
+
+	return defaultTestBucket
+}
+
 func getServiceConfig() (*config.ServiceConfig, error) {
 	if serviceConfig != nil {
 		return serviceConfig, nil
 	}
 	configPath := cmd.GetEnvVarString("OPEN_SAVES_CONFIG", "../../../configs/")
-	viper.Set(config.OpenSavesBucket, testBucket)
-	viper.Set(config.OpenSavesProject, testProject)
+	viper.Set(config.OpenSavesBucket, getTestBucket())
+	viper.Set(config.OpenSavesProject, getTestProject())
 	viper.Set(config.OpenSavesPort, testPort)
 	viper.Set(config.ShutdownGracePeriod, testShutdownGracePeriod)
 	sc, err := config.Load(configPath)
@@ -168,8 +186,8 @@ func getOpenSavesServer(ctx context.Context, t *testing.T, cloud string) (*openS
 		ServerConfig: config.ServerConfig{
 			Address: ":6000",
 			Cloud:   cloud,
-			Bucket:  testBucket,
-			Project: testProject,
+			Bucket:  getTestBucket(),
+			Project: getTestProject(),
 		},
 		RedisConfig: config.RedisConfig{
 			Address:     r.Addr(),
@@ -293,12 +311,12 @@ func setupTestStore(ctx context.Context, t *testing.T, client pb.OpenSavesClient
 
 func cleanupBlobs(ctx context.Context, t *testing.T, storeKey, recordkey string) {
 	t.Helper()
-	client, err := datastore.NewClient(ctx, testProject)
+	client, err := datastore.NewClient(ctx, getTestProject())
 	if err != nil {
 		t.Errorf("datastore.NewClient failed during cleanup: %v", err)
 		return
 	}
-	blobClient, err := blob.NewBlobGCP(ctx, testBucket)
+	blobClient, err := blob.NewBlobGCP(ctx, getTestBucket())
 	if err != nil {
 		t.Errorf("NewBlobGCP returned error: %v", err)
 		blobClient = nil
@@ -538,7 +556,7 @@ func TestOpenSaves_UpdateRecordWithSignature(t *testing.T) {
 	updateReq.Record.Signature = dummyUUID[:]
 	if record, err := client.UpdateRecord(ctx, updateReq); assert.Error(t, err) {
 		assert.Nil(t, record)
-		assert.Equal(t, codes.Aborted, status.Code(err))
+		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 	}
 }
 
