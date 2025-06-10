@@ -34,13 +34,14 @@ import (
 
 // Config defines common fields needed to start the garbage collector.
 type Config struct {
-	Cloud     string
-	Bucket    string
-	Cache     string
-	RedisMode string
-	Project   string
-	Before    time.Time
-	LogLevel  string
+	Cloud                 string
+	Bucket                string
+	Cache                 string
+	RedisMode             string
+	Project               string
+	Before                time.Time
+	LogLevel              string
+	DatastoreTXMaxAttempts int
 }
 
 // Collector is a garbage collector of unused resources in Datastore.
@@ -69,7 +70,7 @@ func newCollector(ctx context.Context, cfg *Config) (*Collector, error) {
 		if err != nil {
 			return nil, err
 		}
-		metadb, err := metadb.NewMetaDB(ctx, cfg.Project)
+		metadb, err := metadb.NewMetaDB(ctx, cfg.Project, config.DatastoreConfig{ TXMaxAttempts: cfg.DatastoreTXMaxAttempts})
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err

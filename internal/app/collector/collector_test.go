@@ -16,6 +16,7 @@ package collector
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -33,22 +34,37 @@ import (
 )
 
 const (
-	// TODO(yuryu): Make these configurable
-	testProject       = "triton-for-games-dev"
-	testBucket        = "gs://triton-integration"
-	testCacheAddr     = "localhost:6379"
-	testRedisMode     = redis.RedisModeSingle
-	blobKind          = "blob"
-	chunkKind         = "chunk"
-	testTimeThreshold = -1 * time.Hour
+	defaultTestProject = "triton-for-games-dev"
+	defaultTestBucket  = "gs://triton-integration"
+	testCacheAddr      = "localhost:6379"
+	testRedisMode      = redis.RedisModeSingle
+	blobKind           = "blob"
+	chunkKind          = "chunk"
+	testTimeThreshold  = -1 * time.Hour
 )
+
+func getTestProject() string {
+	if testProject, ok := os.LookupEnv("TEST_PROJECT_ID"); ok {
+		return testProject
+	}
+
+	return defaultTestProject
+}
+
+func getTestBucket() string {
+	if testBucket, ok := os.LookupEnv("TEST_BUCKET"); ok {
+		return testBucket
+	}
+
+	return defaultTestBucket
+}
 
 func newTestCollector(ctx context.Context, t *testing.T) *Collector {
 	t.Helper()
 	cfg := &Config{
 		Cloud:     "gcp",
-		Bucket:    testBucket,
-		Project:   testProject,
+		Bucket:    getTestBucket(),
+		Project:   getTestProject(),
 		Cache:     testCacheAddr,
 		RedisMode: testRedisMode,
 		Before:    time.Now().Add(testTimeThreshold),
@@ -78,7 +94,7 @@ func setupTestStore(ctx context.Context, t *testing.T, collector *Collector) *st
 
 func newDatastoreClient(ctx context.Context, t *testing.T) *datastore.Client {
 	t.Helper()
-	ds, err := datastore.NewClient(ctx, testProject)
+	ds, err := datastore.NewClient(ctx, getTestProject())
 	if err != nil {
 		t.Fatalf("Failed to create a new Datastore client: %v", err)
 	}

@@ -72,7 +72,7 @@ func newOpenSavesServer(ctx context.Context, cfg *config.ServiceConfig) (*openSa
 		if err != nil {
 			return nil, err
 		}
-		metadb, err := metadb.NewMetaDB(ctx, cfg.ServerConfig.Project)
+		metadb, err := metadb.NewMetaDB(ctx, cfg.ServerConfig.Project, cfg.DatastoreConfig)
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
@@ -193,7 +193,7 @@ func (s *openSavesServer) UpdateRecord(ctx context.Context, req *pb.UpdateRecord
 	newRecord, err := s.metaDB.UpdateRecord(ctx, req.GetStoreKey(), updateTo.Key,
 		func(r *record.Record) (*record.Record, error) {
 			if updateTo.Timestamps.Signature != uuid.Nil && r.Timestamps.Signature != updateTo.Timestamps.Signature {
-				return nil, status.Errorf(codes.Aborted, "Signature mismatch: expected (%v), actual (%v)",
+				return nil, status.Errorf(codes.FailedPrecondition, "Signature mismatch: expected (%v), actual (%v)",
 					updateTo.Timestamps.Signature.String(), r.Timestamps.Signature.String())
 			}
 			r.OwnerID = updateTo.OwnerID

@@ -18,11 +18,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudevents/sdk-go/v2/event"
 	_ "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/uuid"
 	"github.com/googleapis/google-cloudevents-go/cloud/datastoredata"
 	"github.com/googleforgames/open-saves/internal/pkg/blob"
+	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref"
 	"github.com/googleforgames/open-saves/internal/pkg/metadb/blobref/chunkref"
@@ -32,11 +33,12 @@ import (
 )
 
 type Config struct {
-	Port      string
-	Cloud     string
-	Bucket    string
-	Project   string
-	LogLevel  string
+	Port                  string
+	Cloud                 string
+	Bucket                string
+	Project               string
+	LogLevel              string
+	DatastoreTXMaxAttempts int
 }
 
 // AsyncCollector represents the instance
@@ -65,7 +67,7 @@ func newCollector(ctx context.Context, cfg *Config) (*collector, error) {
 		if err != nil {
 			return nil, err
 		}
-		metadb, err := metadb.NewMetaDB(ctx, cfg.Project)
+		metadb, err := metadb.NewMetaDB(ctx, cfg.Project, config.DatastoreConfig{ TXMaxAttempts: cfg.DatastoreTXMaxAttempts})
 		if err != nil {
 			log.Fatalf("Failed to create a MetaDB instance: %v", err)
 			return nil, err
