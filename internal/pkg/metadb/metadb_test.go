@@ -240,7 +240,7 @@ func setupTestStoreRecordBlobSet(ctx context.Context, t *testing.T, metaDB *m.Me
 	return store, record, blob
 }
 
-func TestMetaDV_WithDatabaseIDErrorGettingRecord(t *testing.T) {
+func TestMetaDB_WithDatabaseIDErrorGettingRecord(t *testing.T) {
 	ctx := context.Background()
 	metaDB := newMetaDBWithDatabaseConfig(ctx, t)
 
