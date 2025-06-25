@@ -57,6 +57,7 @@ const (
 	TraceEnableHTTPCollector = "trace_enable_http_collector"
 
 	DatastoreTXMaxAttempts = "datastore_tx_max_attempts"
+	DatastoreDatabaseId    = "datastore_database_id"
 )
 
 type ServiceConfig struct {
@@ -131,4 +132,5 @@ type GRPCServerConfig struct {
 
 type DatastoreConfig struct {
 	TXMaxAttempts int
+	DatabaseId    string
 }
