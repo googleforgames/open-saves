@@ -35,3 +35,4 @@ trace_service_name: "open-saves"
 trace_sample_rate: 0.00
 
 datastore_tx_max_attempts: 2
+datastore_database_id: ""
