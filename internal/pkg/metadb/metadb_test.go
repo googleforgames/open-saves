@@ -50,7 +50,10 @@ const (
 	testNamespace      = "datastore-unittests"
 )
 
-var defaultDatastoreConfig = config.DatastoreConfig{TXMaxAttempts: 1}
+var (
+	defaultDatastoreConfig = config.DatastoreConfig{TXMaxAttempts: 1}
+	datastoreConfigWithId  = config.DatastoreConfig{TXMaxAttempts: 1, DatabaseId: "database-id"}
+)
 
 func getTestProject() string {
 	if testProject, ok := os.LookupEnv("TEST_PROJECT_ID"); ok {
@@ -85,6 +88,17 @@ func newMetaDB(ctx context.Context, t *testing.T) *m.MetaDB {
 	metaDB, err := m.NewMetaDB(ctx, getTestProject(), defaultDatastoreConfig)
 	if err != nil {
 		t.Fatalf("Initializing MetaDB: %v", err)
+	}
+	metaDB.Namespace = testNamespace
+	t.Cleanup(func() { metaDB.Disconnect(ctx) })
+	return metaDB
+}
+
+func newMetaDBWithDatabaseConfig(ctx context.Context, t *testing.T) *m.MetaDB {
+	t.Helper()
+	metaDB, err := m.NewMetaDB(ctx, getTestProject(), datastoreConfigWithId)
+	if err != nil {
+		t.Fatalf("Initializing MetaDB with DatabaseId: %v", err)
 	}
 	metaDB.Namespace = testNamespace
 	t.Cleanup(func() { metaDB.Disconnect(ctx) })
@@ -224,6 +238,15 @@ func setupTestStoreRecordBlobSet(ctx context.Context, t *testing.T, metaDB *m.Me
 	}
 	setupTestBlobRef(ctx, t, metaDB, blob)
 	return store, record, blob
+}
+
+func TestMetaDV_WithDatabaseIDErrorGettingRecord(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDBWithDatabaseConfig(ctx, t)
+
+	record, err := metaDB.GetRecord(ctx, newStoreKey(), newRecordKey())
+	assert.Nil(t, record, "GetRecord() should be nil")
+	assert.Error(t, err, "GetRecord() should return error when database is unknown")
 }
 
 func TestMetaDB_Disconnect(t *testing.T) {
@@ -762,7 +785,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	}
 
 	recordKey := newRecordKey()
-	expiresAt := time.Now().UTC().Add(3*time.Hour).Truncate(time.Hour)
+	expiresAt := time.Now().UTC().Add(3 * time.Hour).Truncate(time.Hour)
 	origRecord := &record.Record{
 		Key:        recordKey,
 		Properties: make(record.PropertyMap),
@@ -818,7 +841,7 @@ func TestMetaDB_UpdateRecordWithExternalBlobs(t *testing.T) {
 	}
 
 	// Make sure ExpiresAt is updated in the BlobRef when updated in the Record.
-	newExpiresAt := time.Now().UTC().Add(6*time.Hour).Truncate(time.Hour)
+	newExpiresAt := time.Now().UTC().Add(6 * time.Hour).Truncate(time.Hour)
 	newRecord, err = metaDB.UpdateRecord(ctx, storeKey, recordKey, func(record *record.Record) (*record.Record, error) {
 		record.ExpiresAt = newExpiresAt
 		return record, nil
@@ -890,7 +913,8 @@ func TestMetaDB_ListBlobsByStatus(t *testing.T) {
 		blobref.StatusError,
 		blobref.StatusInitializing,
 		blobref.StatusPendingDeletion,
-		blobref.StatusPendingDeletion}
+		blobref.StatusPendingDeletion,
+	}
 	for _, s := range statuses {
 		blob := &blobref.BlobRef{
 			Key:       uuid.New(),
@@ -1214,7 +1238,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 				StoreKey: stores[0].Key,
 				OwnerId:  "abc",
 			},
-			[]*record.Record{records[0]}, codes.OK,
+			[]*record.Record{records[0]},
+			codes.OK,
 		},
 		{
 			"Tags AND No Result",
@@ -1227,8 +1252,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		{
 			"Tags OR No Result",
 			&pb.QueryRecordsRequest{
-				StoreKey:              stores[1].Key,
-				Tags:                  []string{"non-existing-tag-1", "non-existing-tag-2"},
+				StoreKey:      stores[1].Key,
+				Tags:          []string{"non-existing-tag-1", "non-existing-tag-2"},
 				TagFilterMode: pb.TagFilterMode_OR,
 			},
 			nil, codes.OK,
@@ -1236,18 +1261,20 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 		{
 			"Tags OR",
 			&pb.QueryRecordsRequest{
-				StoreKey:              stores[1].Key,
-				Tags:                  []string{tag1, tag4},
+				StoreKey:      stores[1].Key,
+				Tags:          []string{tag1, tag4},
 				TagFilterMode: pb.TagFilterMode_OR,
 			},
-			[]*record.Record{records[2]}, codes.OK,
+			[]*record.Record{records[2]},
+			codes.OK,
 		},
 		{
 			"Tags Multiple Records",
 			&pb.QueryRecordsRequest{
 				Tags: []string{tag1},
 			},
-			[]*record.Record{records[0], records[2]}, codes.OK,
+			[]*record.Record{records[0], records[2]},
+			codes.OK,
 		},
 		{
 			"Limit",
@@ -1256,7 +1283,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 				Tags:     []string{tag1},
 				Limit:    1,
 			},
-			[]*record.Record{records[0]}, codes.OK,
+			[]*record.Record{records[0]},
+			codes.OK,
 		},
 		{
 			"Limit No Filtering",
@@ -1264,7 +1292,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 				StoreKey: stores[0].Key,
 				Limit:    1,
 			},
-			[]*record.Record{records[0]}, codes.OK,
+			[]*record.Record{records[0]},
+			codes.OK,
 		},
 		{
 			"Offset No Filtering",
@@ -1272,7 +1301,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 				StoreKey: stores[0].Key,
 				Offset:   1,
 			},
-			[]*record.Record{records[1]}, codes.OK,
+			[]*record.Record{records[1]},
+			codes.OK,
 		},
 		{
 			"Keys Only",
@@ -1282,7 +1312,8 @@ func TestMetaDB_QueryRecords(t *testing.T) {
 				Tags:     []string{tag1},
 				KeysOnly: true,
 			},
-			[]*record.Record{{Key: records[0].Key, StoreKey: records[0].StoreKey}}, codes.OK,
+			[]*record.Record{{Key: records[0].Key, StoreKey: records[0].StoreKey}},
+			codes.OK,
 		},
 	}
 	for _, tc := range testCases {
