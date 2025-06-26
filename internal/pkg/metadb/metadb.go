@@ -51,9 +51,7 @@ const (
 	ownerField      = "OwnerID"
 )
 
-var (
-	ErrNoUpdate = errors.New("UpdateRecord doesn't need to commit the change")
-)
+var ErrNoUpdate = errors.New("UpdateRecord doesn't need to commit the change")
 
 // MetaDB is a metadata database manager of Open Saves.
 // The methods return gRPC error codes. Here are some common error codes
@@ -87,7 +85,7 @@ func removeInlineBlob(r *record.Record) *record.Record {
 
 // NewMetaDB creates a new MetaDB instance with an initialized database client.
 func NewMetaDB(ctx context.Context, projectID string, config config.DatastoreConfig, opts ...option.ClientOption) (*MetaDB, error) {
-	client, err := ds.NewClient(ctx, projectID, opts...)
+	client, err := ds.NewClientWithDatabase(ctx, projectID, config.DatabaseId, opts...)
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
@@ -148,7 +146,8 @@ func (m *MetaDB) getBlobRef(ctx context.Context, tx *ds.Transaction, key uuid.UU
 
 // Returns a modified Record and the caller must commit the change.
 func (m *MetaDB) markBlobRefForDeletion(tx *ds.Transaction,
-	record *record.Record, blob *blobref.BlobRef, newBlobKey uuid.UUID) (*record.Record, error) {
+	record *record.Record, blob *blobref.BlobRef, newBlobKey uuid.UUID,
+) (*record.Record, error) {
 	if record.ExternalBlob == uuid.Nil {
 		return nil, status.Error(codes.FailedPrecondition, "the record doesn't have an external blob associated")
 	}
@@ -354,8 +353,8 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 				if err != nil {
 					return err
 				}
-			// Update the external blob with the new ExpiresAt coming from the record.
-			// Will update only if the incoming update changes the expiresAt value and it differs from the oldBlob one.
+				// Update the external blob with the new ExpiresAt coming from the record.
+				// Will update only if the incoming update changes the expiresAt value and it differs from the oldBlob one.
 			} else if !toUpdate.ExpiresAt.IsZero() && oldBlob.ExpiresAt != toUpdate.ExpiresAt {
 				oldBlob.ExpiresAt = toUpdate.ExpiresAt
 				err = m.mutateSingleInTransaction(tx, ds.NewUpdate(m.createBlobKey(toUpdate.ExternalBlob), oldBlob))
@@ -459,7 +458,6 @@ func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 		_, err = tx.Mutate(mut)
 		return err
 	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
-
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
@@ -1096,7 +1094,6 @@ func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chun
 	defer span.End()
 
 	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-
 		mut := ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
 		if err := m.mutateSingleInTransaction(tx, mut); err != nil {
 			return err
