@@ -56,8 +56,9 @@ const (
 	TraceEnableGRPCCollector = "trace_enable_grpc_collector"
 	TraceEnableHTTPCollector = "trace_enable_http_collector"
 
-	DatastoreTXMaxAttempts = "datastore_tx_max_attempts"
-	DatastoreDatabaseId    = "datastore_database_id"
+	DatastoreTXMaxAttempts   = "datastore_tx_max_attempts"
+	DatastoreDatabaseId      = "datastore_database_id"
+	DatastoreTXSlowThreshold = "datastore_tx_slow_threshold"
 )
 
 type ServiceConfig struct {
@@ -131,6 +132,7 @@ type GRPCServerConfig struct {
 }
 
 type DatastoreConfig struct {
-	TXMaxAttempts int
-	DatabaseId    string
+	TXMaxAttempts   int
+	DatabaseId      string
+	SlowTXThreshold time.Duration
 }
