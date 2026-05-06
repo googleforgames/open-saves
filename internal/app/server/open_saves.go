@@ -585,27 +585,6 @@ func (s *openSavesServer) deleteObjectOnExit(ctx context.Context, path string) e
 	return err
 }
 
-func (s *openSavesServer) deleteSameNumberChunks(ctx context.Context, chunk *chunkref.ChunkRef) error {
-	otherChunks, err := s.metaDB.FindBlobChunkRefsByNumber(ctx, chunk.BlobRef, chunk.Number)
-	if err != nil {
-		return err
-	}
-	log.Debugf("Found (%d) matches for chunkref (%s), blobref (%s) with same number (%d)",
-		len(otherChunks), chunk.Key, chunk.BlobRef, chunk.Number)
-	for _, o := range otherChunks {
-		log.Debugf("Deleting chunkref (%s) for blobref (%s) with same number (%d)", chunk.Key, chunk.BlobRef, chunk.Number)
-		err := s.deleteObjectOnExit(ctx, o.ObjectPath())
-		if err != nil {
-			return err
-		}
-		err = s.metaDB.DeleteChunkRef(ctx, o.BlobRef, o.Key)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
 
 func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) error {
 	ctx := stream.Context()
@@ -693,17 +672,17 @@ func (s *openSavesServer) UploadChunk(stream pb.OpenSaves_UploadChunkServer) err
 		return err
 	}
 
-	// Delete all the related chunks with the same number, if any
-	if err := s.deleteSameNumberChunks(ctx, chunk); err != nil {
-		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
-		log.Error(err)
-		return err
-	}
-
-	if err := s.metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
+	superseded, err := s.metaDB.InsertChunkRef(ctx, blob, chunk)
+	if err != nil {
 		_ = s.deleteObjectOnExit(ctx, chunk.ObjectPath())
 		log.Errorf("Failed to insert chunkref metadata (%v), blobref (%v): %v", chunk.Key, chunk.BlobRef, err)
 		return err
+	}
+	if len(superseded) > 0 {
+		log.Debugf("UploadChunk: replacing %d superseded chunk(s) with number (%d) for blobref (%s)", len(superseded), chunk.Number, chunk.BlobRef)
+		for _, old := range superseded {
+			_ = s.deleteObjectOnExit(ctx, old.ObjectPath())
+		}
 	}
 	return stream.SendAndClose(chunk.ToProto())
 }
