@@ -173,7 +173,7 @@ a globally unique bucket name.
 
 ```bash
 export BUCKET_PATH=gs://<your-unique-bucket-name>
-gsutil mb $BUCKET_PATH
+gcloud storage buckets create $BUCKET_PATH
 ```
 ### Deploying your application
 
@@ -262,7 +262,7 @@ You should see one object created.
 Alternatively, you can use `gsutil` to list the object via command line.
 
 ```bash
-gsutil ls $BUCKET_PATH
+gcloud storage ls $BUCKET_PATH
 ```
 
 ## Set up the synchronous garbage collector
