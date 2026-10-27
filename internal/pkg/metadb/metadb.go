@@ -19,10 +19,14 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/googleforgames/open-saves/internal/pkg/config"
 	"github.com/googleforgames/open-saves/internal/pkg/tracing"
+	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	otelmetric "go.opentelemetry.io/otel/metric"
 
 	"cloud.google.com/go/datastore"
 	ds "cloud.google.com/go/datastore"
@@ -49,6 +53,8 @@ const (
 	propertiesField = "Properties"
 	tagsField       = "Tags"
 	ownerField      = "OwnerID"
+
+	defaultSlowTXThreshold = time.Second
 )
 
 var ErrNoUpdate = errors.New("UpdateRecord doesn't need to commit the change")
@@ -68,6 +74,9 @@ type MetaDB struct {
 	client *ds.Client
 
 	config config.DatastoreConfig
+
+	txDuration otelmetric.Float64Histogram
+	txErrors   otelmetric.Int64Counter
 }
 
 // RecordUpdater is a callback function for record updates.
@@ -89,7 +98,46 @@ func NewMetaDB(ctx context.Context, projectID string, config config.DatastoreCon
 	if err != nil {
 		return nil, datastoreErrToGRPCStatus(err)
 	}
-	return &MetaDB{client: client, config: config}, nil
+	meter := otel.Meter("open-saves/metadb")
+	txDuration, _ := meter.Float64Histogram(
+		"metadb.transaction.duration",
+		otelmetric.WithDescription("Duration of MetaDB Datastore transactions in seconds"),
+		otelmetric.WithUnit("s"),
+	)
+	txErrors, _ := meter.Int64Counter(
+		"metadb.transaction.errors",
+		otelmetric.WithDescription("Number of failed MetaDB Datastore transactions"),
+	)
+	if config.SlowTXThreshold == 0 {
+		config.SlowTXThreshold = defaultSlowTXThreshold
+	}
+	return &MetaDB{client: client, config: config, txDuration: txDuration, txErrors: txErrors}, nil
+}
+
+// runInTransaction wraps RunInTransaction with duration metrics and slow-operation warnings.
+// storeKey and recordKey are included in log output but not in metric attributes to avoid high cardinality.
+func (m *MetaDB) runInTransaction(ctx context.Context, operation, storeKey, recordKey string, f func(*ds.Transaction) error, opts ...ds.TransactionOption) (*ds.Commit, error) {
+	start := time.Now()
+	commit, err := m.client.RunInTransaction(ctx, f, opts...)
+	elapsed := time.Since(start)
+
+	attrs := []attribute.KeyValue{attribute.String("operation", operation)}
+	m.txDuration.Record(ctx, elapsed.Seconds(), otelmetric.WithAttributes(attrs...))
+	if err != nil {
+		m.txErrors.Add(ctx, 1, otelmetric.WithAttributes(attrs...))
+	}
+
+	if elapsed > m.config.SlowTXThreshold {
+		log.WithFields(log.Fields{
+			"operation":   operation,
+			"store_key":   storeKey,
+			"record_key":  recordKey,
+			"duration_ms": elapsed.Milliseconds(),
+			"error":       err,
+		}).Warn("slow MetaDB transaction")
+	}
+
+	return commit, err
 }
 
 func (m *MetaDB) newQuery(kind string) *ds.Query {
@@ -263,7 +311,7 @@ func (m *MetaDB) DeleteStore(ctx context.Context, key string) error {
 
 	dskey := m.createStoreKey(key)
 
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "DeleteStore", key, "", func(tx *ds.Transaction) error {
 		query := ds.NewQuery(recordKind).Transaction(tx).KeysOnly().
 			Ancestor(dskey).Limit(1).Namespace(m.Namespace)
 		iter := m.client.Run(ctx, query)
@@ -289,7 +337,7 @@ func (m *MetaDB) InsertRecord(ctx context.Context, storeKey string, record *reco
 	record.Timestamps = timestamps.New()
 	record.StoreKey = storeKey
 	rkey := m.createRecordKey(storeKey, record.Key)
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "InsertRecord", storeKey, record.Key, func(tx *ds.Transaction) error {
 		dskey := m.createStoreKey(storeKey)
 		query := ds.NewQuery(storeKind).Transaction(tx).Namespace(m.Namespace).
 			KeysOnly().FilterField("__key__", "=", dskey).Limit(1)
@@ -320,7 +368,7 @@ func (m *MetaDB) UpdateRecord(ctx context.Context, storeKey string, key string, 
 		return nil, status.Errorf(codes.Internal, "updater cannot be nil")
 	}
 	var toUpdate *record.Record
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "UpdateRecord", storeKey, key, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(storeKey, key)
 
 		// TODO(yuryu): Consider supporting transactions in MetaDB and move
@@ -395,7 +443,7 @@ func (m *MetaDB) DeleteRecord(ctx context.Context, storeKey, key string) error {
 	defer span.End()
 
 	rkey := m.createRecordKey(storeKey, key)
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "DeleteRecord", storeKey, key, func(tx *ds.Transaction) error {
 		record := new(record.Record)
 		if err := tx.Get(rkey, record); err != nil {
 			if err == ds.ErrNoSuchEntity {
@@ -427,7 +475,7 @@ func (m *MetaDB) InsertBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 
 	blob.Timestamps = timestamps.New()
 	rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "InsertBlobRef", blob.StoreKey, blob.RecordKey, func(tx *ds.Transaction) error {
 		if exists, err := m.recordExists(ctx, tx, rkey); err != nil {
 			return err
 		} else if !exists {
@@ -448,7 +496,7 @@ func (m *MetaDB) UpdateBlobRef(ctx context.Context, blob *blobref.BlobRef) (*blo
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.UpdateBlobRef")
 	defer span.End()
 
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "UpdateBlobRef", blob.Key.String(), "", func(tx *ds.Transaction) error {
 		oldBlob, err := m.getBlobRef(ctx, tx, blob.Key)
 		if err != nil {
 			return err
@@ -493,7 +541,7 @@ func (m *MetaDB) GetCurrentBlobRef(ctx context.Context, storeKey, recordKey stri
 	defer span.End()
 
 	var blob *blobref.BlobRef
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "GetCurrentBlobRef", storeKey, recordKey, func(tx *ds.Transaction) error {
 		var err error
 		blob, err = m.getCurrentBlobRef(ctx, tx, storeKey, recordKey)
 		return err
@@ -541,7 +589,7 @@ func (m *MetaDB) PromoteBlobRefToCurrent(ctx context.Context, blob *blobref.Blob
 	defer span.End()
 
 	record := new(record.Record)
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "PromoteBlobRefToCurrent", blob.StoreKey, blob.RecordKey, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
 		if err := tx.Get(rkey, record); err != nil {
 			return err
@@ -613,7 +661,7 @@ func (m *MetaDB) PromoteBlobRefWithRecordUpdater(ctx context.Context, blob *blob
 	defer span.End()
 
 	record := new(record.Record)
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "PromoteBlobRefWithRecordUpdater", blob.StoreKey, blob.RecordKey, func(tx *ds.Transaction) error {
 		rkey := m.createRecordKey(blob.StoreKey, blob.RecordKey)
 		if err := tx.Get(rkey, record); err != nil {
 			return err
@@ -697,7 +745,7 @@ func (m *MetaDB) RemoveBlobFromRecord(ctx context.Context, storeKey string, reco
 	rkey := m.createRecordKey(storeKey, recordKey)
 	blob := new(blobref.BlobRef)
 	record := new(record.Record)
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "RemoveBlobFromRecord", storeKey, recordKey, func(tx *ds.Transaction) error {
 		err := tx.Get(rkey, record)
 		if err != nil {
 			return err
@@ -756,7 +804,7 @@ func (m *MetaDB) DeleteBlobRef(ctx context.Context, key uuid.UUID) error {
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteBlobRef")
 	defer span.End()
 
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "DeleteBlobRef", key.String(), "", func(tx *ds.Transaction) error {
 		blob, err := m.getBlobRef(ctx, tx, key)
 		if err != nil {
 			return err
@@ -781,7 +829,7 @@ func (m *MetaDB) DeleteChunkRef(ctx context.Context, blobKey, key uuid.UUID) err
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.DeleteChunkRef")
 	defer span.End()
 
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "DeleteChunkRef", blobKey.String(), key.String(), func(tx *ds.Transaction) error {
 		var chunk chunkref.ChunkRef
 		if err := tx.Get(m.createChunkRefKey(blobKey, key), &chunk); err != nil {
 			return err
@@ -1025,23 +1073,6 @@ func (m *MetaDB) findChunkRefsByNumber(ctx context.Context, tx *ds.Transaction, 
 	return chunks, nil
 }
 
-// FindBlobChunkRefsByNumber returns the list of ChunkRef objects associated to a BlobRef sharing the same number.
-func (m *MetaDB) FindBlobChunkRefsByNumber(ctx context.Context, blobKey uuid.UUID, number int32) ([]*chunkref.ChunkRef, error) {
-	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.FindBlobChunkRefsByNumber")
-	defer span.End()
-
-	var chunks []*chunkref.ChunkRef
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		foundChunks, err := m.findChunkRefsByNumber(ctx, tx, blobKey, number)
-		chunks = foundChunks
-		return err
-	}, ds.ReadOnly, datastore.MaxAttempts(m.config.TXMaxAttempts))
-	if err != nil {
-		return nil, datastoreErrToGRPCStatus(err)
-	}
-
-	return chunks, nil
-}
 
 // FindChunkRefByNumber returns a ChunkRef object for the specified store, record, and number.
 // The Chunk upload session must be committed.
@@ -1050,7 +1081,7 @@ func (m *MetaDB) FindChunkRefByNumber(ctx context.Context, storeKey, recordKey s
 	defer span.End()
 
 	chunks := []*chunkref.ChunkRef{}
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "FindChunkRefByNumber", storeKey, recordKey, func(tx *ds.Transaction) error {
 		blob, err := m.getCurrentBlobRef(ctx, tx, storeKey, recordKey)
 		if err != nil {
 			return err
@@ -1087,21 +1118,33 @@ func (m *MetaDB) ValidateChunkRefPreconditions(ctx context.Context, chunk *chunk
 	return blob, nil
 }
 
-// InsertChunkRef inserts a new ChunkRef object to the datastore. If the current session has another chunk
-// with the same Number, it will be marked for deletion.
-func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) error {
+// InsertChunkRef inserts a new ChunkRef object to the datastore. Any existing chunks with the same
+// Number are deleted inside the same transaction and returned so the caller can clean up their
+// backing blob-store objects. The query and insert are atomic, preventing the race where two
+// concurrent uploads of the same chunk number both survive deduplication.
+func (m *MetaDB) InsertChunkRef(ctx context.Context, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) ([]*chunkref.ChunkRef, error) {
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.InsertChunkRef")
 	defer span.End()
 
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
-		mut := ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk)
-		if err := m.mutateSingleInTransaction(tx, mut); err != nil {
+	var superseded []*chunkref.ChunkRef
+	_, err := m.runInTransaction(ctx, "InsertChunkRef", blob.StoreKey, blob.RecordKey, func(tx *ds.Transaction) error {
+		existing, err := m.findChunkRefsByNumber(ctx, tx, chunk.BlobRef, chunk.Number)
+		if err != nil {
 			return err
 		}
+		for _, old := range existing {
+			if err := tx.Delete(m.createChunkRefKey(old.BlobRef, old.Key)); err != nil {
+				return err
+			}
+		}
+		superseded = existing
 
-		return nil
+		return m.mutateSingleInTransaction(tx, ds.NewInsert(m.createChunkRefKey(chunk.BlobRef, chunk.Key), chunk))
 	}, datastore.MaxAttempts(m.config.TXMaxAttempts))
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return superseded, nil
 }
 
 // MarkUncommittedBlobForDeletion marks the BlobRef specified by key for deletion
@@ -1111,7 +1154,7 @@ func (m *MetaDB) MarkUncommittedBlobForDeletion(ctx context.Context, key uuid.UU
 	_, span := otel.Tracer(tracing.ServiceName).Start(ctx, "MetaDB.MarkUncommittedBlobForDeletion")
 	defer span.End()
 
-	_, err := m.client.RunInTransaction(ctx, func(tx *ds.Transaction) error {
+	_, err := m.runInTransaction(ctx, "MarkUncommittedBlobForDeletion", key.String(), "", func(tx *ds.Transaction) error {
 		blob, err := m.getBlobRef(ctx, tx, key)
 		if err != nil {
 			return err

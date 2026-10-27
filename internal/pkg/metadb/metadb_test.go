@@ -19,6 +19,7 @@ import (
 	"errors"
 	"os"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -197,7 +198,7 @@ func setupTestBlobRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob 
 
 func setupTestChunkRef(ctx context.Context, t *testing.T, metaDB *m.MetaDB, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) {
 	t.Helper()
-	if err := metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
+	if _, err := metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
 		t.Fatalf("InsertChunkRef() failed for chunk key (%v): %v", chunk.Key, err)
 	}
 
@@ -1448,4 +1449,106 @@ func TestMetaDB_GetRecords(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestMetaDB_InsertChunkRef_DeduplicatesSameNumber verifies that inserting a ChunkRef
+// with the same Number as an existing one atomically replaces it — the old entity is removed
+// from Datastore and returned as superseded so its GCS object can be cleaned up.
+func TestMetaDB_InsertChunkRef_DeduplicatesSameNumber(t *testing.T) {
+	ctx := context.Background()
+	metaDB := newMetaDB(ctx, t)
+	ds := newDatastoreClient(ctx, t)
+
+	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
+
+	const chunkNumber = int32(1)
+
+	// Insert the first chunk for number 1.
+	first := chunkref.New(blob.Key, chunkNumber)
+	first.Size = 100
+	superseded, err := metaDB.InsertChunkRef(ctx, blob, first)
+	require.NoError(t, err, "first InsertChunkRef")
+	assert.Empty(t, superseded, "first insert should have no superseded chunks")
+	t.Cleanup(func() { ds.Delete(ctx, chunkRefKey(first.BlobRef, first.Key)) })
+
+	// Insert a second chunk with the same number — simulates a client retry or concurrent upload.
+	second := chunkref.New(blob.Key, chunkNumber)
+	second.Size = 200
+	superseded, err = metaDB.InsertChunkRef(ctx, blob, second)
+	require.NoError(t, err, "second InsertChunkRef")
+	t.Cleanup(func() { ds.Delete(ctx, chunkRefKey(second.BlobRef, second.Key)) })
+
+	// The first chunk must be returned as superseded.
+	require.Len(t, superseded, 1, "second insert should supersede the first chunk")
+	assert.Equal(t, first.Key, superseded[0].Key)
+
+	// The first chunk must be gone from Datastore.
+	got := new(chunkref.ChunkRef)
+	err = ds.Get(ctx, chunkRefKey(first.BlobRef, first.Key), got)
+	assert.ErrorIs(t, err, datastore.ErrNoSuchEntity, "superseded chunk must be deleted from Datastore")
+
+	// The second chunk must exist.
+	err = ds.Get(ctx, chunkRefKey(second.BlobRef, second.Key), got)
+	assert.NoError(t, err, "new chunk must exist in Datastore")
+}
+
+// TestMetaDB_InsertChunkRef_ConcurrentSameNumber verifies that concurrent uploads of the
+// same chunk number result in exactly one ChunkRef in Datastore. This is the race that
+// previously produced "found multiple chunks with number" errors in GetBlobChunk.
+func TestMetaDB_InsertChunkRef_ConcurrentSameNumber(t *testing.T) {
+	ctx := context.Background()
+	// Use higher TXMaxAttempts so retries can resolve contention between goroutines.
+	metaDB, err := m.NewMetaDB(ctx, getTestProject(), config.DatastoreConfig{TXMaxAttempts: 5})
+	require.NoError(t, err)
+	metaDB.Namespace = testNamespace
+	t.Cleanup(func() { metaDB.Disconnect(ctx) })
+	ds := newDatastoreClient(ctx, t)
+
+	_, _, blob := setupTestStoreRecordBlobSet(ctx, t, metaDB, true)
+
+	const (
+		chunkNumber = int32(0)
+		goroutines  = 5
+	)
+
+	type result struct {
+		chunk      *chunkref.ChunkRef
+		superseded []*chunkref.ChunkRef
+		err        error
+	}
+	results := make([]result, goroutines)
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := range goroutines {
+		go func(i int) {
+			defer wg.Done()
+			chunk := chunkref.New(blob.Key, chunkNumber)
+			chunk.Size = int32(i + 1)
+			sup, err := metaDB.InsertChunkRef(ctx, blob, chunk)
+			results[i] = result{chunk: chunk, superseded: sup, err: err}
+		}(i)
+	}
+	wg.Wait()
+
+	// Register cleanup for all inserted chunks regardless of outcome.
+	for _, r := range results {
+		r := r
+		t.Cleanup(func() { ds.Delete(ctx, chunkRefKey(r.chunk.BlobRef, r.chunk.Key)) })
+	}
+
+	// All inserts must succeed (contention is resolved by TX retries).
+	for i, r := range results {
+		assert.NoError(t, r.err, "goroutine %d InsertChunkRef failed", i)
+	}
+
+	// Exactly one ChunkRef with chunkNumber must exist in Datastore.
+	var found int
+	for _, r := range results {
+		got := new(chunkref.ChunkRef)
+		if err := ds.Get(ctx, chunkRefKey(r.chunk.BlobRef, r.chunk.Key), got); err == nil {
+			found++
+		}
+	}
+	assert.Equal(t, 1, found, "exactly one ChunkRef must survive concurrent inserts for the same number")
 }

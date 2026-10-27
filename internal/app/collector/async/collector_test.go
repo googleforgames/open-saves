@@ -139,7 +139,7 @@ func chunkRefKey(chunk *chunkref.ChunkRef) *datastore.Key {
 func setupTestChunkRef(ctx context.Context, t *testing.T, collector *collector, ds *datastore.Client, blob *blobref.BlobRef, chunk *chunkref.ChunkRef) {
 	t.Helper()
 
-	if err := collector.metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
+	if _, err := collector.metaDB.InsertChunkRef(ctx, blob, chunk); err != nil {
 		t.Fatalf("InsertChunkRef failed: %v", err)
 	}
 	t.Cleanup(func() {
