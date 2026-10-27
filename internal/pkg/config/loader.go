@@ -151,8 +151,9 @@ func Load(path string) (*ServiceConfig, error) {
 	}
 
 	datastoreConfig := DatastoreConfig{
-		TXMaxAttempts: viper.GetInt(DatastoreTXMaxAttempts),
-		DatabaseId:    viper.GetString(DatastoreDatabaseId),
+		TXMaxAttempts:   viper.GetInt(DatastoreTXMaxAttempts),
+		DatabaseId:      viper.GetString(DatastoreDatabaseId),
+		SlowTXThreshold: viper.GetDuration(DatastoreTXSlowThreshold),
 	}
 
 	return &ServiceConfig{
